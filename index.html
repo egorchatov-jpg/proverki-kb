@@ -9,6 +9,7 @@
 <meta name="theme-color" content="#efefef">
 <title>Проверки КБ</title>
 <link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
 /* ===== RESET & BASE ===== */
@@ -136,6 +137,7 @@ html, body {
 }
 .violation-card-header-line { font-size: 13px; font-weight: 600; color: #1a2035; margin-bottom: 2px; }
 .violation-card-header-line.osir { color: var(--red); }
+.violation-card-header-line.clip { overflow: hidden; white-space: nowrap; }
 .violation-card-body { padding: 10px 14px; font-size: 13px; color: #1a2035; line-height: 1.5; }
 
 .lobby-nav {
@@ -900,9 +902,9 @@ function renderLobby() {
         '<div class="violation-card-header">' +
           '<div class="violation-card-header-line">Произошло: ' + (r.dateCheck || '') + '</div>' +
           '<div class="violation-card-header-line">Организация: ' + (r.org || '') + '</div>' +
-          '<div class="violation-card-header-line">Объект: ' + (r.obj || '') + '</div>' +
-          '<div class="violation-card-header-line">Барьер: ' + (r.barrier || '') + '</div>' +
+          '<div class="violation-card-header-line clip">Объект: ' + (r.obj || '') + '</div>' +
           '<div class="violation-card-header-line' + (r.method === 'ОСИР' ? ' osir' : '') + '">Проверка: ' + (r.method || '') + '</div>' +
+          '<div class="violation-card-header-line">Барьер: ' + (r.barrier || '') + '</div>' +
         '</div>' +
         '<div class="violation-card-body">' + (r.desc || '') + '</div>';
       card.onclick = function() { openDetail(r); };
