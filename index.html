@@ -878,7 +878,7 @@ function renderLobby() {
     violations.forEach(function(r) {
       var card = document.createElement('div');
       card.className = 'violation-card';
-      card.style.display = '';
+      card.style.display = 'block';
       card.innerHTML =
         '<div class="violation-card-header">' +
           '<div class="violation-card-header-row1">' +
@@ -1105,9 +1105,9 @@ function createDrumEl(id, items, wrap) {
   var listEl = document.createElement('div');
   listEl.className = 'drum-list';
   var allItems = [];
-  for (var i = 0; i < DRUM_OFFSET; i++) allItems.push(items[items.length - DRUM_OFFSET + i]);
+  for (var i = 0; i < DRUM_OFFSET; i++) allItems.push('');
   allItems = allItems.concat(items);
-  for (var j = 0; j < DRUM_OFFSET; j++) allItems.push(items[j]);
+  for (var j = 0; j < DRUM_OFFSET; j++) allItems.push('');
   allItems.forEach(function(v) {
     var el = document.createElement('div');
     el.className = 'drum-item';
@@ -1146,9 +1146,18 @@ function createDrumEl(id, items, wrap) {
     var now = Date.now(), dt = now - drum.lastTime;
     if (dt > 0) drum.velocity = (y - drum.lastY) / dt;
     drum.lastY = y; drum.lastTime = now;
-    setOffset(drum.startOffset + (y - drum.startY), false);
+    var minO = idxToOffset(DRUM_OFFSET + items.length - 1);
+    var maxO = idxToOffset(DRUM_OFFSET);
+    var o = Math.max(minO, Math.min(maxO, drum.startOffset + (y - drum.startY)));
+    if (o <= minO || o >= maxO) drum.velocity = 0;
+    setOffset(o, false);
   };
-  drum._end = function() { if (!drum.dragging) return; drum.dragging = false; snapTo(drum.offset + drum.velocity * 120); };
+  drum._end = function() {
+    if (!drum.dragging) return; drum.dragging = false;
+    var minO = idxToOffset(DRUM_OFFSET + items.length - 1);
+    var maxO = idxToOffset(DRUM_OFFSET);
+    snapTo(Math.max(minO, Math.min(maxO, drum.offset + drum.velocity * 120)));
+  };
 
   wrap.addEventListener('touchstart', function(e){ e.preventDefault(); drum._start(e.touches[0].clientY); }, { passive: false });
   wrap.addEventListener('touchmove',  function(e){ e.preventDefault(); drum._move(e.touches[0].clientY); },  { passive: false });
