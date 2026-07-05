@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#efefef">
+<title>Проверки КБ</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<style>
+/* ===== RESET & BASE ===== */
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body {
+  height: 100%; width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Samsung Sans", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: #efefef;
+  color: #1a2035;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== CSS VARIABLES ===== */
+:root {
+  --bg: #efefef;
+  --bg-yellow: #fdf5d8;
+  --bg-blue: #eef2ff;
+  --orange: #E87722;
+  --orange-dark: #c85f0a;
+  --navy: #1B3A6B;
+  --gray-btn: #8a8a8a;
+  --gray-btn-dark: #6b6b6b;
+  --green: #2E9B5E;
+  --red: #c0392b;
+  --red-light: rgba(192,57,43,0.12);
+  --red-banner: #c0392b;
+  --card-bg: #ffffff;
+  --card-shadow: 0 4px 18px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.07);
+  --card-radius: 18px;
+  --btn-radius: 16px;
+  --btn-shadow: 0 4px 14px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.10);
+  --overlay-bg: rgba(0,0,0,0.35);
+  --surface-yellow: #fffbee;
+  --border: rgba(0,0,0,0.08);
+  --text2: #4a5570;
+  --text3: #8090aa;
+}
+
+/* ===== SCREENS ===== */
+.screen {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  background: var(--bg);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.22s ease;
+  overflow: hidden;
+}
+.screen.active { opacity: 1; pointer-events: all; }
+
+/* ===== LOBBY ===== */
+#screen-lobby { background: var(--bg); }
+
+.lobby-topbar {
+  display: flex; align-items: flex-start; justify-content: flex-end;
+  padding: 16px 16px 0;
+  flex-shrink: 0;
+}
+
+.settings-btn {
+  width: 48px; height: 48px;
+  border-radius: 14px;
+  background: var(--gray-btn);
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--btn-shadow);
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.settings-btn:active { opacity: 0.75; }
+.settings-btn svg { width: 24px; height: 24px; color: #fff; stroke: #fff; }
+
+.lobby-content {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+  gap: 12px;
+}
+
+.no-violations-banner {
+  width: 100%;
+  background: var(--green);
+  border-radius: 30px;
+  padding: 16px 24px;
+  text-align: center;
+  color: #fff;
+  font-size: 17px; font-weight: 700;
+  box-shadow: var(--btn-shadow);
+}
+
+.violations-banner {
+  width: 100%;
+  background: var(--red-banner);
+  border-radius: var(--card-radius);
+  padding: 12px 20px;
+  text-align: center;
+  color: #fff;
+  font-size: 18px; font-weight: 700;
+  box-shadow: var(--btn-shadow);
+  display: none;
+}
+
+.violation-card {
+  width: 100%;
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  display: none;
+  transition: opacity 0.15s;
+}
+.violation-card:active { opacity: 0.8; }
+.violation-card-header {
+  background: rgba(192,57,43,0.08);
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid rgba(192,57,43,0.12);
+}
+.violation-card-header-row1 {
+  font-size: 13px; font-weight: 700; color: #1a2035;
+  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 2px;
+}
+.violation-card-header-row2 { font-size: 13px; font-weight: 600; color: #1a2035; margin-bottom: 2px; }
+.violation-card-header-row3 { font-size: 13px; font-weight: 600; color: var(--red); }
+.violation-card-body { padding: 10px 14px; font-size: 13px; color: #1a2035; line-height: 1.5; }
+
+.lobby-nav {
+  display: flex; gap: 10px;
+  padding: 12px 14px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  flex-shrink: 0;
+  background: var(--bg);
+}
+.nav-btn {
+  flex: 1;
+  border: none; cursor: pointer;
+  border-radius: var(--btn-radius);
+  padding: 14px 8px;
+  font-size: 15px; font-weight: 700; color: #fff;
+  box-shadow: var(--btn-shadow);
+  transition: opacity 0.15s, transform 0.1s;
+  line-height: 1.2;
+}
+.nav-btn:active { opacity: 0.82; transform: scale(0.97); }
+.nav-btn-proverki { background: var(--orange); }
+.nav-btn-meropr { background: var(--navy); }
+.nav-btn-stat { background: var(--gray-btn); }
+
+/* ===== SHARED SCREEN HEADER ===== */
+.screen-header {
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  padding: 18px 16px 12px;
+  flex-shrink: 0;
+}
+.screen-title {
+  font-size: 17px; font-weight: 700; color: #1a2035; text-align: center;
+}
+
+/* ===== SCREEN: ПРОВЕРКИ ВЫБОР ===== */
+#screen-proverki-menu { background: var(--bg-yellow); }
+.proverki-menu-content {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px; padding: 24px;
+}
+.proverki-menu-row { display: flex; gap: 12px; width: 100%; }
+.menu-btn {
+  flex: 1; border: none; cursor: pointer;
+  border-radius: var(--btn-radius);
+  padding: 18px 10px;
+  font-size: 15px; font-weight: 700; color: #fff;
+  box-shadow: var(--btn-shadow);
+  transition: opacity 0.15s, transform 0.1s;
+  line-height: 1.3; text-align: center;
+}
+.menu-btn:active { opacity: 0.8; transform: scale(0.97); }
+.menu-btn-gray { background: var(--gray-btn); }
+.menu-btn-orange { background: var(--orange); }
+.menu-btn-cancel {
+  background: var(--gray-btn);
+  border-radius: 30px;
+  padding: 13px 40px;
+  font-size: 15px; font-weight: 700; color: #fff;
+  border: none; cursor: pointer;
+  box-shadow: var(--btn-shadow);
+  transition: opacity 0.15s;
+}
+.menu-btn-cancel:active { opacity: 0.8; }
+
+/* ===== SCREEN: PIN ===== */
+#screen-pin { background: var(--bg-yellow); }
+.pin-content {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 24px 20px; gap: 0;
+}
+.pin-title { font-size: 18px; font-weight: 700; margin-bottom: 28px; color: #1a2035; text-align: center; }
+.pin-dots { display: flex; gap: 16px; margin-bottom: 32px; }
+.pin-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--orange);
+  background: transparent;
+  transition: background 0.15s;
+}
+.pin-dot.filled { background: var(--orange); }
+.pin-error { color: var(--red); font-size: 14px; font-weight: 600; height: 20px; margin-bottom: 16px; text-align: center; }
+.pin-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 12px; width: 100%; max-width: 280px;
+}
+.pin-key {
+  aspect-ratio: 1;
+  border: none; cursor: pointer; border-radius: 16px;
+  background: var(--orange);
+  color: #fff; font-size: 22px; font-weight: 700;
+  box-shadow: var(--btn-shadow);
+  transition: opacity 0.12s, transform 0.1s;
+  display: flex; align-items: center; justify-content: center;
+}
+.pin-key:active { opacity: 0.75; transform: scale(0.93); }
+.pin-key.del { background: var(--gray-btn); font-size: 16px; }
+.pin-key.empty { background: transparent; box-shadow: none; pointer-events: none; }
+.pin-back-btn {
+  margin-top: 28px;
+  background: var(--gray-btn);
+  color: #fff; font-size: 15px; font-weight: 700;
+  border: none; cursor: pointer; border-radius: 30px;
+  padding: 13px 40px; box-shadow: var(--btn-shadow);
+  transition: opacity 0.15s;
+}
+.pin-back-btn:active { opacity: 0.8; }
+
+/* ===== SCREEN: КАРТОЧКА ПРОВЕРКИ ===== */
+#screen-card { background: var(--bg-yellow); }
+.card-scroll {
+  flex: 1; overflow-y: auto; padding: 0 14px 16px;
+  -webkit-overflow-scrolling: touch;
+}
+.card-title {
+  font-size: 16px; font-weight: 700; color: #1a2035;
+  text-align: center; padding: 18px 0 16px;
+}
+.card-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.field-wrap { display: flex; flex-direction: column; gap: 4px; }
+.field-label {
+  font-size: 12px; color: var(--text2); font-weight: 500;
+  padding-left: 2px;
+}
+.field-cell {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 14px; color: #1a2035;
+  cursor: pointer;
+  display: flex; align-items: center;
+  transition: border-color 0.15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  word-break: break-word;
+}
+.field-cell:active { border-color: var(--orange); }
+.field-cell.tall { min-height: 80px; align-items: flex-start; }
+.field-cell.dimmed { opacity: 0.35; pointer-events: none; }
+.field-label.dimmed { opacity: 0.35; }
+.field-cell .placeholder { color: var(--text3); }
+
+.card-validation {
+  text-align: center; padding: 14px 0 4px;
+  font-size: 14px; font-weight: 700;
+}
+.card-validation.error { color: var(--red); }
+.card-validation.ok { color: var(--green); }
+
+.card-bottom {
+  display: flex; gap: 10px;
+  padding: 12px 14px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  flex-shrink: 0;
+  background: var(--bg-yellow);
+}
+.card-btn {
+  flex: 1; border: none; cursor: pointer; border-radius: var(--btn-radius);
+  padding: 15px 10px;
+  font-size: 15px; font-weight: 700; color: #fff;
+  box-shadow: var(--btn-shadow);
+  transition: opacity 0.15s, transform 0.1s;
+}
+.card-btn:active { opacity: 0.8; transform: scale(0.97); }
+.card-btn-cancel { background: var(--gray-btn-dark); }
+.card-btn-submit { background: var(--orange); }
+.card-btn-submit:disabled { opacity: 0.4; pointer-events: none; }
+
+/* ===== OVERLAYS ===== */
+.overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: var(--overlay-bg);
+  display: flex; align-items: flex-end;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+.overlay.active { opacity: 1; pointer-events: all; }
+.overlay-box {
+  width: 100%; background: #fffbee;
+  border-radius: 24px 24px 0 0;
+  padding: 20px 20px 32px;
+  padding-bottom: max(32px, calc(env(safe-area-inset-bottom) + 20px));
+  transform: translateY(40px);
+  transition: transform 0.25s ease;
+  max-height: 90vh; overflow-y: auto;
+}
+.overlay.active .overlay-box { transform: translateY(0); }
+.overlay-title {
+  font-size: 16px; font-weight: 700; text-align: center;
+  margin-bottom: 20px; color: #1a2035;
+}
+.overlay-textarea {
+  width: 100%; border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 12px;
+  font-size: 15px; font-family: inherit; color: #1a2035;
+  background: #fff; resize: none;
+  min-height: 180px; max-height: 180px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.overlay-textarea:focus { outline: none; border-color: var(--orange); }
+.overlay-input {
+  width: 100%; border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 12px 14px;
+  font-size: 15px; font-family: inherit; color: #1a2035;
+  background: #fff;
+}
+.overlay-input:focus { outline: none; border-color: var(--orange); }
+.overlay-btns {
+  display: flex; gap: 10px; margin-top: 18px;
+}
+.overlay-btn {
+  flex: 1; border: none; cursor: pointer; border-radius: var(--btn-radius);
+  padding: 14px 10px;
+  font-size: 15px; font-weight: 700; color: #fff;
+  box-shadow: var(--btn-shadow);
+  transition: opacity 0.15s;
+}
+.overlay-btn:active { opacity: 0.8; }
+.overlay-btn-cancel { background: var(--gray-btn-dark); }
+.overlay-btn-apply { background: var(--orange); }
+
+/* autocomplete */
+.autocomplete-list {
+  width: 100%; background: #fff;
+  border: 1px solid var(--border); border-radius: 12px;
+  overflow: hidden; max-height: 150px; overflow-y: auto;
+  margin-top: 4px; display: none;
+}
+.autocomplete-item {
+  padding: 10px 14px; font-size: 14px; cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+.autocomplete-item:last-child { border-bottom: none; }
+.autocomplete-item:active { background: rgba(232,119,34,0.08); }
+
+/* ===== DND DRUM PICKER ===== */
+.drum-row { display: flex; align-items: flex-start; justify-content: center; gap: 16px; margin: 4px 0 8px; }
+.drum-block { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.drum-block-label { font-size: 13px; font-weight: 700; color: #4a5570; }
+.drum-group { display: flex; align-items: center; gap: 2px; position: relative; isolation: isolate; }
+.drum-group::before {
+  content: ''; position: absolute;
+  left: -6px; right: -6px; top: 50%; transform: translateY(-50%);
+  height: 35px; pointer-events: none; z-index: -1;
+  background: rgba(232,119,34,0.10);
+  border: 1.5px solid var(--orange);
+  border-radius: 22px;
+}
+.drum-sep { font-size: 22px; font-weight: 700; color: var(--text2); line-height: 1; padding: 0 2px; }
+.drum-wrap {
+  overflow: hidden; position: relative;
+  border-radius: 12px; background: transparent;
+  cursor: grab; touch-action: none;
+  -webkit-user-select: none; user-select: none;
+  height: 175px;
+}
+.drum-wrap::before, .drum-wrap::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 70px; z-index: 2; pointer-events: none;
+}
+.drum-wrap::before { top: 0; background: linear-gradient(to bottom, #fffbee, transparent); opacity: 0.88; }
+.drum-wrap::after  { bottom: 0; background: linear-gradient(to top, #fffbee, transparent); opacity: 0.88; }
+.drum-list { position: absolute; left: 0; right: 0; top: 0; }
+.drum-item {
+  height: 35px; display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 600; color: #1a2035;
+  font-family: -apple-system, BlinkMacSystemFont, "Samsung Sans", Roboto, sans-serif;
+  white-space: nowrap; padding: 0 8px;
+}
+
+/* нарушение допустил */
+.violator-groups { display: flex; flex-direction: column; gap: 12px; }
+.violator-group-label { font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 4px; }
+.violator-group-inputs { display: flex; flex-direction: column; gap: 6px; }
+.violator-input {
+  width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 10px 12px; font-size: 14px; font-family: inherit; color: #1a2035; background: #fff;
+}
+.violator-input:focus { outline: none; border-color: var(--orange); }
+
+/* success overlay */
+.success-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: var(--overlay-bg);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.22s;
+}
+.success-overlay.active { opacity: 1; pointer-events: all; }
+.success-box {
+  background: #fffbee; border-radius: 22px;
+  padding: 32px 28px; margin: 20px;
+  text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+.success-title { font-size: 20px; font-weight: 700; margin-bottom: 24px; color: #1a2035; }
+.success-btns { display: flex; gap: 10px; }
+.success-btn {
+  flex: 1; border: none; cursor: pointer; border-radius: var(--btn-radius);
+  padding: 14px 10px; font-size: 15px; font-weight: 700; color: #fff;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+}
+.success-btn:active { opacity: 0.8; }
+.success-btn-exit { background: var(--gray-btn-dark); }
+.success-btn-next { background: var(--orange); }
+
+/* ===== НАЙТИ ПРОВЕРКУ — список ===== */
+#screen-find { background: var(--bg-yellow); }
+.find-list-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.find-table { width: 100%; border-collapse: collapse; }
+.find-table thead th {
+  position: sticky; top: 0; background: var(--bg-yellow);
+  padding: 10px 6px 8px;
+  font-size: 12px; font-weight: 700; color: var(--text2);
+  border-bottom: 2px solid var(--border);
+  text-align: left; line-height: 1.3;
+  z-index: 10;
+}
+.find-table tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; }
+.find-table tbody tr:active { background: rgba(232,119,34,0.08); }
+.find-table tbody tr.has-violation { background: rgba(192,57,43,0.07); }
+.find-table td { padding: 9px 6px; font-size: 13px; color: #1a2035; vertical-align: middle; }
+.td-date { white-space: nowrap; }
+.td-org, .td-obj { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 0; width: 50%; }
+
+.find-bottom {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  background: var(--bg-yellow);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.find-count { flex: 1; text-align: center; font-size: 14px; font-weight: 700; color: #1a2035; line-height: 1.3; }
+.find-bottom-btn {
+  border: none; cursor: pointer; border-radius: var(--btn-radius);
+  padding: 12px 18px; font-size: 14px; font-weight: 700; color: #fff;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.find-bottom-btn:active { opacity: 0.8; }
+.find-btn-cancel { background: var(--gray-btn-dark); }
+.find-btn-filter { background: var(--orange); display: flex; align-items: center; gap: 6px; }
+
+/* ===== ДЕТАЛЬНАЯ КАРТОЧКА ===== */
+#screen-detail { background: var(--bg-yellow); }
+.detail-scroll { flex: 1; overflow-y: auto; padding: 0 14px 16px; -webkit-overflow-scrolling: touch; }
+.detail-title { font-size: 16px; font-weight: 700; color: #1a2035; text-align: center; padding: 16px 0 14px; }
+.detail-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.detail-row:last-child { border-bottom: none; }
+.detail-label { font-size: 13px; color: var(--text2); font-weight: 500; width: 48%; flex-shrink: 0; padding-top: 1px; line-height: 1.4; }
+.detail-val { font-size: 13px; color: #1a2035; font-weight: 500; flex: 1; line-height: 1.4; }
+.detail-block { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.detail-block:last-child { border-bottom: none; }
+.detail-block-label { font-size: 13px; color: var(--text2); font-weight: 500; margin-bottom: 6px; }
+.detail-block-val {
+  font-size: 13px; color: #1a2035; line-height: 1.5;
+  background: #fff; border-radius: 10px; padding: 10px 12px;
+  border: 1px solid var(--border); min-height: 44px;
+  white-space: pre-wrap; word-break: break-word;
+}
+.detail-back {
+  display: flex; justify-content: center;
+  padding: 10px 14px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  flex-shrink: 0;
+}
+.detail-back-btn {
+  background: var(--gray-btn-dark); color: #fff;
+  border: none; cursor: pointer; border-radius: 30px;
+  padding: 13px 40px; font-size: 15px; font-weight: 700;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+}
+.detail-back-btn:active { opacity: 0.8; }
+</style>
+</head>
+<body>
+
+<!-- ===== ЛОББИ ===== -->
+<div class="screen active" id="screen-lobby">
+  <div class="lobby-topbar">
+    <button class="settings-btn" onclick="openSettings()" title="Настройки">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="lobby-content" id="lobby-content">
+    <div class="no-violations-banner" id="no-violations-banner">Сегодня без нарушений</div>
+    <div class="violations-banner" id="violations-banner">Нарушения</div>
+    <!-- Violation cards inserted here by JS -->
+  </div>
+
+  <nav class="lobby-nav">
+    <button class="nav-btn nav-btn-proverki" onclick="openProverki()">Проверки</button>
+    <button class="nav-btn nav-btn-meropr" onclick="openMeropr()">Мероприятия</button>
+    <button class="nav-btn nav-btn-stat" onclick="openStat()">Статистика</button>
+  </nav>
+</div>
+
+<!-- ===== ПРОВЕРКИ: МЕНЮ ===== -->
+<div class="screen" id="screen-proverki-menu">
+  <div class="proverki-menu-content">
+    <div class="proverki-menu-row">
+      <button class="menu-btn menu-btn-gray" onclick="openFind()">Найти<br>проверку</button>
+      <button class="menu-btn menu-btn-orange" onclick="openPin()">Внести<br>проверку</button>
+    </div>
+    <button class="menu-btn-cancel" onclick="goLobby()">Отмена</button>
+  </div>
+</div>
+
+<!-- ===== PIN ===== -->
+<div class="screen" id="screen-pin">
+  <div class="pin-content">
+    <div class="pin-title">Введите пароль</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="pin-error" id="pin-error"></div>
+    <div class="pin-grid">
+      <button class="pin-key" onclick="pinPress('1')">1</button>
+      <button class="pin-key" onclick="pinPress('2')">2</button>
+      <button class="pin-key" onclick="pinPress('3')">3</button>
+      <button class="pin-key" onclick="pinPress('4')">4</button>
+      <button class="pin-key" onclick="pinPress('5')">5</button>
+      <button class="pin-key" onclick="pinPress('6')">6</button>
+      <button class="pin-key" onclick="pinPress('7')">7</button>
+      <button class="pin-key" onclick="pinPress('8')">8</button>
+      <button class="pin-key" onclick="pinPress('9')">9</button>
+      <button class="pin-key empty"></button>
+      <button class="pin-key" onclick="pinPress('0')">0</button>
+      <button class="pin-key del" onclick="pinDel()">⌫</button>
+    </div>
+    <button class="pin-back-btn" onclick="showScreen('screen-proverki-menu')">Назад</button>
+  </div>
+</div>
+
+<!-- ===== КАРТОЧКА ПРОВЕРКИ ===== -->
+<div class="screen" id="screen-card">
+  <div class="card-scroll">
+    <div class="card-title">Внесите результат проведенной проверки</div>
+    <div class="card-grid">
+
+      <div class="field-wrap">
+        <div class="field-label" id="lbl-date">Дата проверки</div>
+        <div class="field-cell" id="cell-date" onclick="openDrumDate()">
+          <span class="placeholder" id="val-date">—</span>
+        </div>
+      </div>
+
+      <div class="field-wrap">
+        <div class="field-label" id="lbl-method">Метод проверки</div>
+        <div class="field-cell" id="cell-method" onclick="openDrumMethod()">
+          <span class="placeholder" id="val-method">Выбрать</span>
+        </div>
+      </div>
+
+      <div class="field-wrap">
+        <div class="field-label" id="lbl-inspector">Проверку выполнил</div>
+        <div class="field-cell dimmed" id="cell-inspector" onclick="openInspectorOverlay()">
+          <span class="placeholder" id="val-inspector">—</span>
+        </div>
+      </div>
+
+      <div class="field-wrap">
+        <div class="field-label">Проверяемая организация</div>
+        <div class="field-cell" id="cell-org" onclick="openDrumOrg()">
+          <span class="placeholder" id="val-org">Выбрать</span>
+        </div>
+      </div>
+
+      <div class="field-wrap">
+        <div class="field-label">Проверяемый объект</div>
+        <div class="field-cell" id="cell-obj" onclick="openTextOverlay('obj','Введите проверяемый объект / участок / производственную площадку','val-obj',false)">
+          <span class="placeholder" id="val-obj">—</span>
+        </div>
+      </div>
+
+      <div class="field-wrap">
+        <div class="field-label">Куратор от заказчика</div>
+        <div class="field-cell" id="cell-curator" onclick="openTextOverlay('curator','Введите ФИО куратора от заказчика','val-curator',true)">
+          <span class="placeholder" id="val-curator">—</span>
+        </div>
+      </div>
+
+      <div class="field-wrap">
+        <div class="field-label">Проверяемый барьер</div>
+        <div class="field-cell" id="cell-barrier" onclick="openDrumBarrier()">
+          <span class="placeholder" id="val-barrier">Выбрать</span>
+        </div>
+      </div>
+
+      <div class="field-wrap">
+        <div class="field-label">Работоспособность барьера</div>
+        <div class="field-cell" id="cell-works" onclick="openDrumWorks()">
+          <span class="placeholder" id="val-works">Выбрать</span>
+        </div>
+      </div>
+
+      <div class="field-wrap">
+        <div class="field-label dimmed" id="lbl-desc">Описание нарушения</div>
+        <div class="field-cell tall dimmed" id="cell-desc" onclick="openDescOverlay()">
+          <span class="placeholder" id="val-desc">—</span>
+        </div>
+      </div>
+
+      <div class="field-wrap">
+        <div class="field-label dimmed" id="lbl-violator">Нарушение допустил</div>
+        <div class="field-cell tall dimmed" id="cell-violator" onclick="openViolatorOverlay()">
+          <span class="placeholder" id="val-violator">—</span>
+        </div>
+      </div>
+
+    </div>
+    <div class="card-validation error" id="card-validation">Заполнены не все поля</div>
+  </div>
+  <div class="card-bottom">
+    <button class="card-btn card-btn-cancel" onclick="goLobby()">Отмена</button>
+    <button class="card-btn card-btn-submit" id="btn-submit" disabled onclick="submitCard()">Готово</button>
+  </div>
+</div>
+
+<!-- ===== НАЙТИ: СПИСОК ===== -->
+<div class="screen" id="screen-find">
+  <div class="find-list-wrap">
+    <table class="find-table">
+      <thead>
+        <tr>
+          <th style="white-space:nowrap;width:1px">Дата<br>проверки</th>
+          <th>Проверяемая<br>организация</th>
+          <th>Проверяемый<br>объект</th>
+        </tr>
+      </thead>
+      <tbody id="find-tbody"></tbody>
+    </table>
+  </div>
+  <div class="find-bottom">
+    <button class="find-bottom-btn find-btn-cancel" onclick="showScreen('screen-proverki-menu')">Отмена</button>
+    <div class="find-count" id="find-count">0<br>проверок</div>
+    <button class="find-bottom-btn find-btn-filter" onclick="openFilters()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"/></svg>
+      Фильтр
+    </button>
+  </div>
+</div>
+
+<!-- ===== ДЕТАЛЬНАЯ КАРТОЧКА ===== -->
+<div class="screen" id="screen-detail">
+  <div class="detail-scroll" id="detail-scroll">
+    <div class="detail-title" id="detail-title">Проверка №1 2026</div>
+    <div id="detail-body"></div>
+  </div>
+  <div class="detail-back">
+    <button class="detail-back-btn" onclick="showScreen('screen-find')">Назад</button>
+  </div>
+</div>
+
+<!-- ===== OVERLAY: БАРАБАН (универсальный) ===== -->
+<div class="overlay" id="overlay-drum">
+  <div class="overlay-box">
+    <div class="overlay-title" id="drum-overlay-title">Выберите значение</div>
+    <div class="drum-row" id="drum-row"></div>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="closeDrum()">Отмена</button>
+      <button class="overlay-btn overlay-btn-apply" onclick="applyDrum()">Применить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== OVERLAY: ТЕКСТ ===== -->
+<div class="overlay" id="overlay-text">
+  <div class="overlay-box">
+    <div class="overlay-title" id="text-overlay-title">Введите значение</div>
+    <input class="overlay-input" id="text-overlay-input" type="text" autocomplete="off" oninput="textAutocomplete(this)">
+    <div class="autocomplete-list" id="autocomplete-list"></div>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="closeTextOverlay()">Отмена</button>
+      <button class="overlay-btn overlay-btn-apply" onclick="applyTextOverlay()">Применить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== OVERLAY: ОПИСАНИЕ НАРУШЕНИЯ ===== -->
+<div class="overlay" id="overlay-desc">
+  <div class="overlay-box">
+    <div class="overlay-title">Опишите нарушение</div>
+    <textarea class="overlay-textarea" id="desc-input" placeholder="Введите описание нарушения..."></textarea>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-desc')">Отмена</button>
+      <button class="overlay-btn overlay-btn-apply" onclick="applyDesc()">Применить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== OVERLAY: НАРУШЕНИЕ ДОПУСТИЛ ===== -->
+<div class="overlay" id="overlay-violator">
+  <div class="overlay-box">
+    <div class="overlay-title">Введите ФИО и должность допустившего нарушение</div>
+    <div class="violator-groups" id="violator-groups"></div>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-violator')">Отмена</button>
+      <button class="overlay-btn overlay-btn-apply" onclick="applyViolator()">Применить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SUCCESS OVERLAY ===== -->
+<div class="success-overlay" id="success-overlay">
+  <div class="success-box">
+    <div class="success-title">Данные сохранены!</div>
+    <div class="success-btns">
+      <button class="success-btn success-btn-exit" onclick="successExit()">Выйти</button>
+      <button class="success-btn success-btn-next" onclick="successNext()">Следующая проверка</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ===== APP STATE =====
+var appState = {
+  pinUnlocked: false,
+  db: [],          // массив записей проверок
+  orgs: [],        // список организаций (из настроек)
+  barriers: [],    // список барьеров (из настроек)
+  autocomplete: {} // { fieldKey: [sorted strings] }
+};
+
+var cardData = {};
+var currentDrumCallback = null;
+var currentTextCallback = null;
+var currentTextKey = null;
+var currentTextAutocompleteKey = null;
+var drums = {};
+
+// ===== INIT =====
+window.addEventListener('DOMContentLoaded', function() {
+  loadState();
+  registerSW();
+  renderLobby();
+  initDateDrum();
+  initViolatorGroups();
+  setTodayDate();
+});
+
+function loadState() {
+  try {
+    var saved = localStorage.getItem('pkb-state');
+    if (saved) {
+      var parsed = JSON.parse(saved);
+      appState.db = parsed.db || [];
+      appState.orgs = parsed.orgs || ['АО «ЕВРАКОР»', 'ООО «ЭСМ»'];
+      appState.barriers = parsed.barriers || ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
+      appState.autocomplete = parsed.autocomplete || {};
+    } else {
+      appState.orgs = ['АО «ЕВРАКОР»', 'ООО «ЭСМ»'];
+      appState.barriers = ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
+    }
+  } catch(e) {}
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('pkb-state', JSON.stringify({
+      db: appState.db,
+      orgs: appState.orgs,
+      barriers: appState.barriers,
+      autocomplete: appState.autocomplete
+    }));
+  } catch(e) {}
+}
+
+function registerSW() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(function(){});
+  }
+}
+
+// ===== SCREENS =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s) {
+    s.classList.remove('active');
+  });
+  document.getElementById(id).classList.add('active');
+}
+
+function goLobby() {
+  renderLobby();
+  showScreen('screen-lobby');
+}
+
+function openProverki()  { showScreen('screen-proverki-menu'); }
+function openMeropr()    { /* TODO */ alert('Раздел «Мероприятия» — в разработке'); }
+function openStat()      { /* TODO */ alert('Раздел «Статистика» — в разработке'); }
+function openSettings()  { /* TODO */ alert('Настройки — в разработке'); }
+
+function openPin() {
+  if (appState.pinUnlocked) { openCard(); return; }
+  resetPin();
+  showScreen('screen-pin');
+}
+
+function openFind() {
+  renderFindList(appState.db);
+  showScreen('screen-find');
+}
+
+function openFilters() { alert('Фильтры — в разработке'); }
+
+// ===== LOBBY =====
+function renderLobby() {
+  var today = todayStr();
+  var violations = appState.db.filter(function(r) {
+    return r.dateEntry === today && r.works === 'Нет';
+  });
+
+  var content = document.getElementById('lobby-content');
+  // remove old violation cards
+  content.querySelectorAll('.violation-card').forEach(function(el){ el.remove(); });
+
+  var noBanner = document.getElementById('no-violations-banner');
+  var vBanner  = document.getElementById('violations-banner');
+
+  if (violations.length === 0) {
+    noBanner.style.display = '';
+    vBanner.style.display = 'none';
+  } else {
+    noBanner.style.display = 'none';
+    vBanner.style.display = '';
+    violations.forEach(function(r) {
+      var card = document.createElement('div');
+      card.className = 'violation-card';
+      card.style.display = '';
+      card.innerHTML =
+        '<div class="violation-card-header">' +
+          '<div class="violation-card-header-row1">' +
+            '<span>Произошло: ' + r.dateCheck + '</span>' +
+            '<span>' + (r.org || '') + '</span>' +
+            '<span>' + (r.obj || '') + '</span>' +
+          '</div>' +
+          '<div class="violation-card-header-row2">Барьер: ' + (r.barrier || '') + '</div>' +
+          '<div class="violation-card-header-row3">Проверка: ' + (r.method || '') + '</div>' +
+        '</div>' +
+        '<div class="violation-card-body">' + (r.desc || '') + '</div>';
+      card.onclick = function() { openDetail(r); };
+      content.insertBefore(card, content.querySelector('.violations-banner').nextSibling);
+    });
+  }
+}
+
+// ===== PIN =====
+var pinValue = '';
+var PIN_CODE = '1111';
+
+function resetPin() {
+  pinValue = '';
+  updatePinDots();
+  document.getElementById('pin-error').textContent = '';
+}
+
+function pinPress(d) {
+  if (pinValue.length >= 4) return;
+  pinValue += d;
+  updatePinDots();
+  if (pinValue.length === 4) {
+    setTimeout(checkPin, 120);
+  }
+}
+
+function pinDel() {
+  pinValue = pinValue.slice(0, -1);
+  updatePinDots();
+}
+
+function updatePinDots() {
+  for (var i = 0; i < 4; i++) {
+    document.getElementById('d' + i).classList.toggle('filled', i < pinValue.length);
+  }
+}
+
+function checkPin() {
+  if (pinValue === PIN_CODE) {
+    appState.pinUnlocked = true;
+    openCard();
+  } else {
+    document.getElementById('pin-error').textContent = 'Неверный пароль';
+    pinValue = '';
+    updatePinDots();
+  }
+}
+
+// ===== CARD =====
+function setTodayDate() {
+  var d = new Date();
+  cardData.dateCheck = formatDate(d);
+  cardData.dateEntry = todayStr();
+  document.getElementById('val-date').textContent = cardData.dateCheck;
+  document.getElementById('val-date').classList.remove('placeholder');
+}
+
+function openCard() {
+  resetCard();
+  showScreen('screen-card');
+}
+
+function resetCard() {
+  cardData = {};
+  setTodayDate();
+  ['method','inspector','org','obj','curator','barrier','works','desc','violator'].forEach(function(k) {
+    var el = document.getElementById('val-' + k);
+    if (el) { el.textContent = k === 'method' || k === 'org' || k === 'barrier' || k === 'works' ? 'Выбрать' : '—'; }
+  });
+  setDimmed('inspector', true);
+  setDimmed('desc', true);
+  setDimmed('violator', true);
+  updateValidation();
+}
+
+function setDimmed(key, dimmed) {
+  var cell = document.getElementById('cell-' + key);
+  var lbl  = document.getElementById('lbl-' + key);
+  if (cell) cell.classList.toggle('dimmed', dimmed);
+  if (lbl)  lbl.classList.toggle('dimmed', dimmed);
+}
+
+function updateValidation() {
+  var required = ['dateCheck','method','org','obj','curator','barrier','works'];
+  if (cardData.works === 'Нет') { required.push('desc','violator'); }
+  var ok = required.every(function(k) { return cardData[k] && cardData[k].trim && cardData[k].trim() !== '' || (cardData[k] && typeof cardData[k] === 'string' && cardData[k] !== ''); });
+  var el = document.getElementById('card-validation');
+  var btn = document.getElementById('btn-submit');
+  if (ok) {
+    el.textContent = 'Заполнены все поля';
+    el.className = 'card-validation ok';
+    btn.disabled = false;
+  } else {
+    el.textContent = 'Заполнены не все поля';
+    el.className = 'card-validation error';
+    btn.disabled = true;
+  }
+}
+
+function submitCard() {
+  cardData.id = Date.now();
+  // auto-number within year
+  var year = cardData.dateCheck ? cardData.dateCheck.split('.')[2] : new Date().getFullYear();
+  var sameYear = appState.db.filter(function(r){ return r.year === year; });
+  cardData.num = sameYear.length + 1;
+  cardData.year = year;
+  // Барьер в ПК (auto)
+  var pkBarriers = (appState.barriers || []).filter(function(b){ return b.inPK; }).map(function(b){ return typeof b === 'string' ? b : b.name; });
+  var barrierName = cardData.barrier;
+  cardData.barrierInPK = pkBarriers.indexOf(barrierName) >= 0 ? 'Да' : 'Нет';
+  // insert sorted by dateCheck
+  appState.db.push(cardData);
+  appState.db.sort(function(a, b){ return dateToMs(a.dateCheck) - dateToMs(b.dateCheck); });
+  saveState();
+  // save autocomplete
+  saveAutocomplete('inspector', cardData.inspector);
+  saveAutocomplete('curator', cardData.curator);
+  // notify (if supported)
+  if (cardData.works === 'Нет') sendNotification(cardData);
+  document.getElementById('success-overlay').classList.add('active');
+}
+
+function saveAutocomplete(key, val) {
+  if (!val || !val.trim()) return;
+  if (!appState.autocomplete[key]) appState.autocomplete[key] = [];
+  if (appState.autocomplete[key].indexOf(val.trim()) < 0) {
+    appState.autocomplete[key].push(val.trim());
+    appState.autocomplete[key].sort(function(a,b){ return a.localeCompare(b, 'ru'); });
+  }
+  saveState();
+}
+
+function sendNotification(r) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
+    new Notification('Нарушение КБ', { body: (r.org || '') + ' — ' + (r.barrier || '') + '\n' + (r.desc || '') });
+  } else if (Notification.permission !== 'denied') {
+    Notification.requestPermission().then(function(p){ if (p === 'granted') sendNotification(r); });
+  }
+}
+
+function successExit() {
+  document.getElementById('success-overlay').classList.remove('active');
+  goLobby();
+}
+function successNext() {
+  document.getElementById('success-overlay').classList.remove('active');
+  openCard();
+}
+
+// ===== FIND LIST =====
+function renderFindList(records) {
+  var tbody = document.getElementById('find-tbody');
+  tbody.innerHTML = '';
+  document.getElementById('find-count').innerHTML = records.length + '<br>проверок';
+  records.forEach(function(r, i) {
+    var tr = document.createElement('tr');
+    if (r.works === 'Нет') tr.className = 'has-violation';
+    tr.innerHTML =
+      '<td class="td-date">' + (r.dateCheck || '') + '</td>' +
+      '<td class="td-org">' + (r.org || '') + '</td>' +
+      '<td class="td-obj">' + (r.obj || '') + '</td>';
+    tr.onclick = (function(rec){ return function(){ openDetail(rec); }; })(r);
+    tbody.appendChild(tr);
+  });
+}
+
+// ===== DETAIL =====
+function openDetail(r) {
+  document.getElementById('detail-title').textContent = 'Проверка №' + (r.num || '?') + ' ' + (r.year || '');
+  var body = document.getElementById('detail-body');
+  var rows = [
+    ['Дата проверки', r.dateCheck],
+    ['Дата внесения проверки', r.dateEntry],
+    ['Метод проверки', r.method],
+    ['Проверку выполнил', r.inspector],
+    ['Проверяемая организация', r.org],
+    ['Проверяемый объект', r.obj],
+    ['Куратор от заказчика', r.curator],
+    ['Проверяемый барьер', r.barrier],
+    ['Барьер в ПК', r.barrierInPK],
+    ['Работоспособность барьера', r.works]
+  ];
+  var blocks = [
+    ['Описание нарушения', r.desc],
+    ['Нарушение допустил', r.violator],
+    ['Корректирующие мероприятия', r.corrective],
+    ['Выполнение корректирующих мероприятий', r.correctiveDone],
+    ['Мероприятия по оспариванию в СОКБ', r.contestMeasures],
+    ['Статус оспаривания в СОКБ', r.contestStatus]
+  ];
+  body.innerHTML = rows.map(function(pair){
+    return '<div class="detail-row">' +
+      '<div class="detail-label">' + pair[0] + '</div>' +
+      '<div class="detail-val">' + (pair[1] || '—') + '</div>' +
+    '</div>';
+  }).join('') + blocks.map(function(pair){
+    return '<div class="detail-block">' +
+      '<div class="detail-block-label">' + pair[0] + '</div>' +
+      '<div class="detail-block-val">' + (pair[1] || '—') + '</div>' +
+    '</div>';
+  }).join('');
+  document.getElementById('detail-scroll').scrollTop = 0;
+  showScreen('screen-detail');
+}
+
+// ===== DRUM PICKER =====
+var DRUM_ITEM_H = 35;
+var DRUM_OFFSET = 3;
+var DRUM_INSTANCES = {};
+
+function createDrumEl(id, items, wrap) {
+  var TOTAL = items.length + DRUM_OFFSET * 2;
+  var listEl = document.createElement('div');
+  listEl.className = 'drum-list';
+  var allItems = [];
+  for (var i = 0; i < DRUM_OFFSET; i++) allItems.push(items[items.length - DRUM_OFFSET + i]);
+  allItems = allItems.concat(items);
+  for (var j = 0; j < DRUM_OFFSET; j++) allItems.push(items[j]);
+  allItems.forEach(function(v) {
+    var el = document.createElement('div');
+    el.className = 'drum-item';
+    el.textContent = v;
+    listEl.appendChild(el);
+  });
+  wrap.innerHTML = '';
+  wrap.appendChild(listEl);
+  wrap.style.width = Math.max(60, items.reduce(function(mx, v){ return Math.max(mx, v.length * 11); }, 60)) + 'px';
+
+  var drum = { items: items, idx: DRUM_OFFSET, offset: 0, dragging: false, velocity: 0, lastY: 0, lastTime: 0 };
+
+  function idxToOffset(idx) { return -(idx - DRUM_OFFSET) * DRUM_ITEM_H; }
+  function setOffset(o, anim) {
+    drum.offset = o;
+    listEl.style.transition = anim ? 'transform 0.3s cubic-bezier(.22,.68,0,1.2)' : 'none';
+    listEl.style.transform = 'translateY(' + (o + DRUM_ITEM_H * DRUM_OFFSET) + 'px)';
+  }
+  function snapTo(o) {
+    var idx = Math.round(-o / DRUM_ITEM_H) + DRUM_OFFSET;
+    idx = Math.max(DRUM_OFFSET, Math.min(DRUM_OFFSET + items.length - 1, idx));
+    drum.idx = idx;
+    setOffset(idxToOffset(idx), true);
+  }
+  drum.setValue = function(v) {
+    var i = items.indexOf(v);
+    if (i < 0) i = 0;
+    drum.idx = DRUM_OFFSET + i;
+    setOffset(idxToOffset(drum.idx), false);
+  };
+  drum.getValue = function() { return items[(drum.idx - DRUM_OFFSET + items.length) % items.length]; };
+  drum._start = function(y) { drum.dragging = true; drum.lastY = y; drum.lastTime = Date.now(); drum.velocity = 0; drum.startOffset = drum.offset; drum.startY = y; };
+  drum._move = function(y) {
+    if (!drum.dragging) return;
+    var now = Date.now(), dt = now - drum.lastTime;
+    if (dt > 0) drum.velocity = (y - drum.lastY) / dt;
+    drum.lastY = y; drum.lastTime = now;
+    setOffset(drum.startOffset + (y - drum.startY), false);
+  };
+  drum._end = function() { if (!drum.dragging) return; drum.dragging = false; snapTo(drum.offset + drum.velocity * 120); };
+
+  wrap.addEventListener('touchstart', function(e){ e.preventDefault(); drum._start(e.touches[0].clientY); }, { passive: false });
+  wrap.addEventListener('touchmove',  function(e){ e.preventDefault(); drum._move(e.touches[0].clientY); },  { passive: false });
+  wrap.addEventListener('touchend',   function(e){ e.preventDefault(); drum._end(); },                        { passive: false });
+  wrap.addEventListener('mousedown',  function(e){ e.preventDefault(); drum._start(e.clientY); document.addEventListener('mousemove', onMM); document.addEventListener('mouseup', onMU); });
+  function onMM(e){ drum._move(e.clientY); }
+  function onMU(e){ drum._end(); document.removeEventListener('mousemove', onMM); document.removeEventListener('mouseup', onMU); }
+
+  setOffset(idxToOffset(drum.idx), false);
+  DRUM_INSTANCES[id] = drum;
+  return drum;
+}
+
+function openDrumOverlay(title, drumConfigs, callback) {
+  document.getElementById('drum-overlay-title').textContent = title;
+  var row = document.getElementById('drum-row');
+  row.innerHTML = '';
+  DRUM_INSTANCES = {};
+  drumConfigs.forEach(function(cfg) {
+    var block = document.createElement('div');
+    block.className = 'drum-block';
+    if (cfg.label) {
+      var lbl = document.createElement('div');
+      lbl.className = 'drum-block-label';
+      lbl.textContent = cfg.label;
+      block.appendChild(lbl);
+    }
+    var group = document.createElement('div');
+    group.className = 'drum-group';
+    var wrap = document.createElement('div');
+    wrap.className = 'drum-wrap';
+    group.appendChild(wrap);
+    block.appendChild(group);
+    row.appendChild(block);
+    createDrumEl(cfg.id, cfg.items, wrap);
+    if (cfg.value !== undefined) DRUM_INSTANCES[cfg.id].setValue(cfg.value);
+  });
+  currentDrumCallback = callback;
+  document.getElementById('overlay-drum').classList.add('active');
+}
+
+function closeDrum() { document.getElementById('overlay-drum').classList.remove('active'); }
+
+function applyDrum() {
+  closeDrum();
+  if (currentDrumCallback) currentDrumCallback(DRUM_INSTANCES);
+}
+
+// Date drum
+function initDateDrum() {} // initialized on open
+
+function openDrumDate() {
+  var d = cardData.dateCheck ? parseDate(cardData.dateCheck) : new Date();
+  var days = [], months = [], years = [];
+  for (var i = 1; i <= 31; i++) days.push(pad(i));
+  ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'].forEach(function(m){ months.push(m); });
+  for (var y = 2024; y <= 2030; y++) years.push(String(y));
+  openDrumOverlay('Выберите фактическую дату проверки', [
+    { id: 'day',   items: days,   label: 'День',   value: pad(d.getDate()) },
+    { id: 'month', items: months, label: 'Месяц',  value: months[d.getMonth()] },
+    { id: 'year',  items: years,  label: 'Год',    value: String(d.getFullYear()) }
+  ], function(drums) {
+    var day = drums['day'].getValue();
+    var month = months.indexOf(drums['month'].getValue()) + 1;
+    var year = drums['year'].getValue();
+    cardData.dateCheck = day + '.' + pad(month) + '.' + year;
+    document.getElementById('val-date').textContent = cardData.dateCheck;
+    document.getElementById('val-date').classList.remove('placeholder');
+    updateValidation();
+  });
+}
+
+function openDrumMethod() {
+  openDrumOverlay('Выберите метод проверки', [
+    { id: 'method', items: ['ОСИР','ЦРПО','Прочее'], value: cardData.method || 'ОСИР' }
+  ], function(d) {
+    cardData.method = d['method'].getValue();
+    document.getElementById('val-method').textContent = cardData.method;
+    document.getElementById('val-method').classList.remove('placeholder');
+    var isProchee = cardData.method === 'Прочее';
+    setDimmed('inspector', !isProchee);
+    if (!isProchee) { cardData.inspector = ''; document.getElementById('val-inspector').textContent = '—'; }
+    updateValidation();
+  });
+}
+
+function openDrumOrg() {
+  var orgs = appState.orgs.slice().sort(function(a,b){ return a.localeCompare(b,'ru'); });
+  if (!orgs.length) { alert('Список организаций пуст. Добавьте организации в настройках.'); return; }
+  openDrumOverlay('Выберите проверяемую организацию', [
+    { id: 'org', items: orgs, value: cardData.org || orgs[0] }
+  ], function(d) {
+    cardData.org = d['org'].getValue();
+    document.getElementById('val-org').textContent = cardData.org;
+    updateValidation();
+  });
+}
+
+function openDrumBarrier() {
+  var barriers = appState.barriers.map(function(b){ return typeof b === 'string' ? b : b.name; });
+  barriers.sort(function(a,b){ return a.localeCompare(b,'ru'); });
+  if (!barriers.length) { alert('Список барьеров пуст. Добавьте барьеры в настройках.'); return; }
+  openDrumOverlay('Выберите проверяемый барьер', [
+    { id: 'barrier', items: barriers, value: cardData.barrier || barriers[0] }
+  ], function(d) {
+    cardData.barrier = d['barrier'].getValue();
+    document.getElementById('val-barrier').textContent = cardData.barrier;
+    updateValidation();
+  });
+}
+
+function openDrumWorks() {
+  openDrumOverlay('Выберите работоспособен ли барьер', [
+    { id: 'works', items: ['Да','Нет'], value: cardData.works || 'Да' }
+  ], function(d) {
+    cardData.works = d['works'].getValue();
+    document.getElementById('val-works').textContent = cardData.works;
+    var broken = cardData.works === 'Нет';
+    setDimmed('desc', !broken);
+    setDimmed('violator', !broken);
+    if (!broken) {
+      cardData.desc = ''; cardData.violator = '';
+      document.getElementById('val-desc').textContent = '—';
+      document.getElementById('val-violator').textContent = '—';
+    }
+    updateValidation();
+  });
+}
+
+// Text overlays
+function openInspectorOverlay() {
+  openTextOverlay('inspector','Введите ФИО кто выполнил проверку','val-inspector',true);
+}
+
+function openTextOverlay(key, title, valId, withAutocomplete) {
+  currentTextKey = key;
+  currentTextAutocompleteKey = withAutocomplete ? key : null;
+  currentTextCallback = function(val) {
+    cardData[key] = val;
+    document.getElementById(valId).textContent = val || '—';
+    updateValidation();
+  };
+  document.getElementById('text-overlay-title').textContent = title;
+  var inp = document.getElementById('text-overlay-input');
+  inp.value = cardData[key] || '';
+  document.getElementById('autocomplete-list').style.display = 'none';
+  document.getElementById('autocomplete-list').innerHTML = '';
+  document.getElementById('overlay-text').classList.add('active');
+  setTimeout(function(){ inp.focus(); }, 300);
+}
+
+function textAutocomplete(inp) {
+  var list = document.getElementById('autocomplete-list');
+  if (!currentTextAutocompleteKey) { list.style.display = 'none'; return; }
+  var q = inp.value.toLowerCase().trim();
+  if (!q) { list.style.display = 'none'; return; }
+  var suggestions = (appState.autocomplete[currentTextAutocompleteKey] || []).filter(function(s){ return s.toLowerCase().indexOf(q) >= 0; });
+  if (!suggestions.length) { list.style.display = 'none'; return; }
+  list.innerHTML = suggestions.map(function(s){ return '<div class="autocomplete-item" onclick="pickAutocomplete(\'' + s.replace(/'/g, "\\'") + '\')">' + s + '</div>'; }).join('');
+  list.style.display = '';
+}
+
+function pickAutocomplete(val) {
+  document.getElementById('text-overlay-input').value = val;
+  document.getElementById('autocomplete-list').style.display = 'none';
+}
+
+function closeTextOverlay() { document.getElementById('overlay-text').classList.remove('active'); }
+
+function applyTextOverlay() {
+  var val = document.getElementById('text-overlay-input').value.trim();
+  closeTextOverlay();
+  if (currentTextCallback) currentTextCallback(val);
+}
+
+function openDescOverlay() {
+  document.getElementById('desc-input').value = cardData.desc || '';
+  document.getElementById('overlay-desc').classList.add('active');
+  setTimeout(function(){ document.getElementById('desc-input').focus(); }, 300);
+}
+
+function applyDesc() {
+  cardData.desc = document.getElementById('desc-input').value.trim();
+  document.getElementById('val-desc').textContent = cardData.desc || '—';
+  closeOverlay('overlay-desc');
+  updateValidation();
+}
+
+// Нарушение допустил
+function initViolatorGroups() {
+  var container = document.getElementById('violator-groups');
+  container.innerHTML = '';
+  for (var i = 1; i <= 4; i++) {
+    container.innerHTML +=
+      '<div>' +
+        '<div class="violator-group-label">' + i + '</div>' +
+        '<div class="violator-group-inputs">' +
+          '<input class="violator-input" id="v-fio-' + i + '" type="text" placeholder="ФИО">' +
+          '<input class="violator-input" id="v-pos-' + i + '" type="text" placeholder="Должность">' +
+        '</div>' +
+      '</div>';
+  }
+}
+
+function openViolatorOverlay() {
+  // pre-fill
+  var parts = (cardData.violator || '').split(';').map(function(s){ return s.trim(); });
+  for (var i = 1; i <= 4; i++) {
+    var pair = (parts[i-1] || '').split(',').map(function(s){ return s.trim(); });
+    var fio = document.getElementById('v-fio-' + i);
+    var pos = document.getElementById('v-pos-' + i);
+    if (fio) fio.value = pair[0] || '';
+    if (pos) pos.value = pair[1] || '';
+  }
+  document.getElementById('overlay-violator').classList.add('active');
+}
+
+function applyViolator() {
+  var parts = [];
+  for (var i = 1; i <= 4; i++) {
+    var fio = (document.getElementById('v-fio-'+i).value||'').trim();
+    var pos = (document.getElementById('v-pos-'+i).value||'').trim();
+    if (fio || pos) parts.push((fio || '') + ', ' + (pos || ''));
+  }
+  cardData.violator = parts.join('; ');
+  document.getElementById('val-violator').textContent = cardData.violator || '—';
+  closeOverlay('overlay-violator');
+  updateValidation();
+}
+
+function closeOverlay(id) { document.getElementById(id).classList.remove('active'); }
+
+// ===== HELPERS =====
+function todayStr() {
+  var d = new Date();
+  return pad(d.getDate()) + '.' + pad(d.getMonth()+1) + '.' + d.getFullYear();
+}
+
+function formatDate(d) {
+  return pad(d.getDate()) + '.' + pad(d.getMonth()+1) + '.' + d.getFullYear();
+}
+
+function parseDate(s) {
+  var p = s.split('.');
+  return new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+}
+
+function dateToMs(s) {
+  if (!s) return 0;
+  try { return parseDate(s).getTime(); } catch(e){ return 0; }
+}
+
+function pad(n) { return String(n).padStart(2,'0'); }
+</script>
+</body>
+</html>

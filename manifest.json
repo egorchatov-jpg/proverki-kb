@@ -1,0 +1,17 @@
+{
+  "name": "Проверки КБ",
+  "short_name": "Проверки КБ",
+  "description": "База данных проверок объектов капитального строительства",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#efefef",
+  "theme_color": "#efefef",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
