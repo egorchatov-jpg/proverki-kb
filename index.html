@@ -1120,14 +1120,15 @@ function createDrumEl(id, items, wrap) {
 
   var drum = { items: items, idx: DRUM_OFFSET, offset: 0, dragging: false, velocity: 0, lastY: 0, lastTime: 0 };
 
-  function idxToOffset(idx) { return -(idx - DRUM_OFFSET) * DRUM_ITEM_H; }
+  var DRUM_CENTER = 2; // visual center = item #2 from top (y=70 in 175px drum)
+  function idxToOffset(idx) { return -(idx - DRUM_CENTER) * DRUM_ITEM_H; }
   function setOffset(o, anim) {
     drum.offset = o;
     listEl.style.transition = anim ? 'transform 0.3s cubic-bezier(.22,.68,0,1.2)' : 'none';
-    listEl.style.transform = 'translateY(' + (o + DRUM_ITEM_H * DRUM_OFFSET) + 'px)';
+    listEl.style.transform = 'translateY(' + o + 'px)';
   }
   function snapTo(o) {
-    var idx = Math.round(-o / DRUM_ITEM_H) + DRUM_OFFSET;
+    var idx = Math.round((DRUM_CENTER * DRUM_ITEM_H - o) / DRUM_ITEM_H);
     idx = Math.max(DRUM_OFFSET, Math.min(DRUM_OFFSET + items.length - 1, idx));
     drum.idx = idx;
     setOffset(idxToOffset(idx), true);
