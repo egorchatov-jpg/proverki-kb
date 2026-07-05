@@ -16,7 +16,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body {
   height: 100%; width: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, "Samsung Sans", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
   background: #efefef;
   color: #1a2035;
   overflow: hidden;
@@ -889,11 +889,11 @@ function renderLobby() {
   var vBanner  = document.getElementById('violations-banner');
 
   if (violations.length === 0) {
-    noBanner.style.display = 'block';
+    noBanner.style.display = 'flex';
     vBanner.style.display = 'none';
   } else {
     noBanner.style.display = 'none';
-    vBanner.style.display = 'block';
+    vBanner.style.display = 'flex';
     violations.forEach(function(r) {
       var card = document.createElement('div');
       card.className = 'violation-card';
@@ -1059,15 +1059,17 @@ function successNext() {
 // ===== FIND LIST =====
 function pluralProverka(n) {
   var l2 = n % 100, l1 = n % 10;
-  if (l2 >= 11 && l2 <= 19) return n + ' проверок';
-  if (l1 === 1) return n + ' проверка';
-  if (l1 >= 2 && l1 <= 4) return n + ' проверки';
-  return n + ' проверок';
+  var word;
+  if (l2 >= 11 && l2 <= 19) word = 'проверок';
+  else if (l1 === 1) word = 'проверка';
+  else if (l1 >= 2 && l1 <= 4) word = 'проверки';
+  else word = 'проверок';
+  return n + '<br>' + word;
 }
 function renderFindList(records) {
   var tbody = document.getElementById('find-tbody');
   tbody.innerHTML = '';
-  document.getElementById('find-count').textContent = pluralProverka(records.length);
+  document.getElementById('find-count').innerHTML = pluralProverka(records.length);
   records.forEach(function(r, i) {
     var tr = document.createElement('tr');
     if (r.works === 'Нет') tr.className = 'has-violation';
