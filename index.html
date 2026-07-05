@@ -112,7 +112,6 @@ html, body {
   color: #fff;
   font-size: 18px; font-weight: 700;
   box-shadow: var(--btn-shadow);
-  display: none;
 }
 
 .violation-card {
@@ -123,7 +122,6 @@ html, body {
   overflow: hidden;
   cursor: pointer;
   border: 1px solid var(--border);
-  display: none;
   transition: opacity 0.15s;
 }
 .violation-card:active { opacity: 0.8; }
@@ -870,11 +868,11 @@ function renderLobby() {
   var vBanner  = document.getElementById('violations-banner');
 
   if (violations.length === 0) {
-    noBanner.style.display = '';
+    noBanner.style.display = 'block';
     vBanner.style.display = 'none';
   } else {
     noBanner.style.display = 'none';
-    vBanner.style.display = '';
+    vBanner.style.display = 'block';
     violations.forEach(function(r) {
       var card = document.createElement('div');
       card.className = 'violation-card';
