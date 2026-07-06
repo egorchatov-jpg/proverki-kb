@@ -131,14 +131,18 @@ html, body {
 }
 .violation-card:active { opacity: 0.8; }
 .violation-card-header {
-  background: rgba(192,57,43,0.08);
+  background: rgba(192,57,43,0.16);
   padding: 10px 14px 8px;
-  border-bottom: 1px solid rgba(192,57,43,0.12);
+  border-bottom: 1px solid rgba(192,57,43,0.22);
 }
 .violation-card-header-line { font-size: 13px; font-weight: 600; color: #1a2035; margin-bottom: 2px; }
 .violation-card-header-line.osir { color: var(--red); }
 .violation-card-header-line.clip { overflow: hidden; white-space: nowrap; }
-.violation-card-body { padding: 10px 14px; font-size: 13px; color: #1a2035; line-height: 1.5; }
+.violation-card-body { padding: 10px 14px; font-size: 13px; color: #1a2035; line-height: 1.5; background: rgba(192,57,43,0.08); }
+.proverka-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; overflow: hidden; }
+.barrier-right { display: flex; align-items: center; gap: 5px; min-width: 0; flex: 1; justify-content: flex-end; overflow: hidden; }
+.barrier-right-name { font-size: 12px; color: var(--text2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pk-tag { background: rgba(192,57,43,0.18); color: var(--red); border-radius: 100px; padding: 1px 8px; font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
 
 .lobby-nav {
   display: flex; gap: 10px;
@@ -817,6 +821,20 @@ html, body {
 <script>
 'use strict';
 
+// Escape HTML special chars to prevent injection in innerHTML
+function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Re-assign sequential numbers (1-based) to all records by their current sort order
+function renumberDb() {
+  appState.db.forEach(function(r, i) { r.num = i + 1; });
+}
+
 // ===== SERVER SYNC =====
 var syncStatus = 'idle'; // 'idle' | 'syncing' | 'ok' | 'error'
 var VAPID_PUBLIC_KEY = 'BMf-a1sd8WQK4qNSZm1TCy4WxlzSj0YsbG3cBfmcGn6K1gVLqUWyK96hKEfjg6S2pD0dlNIXYknIy2NqUzBBIYU'; // replaced by setup-server.ps1
@@ -970,6 +988,7 @@ function loadFromServer(onDone) {
 
     if (d && Array.isArray(d.records)) {
       appState.db = mergeWithQueue(d.records);
+      renumberDb();
       saveState();
       renderLobby();
       var fs = document.getElementById('screen-find');
@@ -1146,6 +1165,7 @@ function loadState() {
       appState.orgs = parsed.orgs || ['АО «ЕВРАКОР»', 'ООО «ЭСМ»'];
       appState.barriers = parsed.barriers || ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
       appState.autocomplete = parsed.autocomplete || {};
+      renumberDb(); // fix any stale numbers from previous sessions
     } else {
       appState.orgs = ['АО «ЕВРАКОР»', 'ООО «ЭСМ»'];
       appState.barriers = ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
@@ -1230,13 +1250,18 @@ function renderLobby() {
       card.style.display = 'block';
       card.innerHTML =
         '<div class="violation-card-header">' +
-          '<div class="violation-card-header-line">Произошло: ' + (r.dateCheck || '') + '</div>' +
-          '<div class="violation-card-header-line">Организация: ' + (r.org || '') + '</div>' +
-          '<div class="violation-card-header-line clip">Объект: ' + (r.obj || '') + '</div>' +
-          '<div class="violation-card-header-line' + (r.method === 'ОСИР' ? ' osir' : '') + '">Проверка: ' + (r.method || '') + '</div>' +
-          '<div class="violation-card-header-line">Барьер: ' + (r.barrier || '') + '</div>' +
+          '<div class="violation-card-header-line">Дата проверки: ' + esc(r.dateCheck || '') + '</div>' +
+          '<div class="violation-card-header-line">Организация: ' + esc(r.org || '') + '</div>' +
+          '<div class="violation-card-header-line clip">Объект: ' + esc(r.obj || '') + '</div>' +
+          '<div class="violation-card-header-line proverka-row">' +
+            '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Проверка: ' + esc(r.method || '') + '</span>' +
+            '<span class="barrier-right">' +
+              '<span class="barrier-right-name">' + esc(r.barrier || '') + '</span>' +
+              (r.barrierInPK === 'Да' ? '<span class="pk-tag">в ПК</span>' : '') +
+            '</span>' +
+          '</div>' +
         '</div>' +
-        '<div class="violation-card-body">' + (r.desc || '') + '</div>';
+        '<div class="violation-card-body">' + esc(r.desc || '') + '</div>';
       card.onclick = function() { openDetail(r); };
       content.insertBefore(card, content.querySelector('.violations-banner').nextSibling);
     });
@@ -1346,9 +1371,10 @@ function submitCard() {
   var pkBarriers = (appState.barriers || []).filter(function(b){ return b.inPK; }).map(function(b){ return typeof b === 'string' ? b : b.name; });
   var barrierName = cardData.barrier;
   cardData.barrierInPK = pkBarriers.indexOf(barrierName) >= 0 ? 'Да' : 'Нет';
-  // insert sorted by dateCheck
+  // insert sorted by dateCheck, then re-assign sequential numbers
   appState.db.push(cardData);
   appState.db.sort(function(a, b){ return dateToMs(a.dateCheck) - dateToMs(b.dateCheck); });
+  renumberDb();
   saveState();
   syncToServer(Object.assign({}, cardData)); // fire-and-forget sync to server Excel
   // save autocomplete

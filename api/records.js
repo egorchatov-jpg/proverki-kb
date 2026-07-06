@@ -62,7 +62,7 @@ function parseXlsx(base64) {
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(ws, { raw: true, defval: '' });
 
-  return rows.map(row => {
+  return rows.map((row, idx) => {
     const rec = {};
     for (const [col, key] of Object.entries(COLUMN_MAP)) {
       const val = row[col];
@@ -74,6 +74,8 @@ function parseXlsx(base64) {
         rec[key] = String(val);
       }
     }
+    // Always use row position (1-based), not the stored №
+    rec.num = idx + 1;
     return rec;
   });
 }
