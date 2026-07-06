@@ -821,7 +821,15 @@ html, body {
 var syncStatus = 'idle'; // 'idle' | 'syncing' | 'ok' | 'error'
 var VAPID_PUBLIC_KEY = 'BMf-a1sd8WQK4qNSZm1TCy4WxlzSj0YsbG3cBfmcGn6K1gVLqUWyK96hKEfjg6S2pD0dlNIXYknIy2NqUzBBIYU'; // replaced by setup-server.ps1
 var SYNC_QUEUE_KEY   = 'pkb-sync-queue';
+var SERVER_SHA_KEY   = 'pkb-server-shas';
 var swRegistration   = null;
+
+function getServerShas() {
+  try { return JSON.parse(localStorage.getItem(SERVER_SHA_KEY) || '{}'); } catch(e) { return {}; }
+}
+function saveServerShas(s) {
+  try { localStorage.setItem(SERVER_SHA_KEY, JSON.stringify(s)); } catch(e) {}
+}
 
 // --- Sync indicator ---
 function updateSyncIndicator() {
@@ -871,6 +879,10 @@ function syncToServer(record) {
     if (d.success) {
       syncStatus = 'ok';
       removeFromSyncQueue(record.id);
+      // Invalidate cached SHA so the next loadFromServer fetches fresh data
+      var shas = getServerShas();
+      delete shas['sha' + d.year];
+      saveServerShas(shas);
       console.log('[sync] сохранено на сервере №' + d.num + ' (' + d.year + ')');
     } else {
       syncStatus = 'error';
@@ -906,34 +918,56 @@ function mergeWithQueue(serverRecords) {
 }
 
 // --- Load ALL records from server (source of truth) → onDone(ok:bool) ---
-var _serverLoadActive = false; // prevent duplicate concurrent loads
+// Uses a shared-callbacks pattern: if a load is already in flight, new callers
+// are queued and all receive the same result when the single request completes.
+var _loadCallbacks = null; // null = idle; array = request in flight
 
 function loadFromServer(onDone) {
-  // If an automatic (no-callback) load is running, skip — but manual (with callback) always runs
-  if (_serverLoadActive && !onDone) return;
-  _serverLoadActive = true;
+  if (_loadCallbacks !== null) {
+    // Reuse the in-flight request instead of firing a duplicate
+    if (onDone) _loadCallbacks.push(onDone);
+    return;
+  }
+  _loadCallbacks = onDone ? [onDone] : [];
 
-  var settled = false;
   function finish(ok) {
-    if (settled) return;
-    settled = true;
-    _serverLoadActive = false;
     clearTimeout(safetyTimer);
-    if (onDone) onDone(ok);
+    var cbs = _loadCallbacks;
+    _loadCallbacks = null;
+    cbs.forEach(function(cb) { cb(ok); });
   }
 
-  // Safety net: if no response in 14s → hide spinner and continue offline
+  // Safety net: if no response in 14s → continue offline
   var safetyTimer = setTimeout(function() {
     console.warn('[server] таймаут 14с — продолжаем офлайн');
     finish(false);
   }, 14000);
 
-  fetch('/api/records', { cache: 'no-store' }) // bypass browser cache
+  // Build URL with per-year SHA params for conditional GET (ETag optimisation).
+  // Server returns {unchanged:true} when file SHA matches → skips file transfer + parse.
+  var shas = getServerShas();
+  var params = [];
+  Object.keys(shas).forEach(function(k) {
+    if (shas[k]) params.push(k + '=' + encodeURIComponent(shas[k]));
+  });
+  var url = '/api/records' + (params.length ? '?' + params.join('&') : '');
+
+  fetch(url, { cache: 'no-store' })
   .then(function(r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return r.json();
   })
   .then(function(d) {
+    if (d.shas) saveServerShas(d.shas);
+
+    if (d.unchanged) {
+      // File unchanged on server — cached data is already current
+      console.log('[server] без изменений, данные актуальны');
+      retrySyncQueue();
+      finish(true);
+      return;
+    }
+
     if (d && Array.isArray(d.records)) {
       appState.db = mergeWithQueue(d.records);
       saveState();

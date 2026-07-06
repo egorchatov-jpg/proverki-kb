@@ -24,31 +24,32 @@ const COLUMN_MAP = {
   'Статус оспаривания в СОКБ':               'contestStatus',
 };
 
-// Convert JS Date (from cellDates:true) → "DD.MM.YYYY"
 function fmtDate(d) {
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   return `${dd}.${mm}.${d.getFullYear()}`;
 }
 
-// Fetch with 8-second timeout (Vercel Hobby limit is 10s)
-async function ghGet(fileName) {
+// Fetch with 8-second timeout (Vercel Hobby limit is 10s).
+// Pass cachedSha to use If-None-Match — GitHub returns 304 if file unchanged,
+// saving the full file transfer and XLSX parse.
+async function ghGet(fileName, cachedSha) {
   const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(fileName)}`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);
+  const headers = {
+    Authorization: `token ${GITHUB_TOKEN}`,
+    Accept: 'application/vnd.github.v3+json',
+    'User-Agent': 'proverki-kb',
+  };
+  if (cachedSha) headers['If-None-Match'] = `"${cachedSha}"`;
   try {
-    const r = await fetch(url, {
-      headers: {
-        Authorization: `token ${GITHUB_TOKEN}`,
-        Accept: 'application/vnd.github.v3+json',
-        'User-Agent': 'proverki-kb',
-      },
-      signal: ctrl.signal,
-    });
+    const r = await fetch(url, { headers, signal: ctrl.signal });
     clearTimeout(timer);
+    if (r.status === 304) return { notModified: true };
     if (r.status === 404) return null;
     if (!r.ok) throw new Error(`GitHub GET "${fileName}": HTTP ${r.status}`);
-    return r.json();
+    return r.json(); // includes .sha and .content
   } catch (e) {
     clearTimeout(timer);
     throw e;
@@ -57,7 +58,6 @@ async function ghGet(fileName) {
 
 function parseXlsx(base64) {
   const buf = Buffer.from(base64.replace(/\n/g, ''), 'base64');
-  // cellDates:true → date cells become JS Date objects (not serial numbers)
   const wb = XLSX.read(buf, { type: 'buffer', cellDates: true });
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(ws, { raw: true, defval: '' });
@@ -69,7 +69,7 @@ function parseXlsx(base64) {
       if (val === null || val === undefined || val === '') {
         rec[key] = '';
       } else if (val instanceof Date) {
-        rec[key] = fmtDate(val);   // Excel date cell → DD.MM.YYYY
+        rec[key] = fmtDate(val);
       } else {
         rec[key] = String(val);
       }
@@ -79,7 +79,6 @@ function parseXlsx(base64) {
 }
 
 module.exports = async (req, res) => {
-  // Prevent any caching of this endpoint
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -95,6 +94,30 @@ module.exports = async (req, res) => {
       ? [req.query.year]
       : Array.from({ length: cur - 2025 }, (_, i) => String(2026 + i));
 
+    // Single-year path: use If-None-Match ETag for fast "nothing changed" responses.
+    // When the file SHA matches the client's cached SHA, GitHub returns 304 (no body),
+    // skipping the file transfer and XLSX parse entirely.
+    if (years.length === 1) {
+      const year = years[0];
+      const shaKey = `sha${year}`;
+      const clientSha = (req.query[shaKey] || '').trim();
+
+      const file = await ghGet(`Проверки КБ ${year}.xlsx`, clientSha);
+
+      if (!file) {
+        return res.status(200).json({ records: [], shas: {} });
+      }
+      if (file.notModified) {
+        return res.status(200).json({ unchanged: true, shas: { [shaKey]: clientSha } });
+      }
+
+      const recs = parseXlsx(file.content);
+      recs.forEach(r => { r.year = year; });
+      return res.status(200).json({ records: recs, shas: { [shaKey]: file.sha } });
+    }
+
+    // Multi-year path (2027+): sequential fetch without ETag.
+    // Previous years' files are frozen so this case is rare in practice.
     let allRecords = [];
     for (const year of years) {
       const file = await ghGet(`Проверки КБ ${year}.xlsx`);

@@ -10,7 +10,6 @@ const VAPID_PUBLIC  = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:egorchatov@gmail.com';
 
-// A→Q column order matching the Excel template
 const COLUMNS = [
   { h: '№',                                       k: 'num'             },
   { h: 'Дата проверки',                           k: 'dateCheck'       },
@@ -62,8 +61,13 @@ async function ghPut(fileName, base64Content, sha, message) {
     method: 'PUT',
     headers: { ...GH_HEADERS, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  }, 12000); // PUT can take longer
-  if (!r.ok) throw new Error(`GitHub PUT "${fileName}": HTTP ${r.status} — ${await r.text()}`);
+  }, 12000);
+  if (!r.ok) {
+    const text = await r.text().catch(() => '');
+    const err = new Error(`GitHub PUT "${fileName}": HTTP ${r.status} — ${text}`);
+    err.httpStatus = r.status; // expose status code for retry logic
+    throw err;
+  }
   return r.json();
 }
 
@@ -75,6 +79,46 @@ function buildEmptyWorkbook() {
   }));
   XLSX.utils.book_append_sheet(wb, ws, 'Проверки');
   return wb;
+}
+
+// Read → modify → write with automatic retry on 409 Conflict (concurrent writes).
+// GitHub returns 409 when two clients try to PUT the same file with the same SHA.
+// Fix: re-GET the file to obtain the current SHA and retry up to 3 times.
+async function appendRecord(fileName, record) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const existing = await ghGet(fileName);
+    let wb;
+
+    if (existing && existing.content) {
+      const buf = Buffer.from(existing.content.replace(/\n/g, ''), 'base64');
+      wb = XLSX.read(buf, { type: 'buffer' });
+    } else {
+      wb = buildEmptyWorkbook();
+    }
+
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    record.num = Math.max(0, rows.length - 1) + 1;
+
+    XLSX.utils.sheet_add_aoa(ws, [COLUMNS.map(c => record[c.k] ?? '')], {
+      origin: { r: rows.length, c: 0 },
+    });
+
+    const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' }).toString('base64');
+    try {
+      await ghPut(
+        fileName, b64, existing ? existing.sha : undefined,
+        `Проверка №${record.num} — ${record.org || ''}`
+      );
+      return; // success
+    } catch (err) {
+      if (err.httpStatus === 409 && attempt < 2) {
+        console.warn(`[save] 409 conflict, retry ${attempt + 1}/3`);
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
 async function sendPushToAll(record) {
@@ -108,7 +152,6 @@ async function sendPushToAll(record) {
     subs.map(sub => webpush.sendNotification(sub, payload))
   );
 
-  // Remove dead subscriptions (410 Gone = unsubscribed)
   const alive = subs.filter((_, i) => {
     const r = results[i];
     if (r.status === 'rejected') {
@@ -138,13 +181,11 @@ module.exports = async (req, res) => {
     const { record } = req.body || {};
     if (!record) return res.status(400).json({ error: 'Missing record' });
 
-    // Year from dateCheck (DD.MM.YYYY) or current year
     const year = record.dateCheck
       ? record.dateCheck.split('.')[2]
       : String(new Date().getFullYear());
     const fileName = `Проверки КБ ${year}.xlsx`;
 
-    // Auto-fill entry date
     if (!record.dateEntry) {
       const now = new Date();
       const d = String(now.getDate()).padStart(2, '0');
@@ -152,32 +193,8 @@ module.exports = async (req, res) => {
       record.dateEntry = `${d}.${m}.${now.getFullYear()}`;
     }
 
-    // Load existing Excel from GitHub
-    const existing = await ghGet(fileName);
-    let wb;
+    await appendRecord(fileName, record);
 
-    if (existing && existing.content) {
-      const buf = Buffer.from(existing.content.replace(/\n/g, ''), 'base64');
-      wb = XLSX.read(buf, { type: 'buffer' });
-    } else {
-      wb = buildEmptyWorkbook();
-    }
-
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-    const dataRowCount = Math.max(0, rows.length - 1);
-    record.num = dataRowCount + 1;
-
-    // Append row
-    XLSX.utils.sheet_add_aoa(ws, [COLUMNS.map(c => record[c.k] ?? '')], {
-      origin: { r: rows.length, c: 0 },
-    });
-
-    const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' }).toString('base64');
-    await ghPut(fileName, b64, existing ? existing.sha : undefined,
-      `Проверка №${record.num} (${year}) — ${record.org || ''}`);
-
-    // Send Web Push to all subscribers if this is a violation
     if (record.works === 'Нет') {
       sendPushToAll(record).catch(e => console.warn('[push] send error:', e.message));
     }

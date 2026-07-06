@@ -3,9 +3,16 @@ const GITHUB_OWNER = process.env.GITHUB_OWNER || 'egorchatov-jpg';
 const GITHUB_REPO  = process.env.GITHUB_DATA_REPO || 'proverki-kb-data';
 const SUBS_FILE    = 'subscriptions.json';
 
+function ghFetch(url, opts, timeoutMs = 8000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  return fetch(url, { ...opts, signal: ctrl.signal })
+    .finally(() => clearTimeout(timer));
+}
+
 async function ghGet(fileName) {
   const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(fileName)}`;
-  const r = await fetch(url, {
+  const r = await ghFetch(url, {
     headers: {
       Authorization: `token ${GITHUB_TOKEN}`,
       Accept: 'application/vnd.github.v3+json',
@@ -24,7 +31,7 @@ async function ghPut(fileName, contentBuf, sha, message) {
   const body = { message, content: b64 };
   if (sha) body.sha = sha;
   const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(fileName)}`;
-  const r = await fetch(url, {
+  const r = await ghFetch(url, {
     method: 'PUT',
     headers: {
       Authorization: `token ${GITHUB_TOKEN}`,
@@ -33,7 +40,7 @@ async function ghPut(fileName, contentBuf, sha, message) {
       'User-Agent': 'proverki-kb',
     },
     body: JSON.stringify(body),
-  });
+  }, 12000);
   if (!r.ok) throw new Error(`GitHub PUT "${fileName}": HTTP ${r.status}`);
   return r.json();
 }
@@ -52,7 +59,6 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Missing subscription.endpoint' });
     }
 
-    // Load existing subscriptions
     const existing = await ghGet(SUBS_FILE);
     let data = { subscriptions: [] };
     let sha;
@@ -64,7 +70,6 @@ module.exports = async (req, res) => {
       if (!Array.isArray(data.subscriptions)) data.subscriptions = [];
     }
 
-    // Add or replace by endpoint (unique per device/browser)
     const idx = data.subscriptions.findIndex(s => s.endpoint === subscription.endpoint);
     if (idx >= 0) {
       data.subscriptions[idx] = subscription;
