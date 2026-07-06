@@ -41,8 +41,15 @@ const GH_HEADERS = {
   'User-Agent': 'proverki-kb',
 };
 
+function ghFetch(url, opts, timeoutMs = 8000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  return fetch(url, { ...opts, signal: ctrl.signal })
+    .finally(() => clearTimeout(timer));
+}
+
 async function ghGet(fileName) {
-  const r = await fetch(ghApiUrl(fileName), { headers: GH_HEADERS });
+  const r = await ghFetch(ghApiUrl(fileName), { headers: GH_HEADERS });
   if (r.status === 404) return null;
   if (!r.ok) throw new Error(`GitHub GET "${fileName}": HTTP ${r.status}`);
   return r.json();
@@ -51,11 +58,11 @@ async function ghGet(fileName) {
 async function ghPut(fileName, base64Content, sha, message) {
   const body = { message, content: base64Content };
   if (sha) body.sha = sha;
-  const r = await fetch(ghApiUrl(fileName), {
+  const r = await ghFetch(ghApiUrl(fileName), {
     method: 'PUT',
     headers: { ...GH_HEADERS, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  });
+  }, 12000); // PUT can take longer
   if (!r.ok) throw new Error(`GitHub PUT "${fileName}": HTTP ${r.status} — ${await r.text()}`);
   return r.json();
 }
@@ -119,6 +126,7 @@ async function sendPushToAll(record) {
 }
 
 module.exports = async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');

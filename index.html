@@ -906,23 +906,47 @@ function mergeWithQueue(serverRecords) {
 }
 
 // --- Load ALL records from server (source of truth) → onDone(ok:bool) ---
+var _serverLoadActive = false; // prevent duplicate concurrent loads
+
 function loadFromServer(onDone) {
-  fetch('/api/records')
-  .then(function(r) { return r.json(); })
+  // If an automatic (no-callback) load is running, skip — but manual (with callback) always runs
+  if (_serverLoadActive && !onDone) return;
+  _serverLoadActive = true;
+
+  var settled = false;
+  function finish(ok) {
+    if (settled) return;
+    settled = true;
+    _serverLoadActive = false;
+    clearTimeout(safetyTimer);
+    if (onDone) onDone(ok);
+  }
+
+  // Safety net: if no response in 14s → hide spinner and continue offline
+  var safetyTimer = setTimeout(function() {
+    console.warn('[server] таймаут 14с — продолжаем офлайн');
+    finish(false);
+  }, 14000);
+
+  fetch('/api/records', { cache: 'no-store' }) // bypass browser cache
+  .then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  })
   .then(function(d) {
-    if (d.records) {
+    if (d && Array.isArray(d.records)) {
       appState.db = mergeWithQueue(d.records);
       saveState();
       renderLobby();
       var fs = document.getElementById('screen-find');
       if (fs && fs.classList.contains('active')) renderFindList(appState.db);
-      retrySyncQueue(); // push offline saves to server
+      retrySyncQueue();
     }
-    if (onDone) onDone(true);
+    finish(true);
   })
   .catch(function(e) {
     console.warn('[server] офлайн:', e.message);
-    if (onDone) onDone(false);
+    finish(false);
   });
 }
 
