@@ -131,9 +131,9 @@ html, body {
 }
 .violation-card:active { opacity: 0.8; }
 .violation-card-header {
-  background: rgba(192,57,43,0.16);
+  background: rgba(192,57,43,0.22);
   padding: 10px 14px 8px;
-  border-bottom: 1px solid rgba(192,57,43,0.22);
+  border-bottom: 1px solid rgba(192,57,43,0.28);
 }
 .violation-card-header-line { font-size: 13px; font-weight: 600; color: #1a2035; margin-bottom: 2px; }
 .violation-card-header-line.osir { color: var(--red); }
@@ -141,8 +141,34 @@ html, body {
 .violation-card-body { padding: 10px 14px; font-size: 13px; color: #1a2035; line-height: 1.5; background: rgba(192,57,43,0.08); }
 .proverka-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; overflow: hidden; }
 .barrier-right { display: flex; align-items: center; gap: 5px; min-width: 0; flex: 1; justify-content: flex-end; overflow: hidden; }
-.barrier-right-name { font-size: 12px; color: var(--text2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.barrier-right-name { font-size: 13px; font-weight: 600; color: #1a2035; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .pk-tag { background: rgba(192,57,43,0.18); color: var(--red); border-radius: 100px; padding: 1px 8px; font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+
+/* Notify permission prompt (bottom sheet) */
+.notify-prompt {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: #fff; border-radius: 20px 20px 0 0;
+  padding: 22px 20px max(20px, env(safe-area-inset-bottom));
+  box-shadow: 0 -4px 32px rgba(0,0,0,0.18);
+  z-index: 8000;
+  transform: translateY(110%);
+  transition: transform 0.38s cubic-bezier(0.32,0.72,0,1);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.notify-prompt.active { transform: translateY(0); }
+.notify-prompt-title { font-size: 17px; font-weight: 700; color: #1a2035; }
+.notify-prompt-text { font-size: 14px; color: var(--text2); line-height: 1.5; }
+.notify-prompt-btns { display: flex; gap: 10px; margin-top: 4px; }
+.notify-prompt-allow {
+  flex: 1; height: 50px; background: var(--orange); color: #fff;
+  border: none; border-radius: var(--btn-radius); font-size: 16px;
+  font-weight: 700; cursor: pointer; box-shadow: var(--btn-shadow);
+}
+.notify-prompt-decline {
+  height: 50px; padding: 0 20px; background: var(--gray-btn); color: #fff;
+  border: none; border-radius: var(--btn-radius); font-size: 15px;
+  font-weight: 600; cursor: pointer;
+}
 
 .lobby-nav {
   display: flex; gap: 10px;
@@ -840,6 +866,8 @@ var syncStatus = 'idle'; // 'idle' | 'syncing' | 'ok' | 'error'
 var VAPID_PUBLIC_KEY = 'BMf-a1sd8WQK4qNSZm1TCy4WxlzSj0YsbG3cBfmcGn6K1gVLqUWyK96hKEfjg6S2pD0dlNIXYknIy2NqUzBBIYU'; // replaced by setup-server.ps1
 var SYNC_QUEUE_KEY   = 'pkb-sync-queue';
 var SERVER_SHA_KEY   = 'pkb-server-shas';
+var NOTIFY_ASKED_KEY = 'pkb-notify-asked';
+var VAPID_KEY_STORE  = 'pkb-vapid-key';
 var swRegistration   = null;
 
 function getServerShas() {
@@ -1110,19 +1138,61 @@ function sendSubscriptionToServer(sub) {
 function subscribeToPush(reg) {
   if (!('PushManager' in window)) return;
   if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY === '__VAPID_PUBLIC_KEY__') return;
+  if (Notification.permission !== 'granted') return; // prompt handles first-time
+
   reg.pushManager.getSubscription().then(function(existing) {
-    if (existing) { sendSubscriptionToServer(existing); return; }
-    Notification.requestPermission().then(function(perm) {
-      if (perm !== 'granted') return;
+    var storedKey = localStorage.getItem(VAPID_KEY_STORE);
+    var keyChanged = storedKey && storedKey !== VAPID_PUBLIC_KEY;
+
+    if (existing && !keyChanged) {
+      // Valid subscription — re-register with server (endpoint may rotate)
+      sendSubscriptionToServer(existing);
+      return;
+    }
+
+    // No subscription or VAPID key was rotated — create fresh subscription
+    var doSubscribe = function() {
       reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       }).then(function(sub) {
+        localStorage.setItem(VAPID_KEY_STORE, VAPID_PUBLIC_KEY);
         sendSubscriptionToServer(sub);
         console.log('[push] подписка оформлена');
-      }).catch(function(e){ console.warn('[push] подписка не удалась:', e); });
-    });
+      }).catch(function(e){ console.warn('[push] подписка не удалась:', e.message); });
+    };
+
+    if (existing && keyChanged) {
+      // Unsubscribe old (different key), then subscribe fresh
+      existing.unsubscribe().then(doSubscribe).catch(doSubscribe);
+    } else {
+      doSubscribe();
+    }
   });
+}
+
+// Show notification permission prompt on first launch
+function initPushOnFirstLaunch() {
+  if (!('PushManager' in window) || !('Notification' in window)) return;
+  if (Notification.permission === 'denied') return;
+  if (Notification.permission === 'granted') return; // registerSW handles subscription
+  if (localStorage.getItem(NOTIFY_ASKED_KEY)) return; // already answered
+  setTimeout(function() {
+    document.getElementById('notify-prompt').classList.add('active');
+  }, 900);
+}
+
+function allowNotifications() {
+  localStorage.setItem(NOTIFY_ASKED_KEY, 'yes');
+  document.getElementById('notify-prompt').classList.remove('active');
+  Notification.requestPermission().then(function(perm) {
+    if (perm === 'granted' && swRegistration) subscribeToPush(swRegistration);
+  });
+}
+
+function declineNotifications() {
+  localStorage.setItem(NOTIFY_ASKED_KEY, 'yes');
+  document.getElementById('notify-prompt').classList.remove('active');
 }
 
 // ===== APP STATE =====
@@ -1143,14 +1213,14 @@ var drums = {};
 
 // ===== INIT =====
 window.addEventListener('DOMContentLoaded', function() {
-  loadState();          // мгновенно: показываем кэш из localStorage
+  loadState();
   registerSW();
   renderLobby();
   initDateDrum();
   initViolatorGroups();
   setTodayDate();
-  loadFromServer();     // асинхронно: подтягиваем актуальные данные с сервера
-  // Обновление при возврате в приложение
+  loadFromServer();
+  initPushOnFirstLaunch(); // show notification prompt on first install
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden) loadFromServer();
   });
@@ -1256,7 +1326,7 @@ function renderLobby() {
           '<div class="violation-card-header-line proverka-row">' +
             '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Проверка: ' + esc(r.method || '') + '</span>' +
             '<span class="barrier-right">' +
-              '<span class="barrier-right-name">' + esc(r.barrier || '') + '</span>' +
+              '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
               (r.barrierInPK === 'Да' ? '<span class="pk-tag">в ПК</span>' : '') +
             '</span>' +
           '</div>' +
@@ -1818,5 +1888,15 @@ function dateToMs(s) {
 
 function pad(n) { return String(n).padStart(2,'0'); }
 </script>
+
+<!-- ===== NOTIFY PERMISSION PROMPT ===== -->
+<div id="notify-prompt" class="notify-prompt">
+  <div class="notify-prompt-title">Уведомления о нарушениях</div>
+  <div class="notify-prompt-text">Разрешите уведомления, чтобы мгновенно получать оповещения о новых нарушениях КБ на этом устройстве.</div>
+  <div class="notify-prompt-btns">
+    <button class="notify-prompt-allow" onclick="allowNotifications()">Разрешить</button>
+    <button class="notify-prompt-decline" onclick="declineNotifications()">Нет, спасибо</button>
+  </div>
+</div>
 </body>
 </html>
