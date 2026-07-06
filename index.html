@@ -144,31 +144,6 @@ html, body {
 .barrier-right-name { font-size: 13px; font-weight: 600; color: #1a2035; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .pk-tag { background: rgba(192,57,43,0.18); color: var(--red); border-radius: 100px; padding: 1px 8px; font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
 
-/* Notify permission prompt (bottom sheet) */
-.notify-prompt {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  background: #fff; border-radius: 20px 20px 0 0;
-  padding: 22px 20px max(20px, env(safe-area-inset-bottom));
-  box-shadow: 0 -4px 32px rgba(0,0,0,0.18);
-  z-index: 8000;
-  transform: translateY(110%);
-  transition: transform 0.38s cubic-bezier(0.32,0.72,0,1);
-  display: flex; flex-direction: column; gap: 12px;
-}
-.notify-prompt.active { transform: translateY(0); }
-.notify-prompt-title { font-size: 17px; font-weight: 700; color: #1a2035; }
-.notify-prompt-text { font-size: 14px; color: var(--text2); line-height: 1.5; }
-.notify-prompt-btns { display: flex; gap: 10px; margin-top: 4px; }
-.notify-prompt-allow {
-  flex: 1; height: 50px; background: var(--orange); color: #fff;
-  border: none; border-radius: var(--btn-radius); font-size: 16px;
-  font-weight: 700; cursor: pointer; box-shadow: var(--btn-shadow);
-}
-.notify-prompt-decline {
-  height: 50px; padding: 0 20px; background: var(--gray-btn); color: #fff;
-  border: none; border-radius: var(--btn-radius); font-size: 15px;
-  font-weight: 600; cursor: pointer;
-}
 
 .lobby-nav {
   display: flex; gap: 10px;
@@ -1171,28 +1146,28 @@ function subscribeToPush(reg) {
   });
 }
 
-// Show notification permission prompt on first launch
-function initPushOnFirstLaunch() {
+// On first install: show system notification permission dialog immediately.
+// Called from registerSW() after SW is ready, so swRegistration is available.
+function initPushOnFirstLaunch(reg) {
   if (!('PushManager' in window) || !('Notification' in window)) return;
-  if (Notification.permission === 'denied') return;
-  if (Notification.permission === 'granted') return; // registerSW handles subscription
-  if (localStorage.getItem(NOTIFY_ASKED_KEY)) return; // already answered
-  setTimeout(function() {
-    document.getElementById('notify-prompt').classList.add('active');
-  }, 900);
-}
+  if (Notification.permission !== 'default') return; // already answered
+  if (localStorage.getItem(NOTIFY_ASKED_KEY)) return; // already asked this install
 
-function allowNotifications() {
   localStorage.setItem(NOTIFY_ASKED_KEY, 'yes');
-  document.getElementById('notify-prompt').classList.remove('active');
+
+  function onPermission(perm) {
+    if (perm === 'granted') subscribeToPush(reg);
+  }
+
+  // Try to show system dialog immediately (works in PWA and most desktop browsers).
+  // If the browser silently returns 'default' (requires user gesture), retry on first tap.
   Notification.requestPermission().then(function(perm) {
-    if (perm === 'granted' && swRegistration) subscribeToPush(swRegistration);
+    if (perm !== 'default') { onPermission(perm); return; }
+    document.addEventListener('touchstart', function onTouch() {
+      document.removeEventListener('touchstart', onTouch);
+      Notification.requestPermission().then(onPermission);
+    }, { once: true, passive: true });
   });
-}
-
-function declineNotifications() {
-  localStorage.setItem(NOTIFY_ASKED_KEY, 'yes');
-  document.getElementById('notify-prompt').classList.remove('active');
 }
 
 // ===== APP STATE =====
@@ -1220,7 +1195,6 @@ window.addEventListener('DOMContentLoaded', function() {
   initViolatorGroups();
   setTodayDate();
   loadFromServer();
-  initPushOnFirstLaunch(); // show notification prompt on first install
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden) loadFromServer();
   });
@@ -1259,6 +1233,7 @@ function registerSW() {
     navigator.serviceWorker.register('/sw.js').then(function(reg) {
       swRegistration = reg;
       subscribeToPush(reg);
+      initPushOnFirstLaunch(reg);
     }).catch(function(){});
   }
 }
@@ -1889,14 +1864,5 @@ function dateToMs(s) {
 function pad(n) { return String(n).padStart(2,'0'); }
 </script>
 
-<!-- ===== NOTIFY PERMISSION PROMPT ===== -->
-<div id="notify-prompt" class="notify-prompt">
-  <div class="notify-prompt-title">Уведомления о нарушениях</div>
-  <div class="notify-prompt-text">Разрешите уведомления, чтобы мгновенно получать оповещения о новых нарушениях КБ на этом устройстве.</div>
-  <div class="notify-prompt-btns">
-    <button class="notify-prompt-allow" onclick="allowNotifications()">Разрешить</button>
-    <button class="notify-prompt-decline" onclick="declineNotifications()">Нет, спасибо</button>
-  </div>
-</div>
 </body>
 </html>
