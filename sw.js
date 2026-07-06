@@ -1,4 +1,4 @@
-const CACHE = 'pkb-v11';
+const CACHE = 'pkb-v13';
 const PRECACHE = ['/', '/manifest.json', '/apple-touch-icon.png', '/favicon.png', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -14,10 +14,44 @@ self.addEventListener('activate', e => {
   );
 });
 
+// ===== PUSH NOTIFICATIONS =====
+self.addEventListener('push', e => {
+  let data = { title: '⚠ Нарушение КБ', body: '', tag: 'violation' };
+  try { if (e.data) data = { ...data, ...e.data.json() }; } catch (_) {}
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icon-192.png',
+      badge: '/favicon.png',
+      tag: data.tag || 'violation',
+      renotify: true,
+      vibrate: [200, 100, 200, 100, 200],
+      requireInteraction: true,
+      data: { url: '/' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) {
+        if (c.url === '/' || c.url.startsWith(self.location.origin)) {
+          return c.focus();
+        }
+      }
+      return clients.openWindow('/');
+    })
+  );
+});
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
+  // Never cache API routes — always pass through to network
+  if (url.pathname.startsWith('/api/')) return;
   e.respondWith(
     caches.match(e.request).then(cached => {
       const net = fetch(e.request).then(res => {
