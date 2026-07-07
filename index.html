@@ -855,7 +855,7 @@ html, body {
 <!-- ===== SUCCESS OVERLAY ===== -->
 <div class="success-overlay" id="success-overlay">
   <div class="success-box">
-    <div id="sync-indicator" style="font-size:20px;font-weight:700;margin-bottom:24px;min-height:28px;text-align:center;"></div>
+    <div id="sync-indicator" style="margin-bottom:24px;text-align:center;"></div>
     <div class="success-btns">
       <button class="success-btn success-btn-exit" onclick="successExit()">Выйти</button>
       <button class="success-btn success-btn-next" onclick="successNext()">Следующая проверка</button>
@@ -899,10 +899,24 @@ function saveServerShas(s) {
 function updateSyncIndicator() {
   var el = document.getElementById('sync-indicator');
   if (!el) return;
-  var texts  = { idle: '', syncing: '↑ сохранение...', ok: '✓ синхронизировано', error: '⚠ не синхронизировано' };
-  var colors = { idle: '', syncing: '#888', ok: '#27ae60', error: '#c0392b' };
-  el.textContent = texts[syncStatus] || '';
-  el.style.color  = colors[syncStatus] || '';
+  if (syncStatus === 'offline') {
+    el.style.fontSize = '15px';
+    el.style.fontWeight = '700';
+    el.style.color = '';
+    el.innerHTML =
+      '<div style="color:#c0392b;margin-bottom:4px">⚠ не синхронизировано</div>' +
+      '<div style="color:#c0392b;margin-bottom:10px">отсутствует соединение</div>' +
+      '<div style="color:#555;font-size:12px;font-weight:400;line-height:1.4">' +
+        'Сохранено на устройстве, синхронизация произойдет автоматически при следующем входе в приложение после восстановлении соединения' +
+      '</div>';
+  } else {
+    el.style.fontSize = '20px';
+    el.style.fontWeight = '700';
+    var texts  = { idle: '', syncing: '↑ сохранение...', ok: '✓ синхронизировано', error: '⚠ не синхронизировано' };
+    var colors = { idle: '', syncing: '#888', ok: '#27ae60', error: '#c0392b' };
+    el.textContent = texts[syncStatus] || '';
+    el.style.color = colors[syncStatus] || '';
+  }
 }
 
 // --- Offline retry queue ---
@@ -959,7 +973,7 @@ function syncToServer(record) {
   })
   .catch(function(e) {
     clearTimeout(timer);
-    syncStatus = 'error';
+    syncStatus = 'offline';
     addToSyncQueue(record);
     console.warn('[sync] нет соединения или таймаут, запись в очередь');
     updateSyncIndicator();
