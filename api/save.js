@@ -22,8 +22,8 @@ const COLUMNS = [
   { h: 'Проверяемый барьер',                      k: 'barrier'         },
   { h: 'Барьер в ПК',                             k: 'barrierInPK'     },
   { h: 'Работоспособность барьера',               k: 'works'           },
-  { h: 'Описание нарушения',                      k: 'desc'            },
   { h: 'Нарушение допустил',                      k: 'violator'        },
+  { h: 'Описание нарушения',                      k: 'desc'            },
   { h: 'Корректирующие мероприятия',              k: 'corrective'      },
   { h: 'Выполнение корректирующих мероприятий',   k: 'correctiveDone'  },
   { h: 'Обоснование для оспаривания в СОКБ',       k: 'contestMeasures' },
@@ -75,7 +75,7 @@ function buildEmptyWorkbook() {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([COLUMNS.map(c => c.h)]);
   ws['!cols'] = COLUMNS.map((_, i) => ({
-    wch: [4, 12, 18, 14, 18, 24, 24, 18, 20, 10, 20, 40, 18, 30, 30, 30, 24][i] || 15,
+    wch: [4, 12, 18, 14, 18, 24, 24, 18, 20, 10, 20, 18, 40, 30, 30, 30, 24][i] || 15,
   }));
   XLSX.utils.book_append_sheet(wb, ws, 'Проверки');
   return wb;

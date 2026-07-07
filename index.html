@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -34,7 +34,7 @@ html, body {
   --orange-dark: #c85f0a;
   --navy: #1B3A6B;
   --gray-btn: #8a8a8a;
-  --gray-btn-dark: #6b6b6b;
+  --gray-btn-dark: #8a8a8a;
   --green: #2E9B5E;
   --red: #c0392b;
   --red-light: rgba(192,57,43,0.12);
@@ -44,7 +44,7 @@ html, body {
   --card-radius: 18px;
   --btn-radius: 16px;
   --btn-shadow: 0 4px 14px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.10);
-  --overlay-bg: rgba(0,0,0,0.35);
+  --overlay-bg: rgba(239,239,239,0.20);
   --surface-yellow: #fffbee;
   --border: rgba(0,0,0,0.08);
   --text2: #4a5570;
@@ -66,9 +66,10 @@ html, body {
 #screen-lobby { background: var(--bg); }
 
 .lobby-topbar {
-  display: flex; align-items: flex-start; justify-content: flex-end;
-  padding: 16px 16px 0;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding: max(16px, env(safe-area-inset-top)) 16px 10px;
   flex-shrink: 0;
+  background: var(--bg);
 }
 
 .settings-btn {
@@ -85,29 +86,29 @@ html, body {
 .settings-btn svg { width: 24px; height: 24px; color: #fff; stroke: #fff; }
 
 .lobby-content {
-  flex: 1;
+  flex: 1; min-height: 0;
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
+  align-items: center; justify-content: flex-start;
   padding: 16px;
   overflow-y: auto;
   gap: 12px;
 }
+/* No-violations text fills space and centers vertically */
+.no-violations-banner {
+  flex: 1;
+}
 
 .no-violations-banner {
   width: 100%;
-  background: var(--green);
-  border-radius: var(--card-radius);
-  padding: 0 24px;
-  height: 53px;
+  padding: 20px 24px;
   display: flex; align-items: center; justify-content: center;
   text-align: center;
-  color: #fff;
+  color: var(--green);
   font-size: 17px; font-weight: 700; line-height: 1;
-  box-shadow: var(--btn-shadow);
 }
 
 .violations-banner {
-  width: 100%;
+  width: 100%; flex-shrink: 0;
   background: var(--red-banner);
   border-radius: var(--card-radius);
   padding: 0 20px;
@@ -120,7 +121,7 @@ html, body {
 }
 
 .violation-card {
-  width: 100%;
+  width: 100%; flex-shrink: 0;
   background: var(--card-bg);
   border-radius: var(--card-radius);
   box-shadow: var(--card-shadow);
@@ -321,7 +322,7 @@ html, body {
 
 /* ===== OVERLAYS ===== */
 .overlay {
-  position: fixed; inset: 0; z-index: 200;
+  position: fixed; top: 0; left: 0; right: 0; height: 100dvh; z-index: 200;
   background: var(--overlay-bg);
   display: flex; align-items: flex-end;
   opacity: 0; pointer-events: none;
@@ -335,7 +336,8 @@ html, body {
   padding-bottom: max(32px, calc(env(safe-area-inset-bottom) + 20px));
   transform: translateY(40px);
   transition: transform 0.25s ease;
-  max-height: 90vh; overflow-y: auto;
+  max-height: 90dvh; overflow-y: auto;
+  box-shadow: 0 -10px 32px rgba(0,0,0,0.18), 0 -2px 6px rgba(0,0,0,0.10);
 }
 .overlay.active .overlay-box { transform: translateY(0); }
 .overlay-title {
@@ -436,7 +438,7 @@ html, body {
 
 /* success overlay */
 .success-overlay {
-  position: fixed; inset: 0; z-index: 300;
+  position: fixed; top: 0; left: 0; right: 0; height: 100dvh; z-index: 300;
   background: var(--overlay-bg);
   display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none;
@@ -471,7 +473,7 @@ html, body {
   text-align: left; line-height: 1.3;
   z-index: 10;
 }
-.find-table tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; }
+.find-table tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; touch-action: manipulation; }
 .find-table tbody tr:active { background: rgba(232,119,34,0.08); }
 .find-table tbody tr.has-violation { background: rgba(192,57,43,0.15); }
 .find-table td { padding: 9px 6px; font-size: 13px; color: #1a2035; vertical-align: middle; }
@@ -480,6 +482,7 @@ html, body {
 
 .find-bottom {
   display: flex; align-items: center; gap: 8px;
+  touch-action: manipulation;
   padding: 10px 14px;
   padding-bottom: max(10px, env(safe-area-inset-bottom));
   background: var(--bg);
@@ -503,17 +506,20 @@ html, body {
 
 /* ===== ДЕТАЛЬНАЯ КАРТОЧКА ===== */
 #screen-detail { background: var(--bg); }
+/* Windows desktop: card ~43% width, scrollbar at viewport right edge */
+.is-win #screen-detail { left: 28.333%; right: 0; }
+.is-win .detail-scroll { padding-right: 28.333vw; }
+.is-win .detail-back { padding-right: 28.333vw; }
 .detail-scroll { flex: 1; overflow-y: auto; padding: 0 14px 16px; -webkit-overflow-scrolling: touch; }
 .detail-title { font-size: 16px; font-weight: 700; color: #1a2035; text-align: center; padding: 16px 0 14px; }
-.detail-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+.detail-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
 .detail-label { font-size: 13px; color: var(--text2); font-weight: 500; width: 44%; flex-shrink: 0; line-height: 1.4; }
 .detail-val {
   font-size: 13px; color: #1a2035; font-weight: 500; flex: 1; line-height: 1.4;
   background: #fff; border-radius: 10px; padding: 8px 12px;
-  border: 1px solid var(--border); min-height: 36px;
+  border: 1px solid var(--border); min-height: 44px;
   display: flex; align-items: center; word-break: break-word;
 }
-.detail-row + .detail-block { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
 .detail-block { padding: 10px 0; }
 .detail-block-label { font-size: 13px; color: var(--text2); font-weight: 500; margin-bottom: 6px; }
 .detail-block-val {
@@ -522,6 +528,11 @@ html, body {
   border: 1px solid var(--border); min-height: 44px;
   white-space: pre-wrap; word-break: break-word;
 }
+/* Separator between every consecutive item */
+.detail-row + .detail-row,
+.detail-row + .detail-block,
+.detail-block + .detail-row,
+.detail-block + .detail-block { border-top: 1px solid var(--border); }
 .detail-back {
   display: flex; justify-content: center;
   padding: 10px 14px;
@@ -548,13 +559,26 @@ html, body {
   font-size: 13px; color: #888;
   pointer-events: none;
   transform: translateY(-48px);
+  opacity: 0;
   box-shadow: 0 2px 10px rgba(0,0,0,0.10);
 }
 #pull-indicator.release { color: var(--orange); }
 #pull-indicator.syncing { color: var(--orange); }
 #pull-indicator.done    { color: var(--green); }
-@keyframes pull-spin { to { transform: rotate(360deg); } }
-#pull-indicator.syncing #pull-icon { animation: pull-spin 0.9s linear infinite; }
+
+/* three-state pull icon */
+#pull-icon-arrow { display: none; }
+#pull-icon-ring  { display: none; }
+#pull-icon-check { display: none; }
+#pull-indicator.syncing #pull-icon-arrow { display: none; }
+#pull-indicator.syncing #pull-icon-ring  { display: block; }
+#pull-indicator.done    #pull-icon-arrow { display: none; }
+#pull-indicator.done    #pull-icon-check { display: block; }
+@keyframes ring-spin { to { transform: rotate(360deg); } }
+#pull-indicator.syncing #pull-ring-arc {
+  animation: ring-spin 0.9s linear infinite;
+  transform-origin: 12px 12px;
+}
 
 /* Disable browser native pull-to-refresh on scroll containers */
 .lobby-content, .find-list-wrap, .detail-scroll, .card-scroll {
@@ -566,10 +590,22 @@ html, body {
 
 <!-- Pull-to-refresh indicator (global, position:fixed) -->
 <div id="pull-indicator" aria-hidden="true">
-  <svg id="pull-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+  <!-- idle / release: refresh arrow -->
+  <svg id="pull-icon-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
        stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;flex-shrink:0">
     <polyline points="1 4 1 10 7 10"/>
     <path d="M3.51 15a9 9 0 1 0 .49-4.5"/>
+  </svg>
+  <!-- syncing: spinning orange ring -->
+  <svg id="pull-icon-ring" viewBox="0 0 24 24" style="width:17px;height:17px;flex-shrink:0">
+    <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(232,119,34,0.22)" stroke-width="2"/>
+    <circle id="pull-ring-arc" cx="12" cy="12" r="9" fill="none" stroke="#E87722" stroke-width="2"
+            stroke-dasharray="42 15" stroke-linecap="round"/>
+  </svg>
+  <!-- done: green checkmark -->
+  <svg id="pull-icon-check" viewBox="0 0 24 24" style="width:17px;height:17px;flex-shrink:0">
+    <polyline points="4 12 9 17 20 6" fill="none" stroke="#2E9B5E" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round"/>
   </svg>
   <span id="pull-text">Потяните для обновления</span>
 </div>
@@ -586,7 +622,7 @@ html, body {
   </div>
 
   <div class="lobby-content" id="lobby-content">
-    <div class="no-violations-banner" id="no-violations-banner">Сегодня без нарушений</div>
+    <div class="no-violations-banner" id="no-violations-banner">Сегодня без нарушений!</div>
     <div class="violations-banner" id="violations-banner">Нарушения</div>
     <!-- Violation cards inserted here by JS -->
   </div>
@@ -605,7 +641,7 @@ html, body {
       <button class="menu-btn menu-btn-gray" onclick="openFind()">Найти<br>проверку</button>
       <button class="menu-btn menu-btn-orange" onclick="openPin()">Внести<br>проверку</button>
     </div>
-    <button class="menu-btn-cancel" onclick="goLobby()">Отмена</button>
+    <button class="menu-btn-cancel" onclick="goLobby()">Назад</button>
   </div>
 </div>
 
@@ -738,7 +774,7 @@ html, body {
     </table>
   </div>
   <div class="find-bottom">
-    <button class="find-bottom-btn find-btn-cancel" onclick="showScreen('screen-proverki-menu')">Отмена</button>
+    <button class="find-bottom-btn find-btn-cancel" onclick="showScreen('screen-proverki-menu')">Назад</button>
     <div class="find-count" id="find-count">0<br>проверок</div>
     <button class="find-bottom-btn find-btn-filter" onclick="openFilters()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"/></svg>
@@ -754,7 +790,7 @@ html, body {
     <div id="detail-body"></div>
   </div>
   <div class="detail-back">
-    <button class="detail-back-btn" onclick="showScreen('screen-find')">Назад</button>
+    <button class="detail-back-btn" onclick="closeDetail()">Назад</button>
   </div>
 </div>
 
@@ -1055,7 +1091,7 @@ function triggerManualSync() {
   setPullIndicator('syncing', 'Синхронизация...');
   animatePullIndicator(0, true);
   loadFromServer(function(ok) {
-    setPullIndicator('done', ok ? '✓ Обновлено' : '✓ Офлайн: данные из кэша');
+    setPullIndicator('done', ok ? 'Обновлено' : 'Офлайн: данные из кэша');
     setTimeout(function() { hidePullIndicator(true); }, 1400);
   });
 }
@@ -1188,6 +1224,25 @@ var currentTextKey = null;
 var currentTextAutocompleteKey = null;
 var drums = {};
 
+// Narrow detail card on Windows desktop
+if (/Windows/.test(navigator.userAgent)) document.documentElement.classList.add('is-win');
+
+var detailSource = 'find'; // 'find' | 'lobby'
+function closeDetail() { showScreen(detailSource === 'lobby' ? 'screen-lobby' : 'screen-find'); }
+
+// Fix overlay height for virtual keyboard on Android only.
+// iOS already positions fixed elements relative to visual viewport — no fix needed there.
+var _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+             (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+if (window.visualViewport && !_isIOS) {
+  function syncOverlayHeight() {
+    var h = window.visualViewport.height + 'px';
+    document.querySelectorAll('.overlay').forEach(function(el) { el.style.height = h; });
+  }
+  window.visualViewport.addEventListener('resize', syncOverlayHeight);
+  window.visualViewport.addEventListener('scroll', syncOverlayHeight);
+}
+
 // ===== INIT =====
 window.addEventListener('DOMContentLoaded', function() {
   loadState();
@@ -1251,6 +1306,8 @@ function showScreen(id) {
 function goLobby() {
   renderLobby();
   showScreen('screen-lobby');
+  var lc = document.getElementById('lobby-content');
+  if (lc) lc.scrollTop = 0;
 }
 
 function openProverki()  { showScreen('screen-proverki-menu'); }
@@ -1275,7 +1332,7 @@ function openFilters() { alert('Фильтры — в разработке'); }
 function renderLobby() {
   var today = todayStr();
   var violations = appState.db.filter(function(r) {
-    return r.dateEntry === today && r.works === 'Нет';
+    return r.dateCheck === today && r.works === 'Нет';
   });
 
   var content = document.getElementById('lobby-content');
@@ -1309,7 +1366,7 @@ function renderLobby() {
           '</div>' +
         '</div>' +
         '<div class="violation-card-body">' + esc(r.desc || '') + '</div>';
-      card.onclick = function() { openDetail(r); };
+      card.onclick = function() { openDetail(r, 'lobby'); };
       content.insertBefore(card, content.querySelector('.violations-banner').nextSibling);
     });
   }
@@ -1479,46 +1536,41 @@ function renderFindList(records) {
       '<td class="td-date">' + (r.dateCheck || '') + '</td>' +
       '<td class="td-org">' + (r.org || '') + '</td>' +
       '<td class="td-obj">' + (r.obj || '') + '</td>';
-    tr.onclick = (function(rec){ return function(){ openDetail(rec); }; })(r);
+    tr.onclick = (function(rec){ return function(){ openDetail(rec, 'find'); }; })(r);
     tbody.appendChild(tr);
   });
 }
 
 // ===== DETAIL =====
-function openDetail(r) {
+function openDetail(r, source) {
+  detailSource = source || 'find';
   document.getElementById('detail-title').textContent = 'Проверка №' + (r.num || '?') + ' ' + (r.year || '');
   var body = document.getElementById('detail-body');
-  var rows = [
-    ['Дата проверки', r.dateCheck],
-    ['Дата внесения проверки', r.dateEntry],
-    ['Метод проверки', r.method],
-    ['Проверку выполнил', r.inspector],
-    ['Проверяемая организация', r.org],
-    ['Проверяемый объект', r.obj],
-    ['Куратор от заказчика', r.curator],
-    ['Проверяемый барьер', r.barrier],
-    ['Барьер в ПК', r.barrierInPK],
-    ['Работоспособность барьера', r.works]
-  ];
-  var blocks = [
-    ['Описание нарушения', r.desc],
-    ['Нарушение допустил', r.violator],
-    ['Корректирующие мероприятия', r.corrective],
-    ['Выполнение корректирующих мероприятий', r.correctiveDone],
-    ['Мероприятия по оспариванию в СОКБ', r.contestMeasures],
-    ['Статус оспаривания в СОКБ', r.contestStatus]
-  ];
-  body.innerHTML = rows.map(function(pair){
-    return '<div class="detail-row">' +
-      '<div class="detail-label">' + pair[0] + '</div>' +
-      '<div class="detail-val">' + (pair[1] || '—') + '</div>' +
-    '</div>';
-  }).join('') + blocks.map(function(pair){
-    return '<div class="detail-block">' +
-      '<div class="detail-block-label">' + pair[0] + '</div>' +
-      '<div class="detail-block-val">' + (pair[1] || '—') + '</div>' +
-    '</div>';
-  }).join('');
+  function row(label, val) {
+    return '<div class="detail-row"><div class="detail-label">' + label + '</div>' +
+           '<div class="detail-val">' + (val || '—') + '</div></div>';
+  }
+  function block(label, val) {
+    return '<div class="detail-block"><div class="detail-block-label">' + label + '</div>' +
+           '<div class="detail-block-val">' + (val || '—') + '</div></div>';
+  }
+  body.innerHTML =
+    row('Дата проверки', r.dateCheck) +
+    row('Дата внесения проверки', r.dateEntry) +
+    row('Метод проверки', r.method) +
+    row('Проверку выполнил', r.inspector) +
+    row('Проверяемая организация', r.org) +
+    row('Проверяемый объект', r.obj) +
+    row('Куратор от заказчика', r.curator) +
+    row('Проверяемый барьер', r.barrier) +
+    row('Барьер в ПК', r.barrierInPK) +
+    row('Работоспособность барьера', r.works) +
+    row('Нарушение допустил', r.violator) +
+    block('Описание нарушения', r.desc) +
+    block('Корректирующие мероприятия', r.corrective) +
+    block('Выполнение корректирующих мероприятий', r.correctiveDone) +
+    block('Обоснование для оспаривания в СОКБ', r.contestMeasures) +
+    row('Статус оспаривания в СОКБ', r.contestStatus);
   document.getElementById('detail-scroll').scrollTop = 0;
   showScreen('screen-detail');
 }
