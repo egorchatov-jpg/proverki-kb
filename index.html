@@ -463,22 +463,31 @@ html, body {
 
 /* ===== НАЙТИ ПРОВЕРКУ — список ===== */
 #screen-find { background: var(--bg); }
+.is-win #screen-find { left: 28.333%; right: 0; }
+.is-win .find-list-wrap { padding-right: 28.333vw; }
+.is-win .find-bottom { padding-right: 28.333vw; }
 .find-list-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-.find-table { width: 100%; border-collapse: collapse; }
+.find-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .find-table thead th {
   position: sticky; top: 0; background: var(--bg);
-  padding: 10px 6px 8px;
-  font-size: 12px; font-weight: 700; color: var(--text2);
+  padding: 8px 4px 6px;
+  font-size: 11px; font-weight: 700; color: var(--text2);
   border-bottom: 2px solid var(--border);
   text-align: left; line-height: 1.3;
-  z-index: 10;
+  z-index: 10; width: 25%;
 }
 .find-table tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; touch-action: manipulation; }
 .find-table tbody tr:active { background: rgba(232,119,34,0.08); }
 .find-table tbody tr.has-violation { background: rgba(192,57,43,0.15); }
-.find-table td { padding: 9px 6px; font-size: 13px; color: #1a2035; vertical-align: middle; }
-.td-date { white-space: nowrap; }
-.td-org, .td-obj { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 0; width: 50%; }
+.find-table td { padding: 8px 4px; font-size: 12px; color: #1a2035; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.th-filter-btn {
+  background: none; border: none; cursor: pointer; padding: 0 0 0 2px;
+  color: var(--text2); vertical-align: middle; line-height: 1;
+  display: inline-flex; align-items: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.th-filter-btn.active { color: var(--orange); }
+.th-filter-btn.active .th-fi path { fill: currentColor; }
 
 .find-bottom {
   display: flex; align-items: center; gap: 8px;
@@ -490,6 +499,7 @@ html, body {
   flex-shrink: 0;
 }
 .find-count { flex: 1; text-align: center; font-size: 14px; font-weight: 700; color: #1a2035; line-height: 1.3; }
+.find-violation-count { flex: 1; text-align: center; font-size: 14px; font-weight: 700; color: var(--red); line-height: 1.3; }
 .find-bottom-btn {
   flex: 1;
   border: none; cursor: pointer; border-radius: var(--btn-radius);
@@ -502,7 +512,6 @@ html, body {
 }
 .find-bottom-btn:active { opacity: 0.8; }
 .find-btn-cancel { background: var(--gray-btn-dark); }
-.find-btn-filter { background: var(--orange); display: flex; align-items: center; gap: 6px; }
 
 /* ===== ДЕТАЛЬНАЯ КАРТОЧКА ===== */
 #screen-detail { background: var(--bg); }
@@ -765,21 +774,19 @@ html, body {
     <table class="find-table">
       <thead>
         <tr>
-          <th style="white-space:nowrap;width:1px">Дата<br>проверки</th>
-          <th>Проверяемая<br>организация</th>
-          <th>Проверяемый<br>объект</th>
+          <th>Дата<br>проверки<button class="th-filter-btn" id="filter-btn-dateCheck" onclick="openFindFilter('dateCheck')"><svg class="th-fi" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th>Метод<br>проверки<button class="th-filter-btn" id="filter-btn-method" onclick="openFindFilter('method')"><svg class="th-fi" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th>Организация<button class="th-filter-btn" id="filter-btn-org" onclick="openFindFilter('org')"><svg class="th-fi" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th>Объект<button class="th-filter-btn" id="filter-btn-obj" onclick="openFindFilter('obj')"><svg class="th-fi" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
         </tr>
       </thead>
       <tbody id="find-tbody"></tbody>
     </table>
   </div>
   <div class="find-bottom">
-    <button class="find-bottom-btn find-btn-cancel" onclick="showScreen('screen-proverki-menu')">Назад</button>
     <div class="find-count" id="find-count">0<br>проверок</div>
-    <button class="find-bottom-btn find-btn-filter" onclick="openFilters()">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"/></svg>
-      Фильтр
-    </button>
+    <button class="find-bottom-btn find-btn-cancel" onclick="showScreen('screen-proverki-menu')">Назад</button>
+    <div class="find-violation-count" id="find-violation-count">0<br>нарушений</div>
   </div>
 </div>
 
@@ -1030,7 +1037,7 @@ function loadFromServer(onDone) {
       saveState();
       renderLobby();
       var fs = document.getElementById('screen-find');
-      if (fs && fs.classList.contains('active')) renderFindList(appState.db);
+      if (fs && fs.classList.contains('active')) applyFindFilters();
       retrySyncQueue();
     }
     finish(true);
@@ -1321,12 +1328,85 @@ function openPin() {
   showScreen('screen-pin');
 }
 
+var findFilters = { dateCheck: '', method: '', org: '', obj: '' };
+
 function openFind() {
-  renderFindList(appState.db);
+  applyFindFilters();
   showScreen('screen-find');
 }
 
-function openFilters() { alert('Фильтры — в разработке'); }
+function applyFindFilters() {
+  var recs = appState.db.filter(function(r) {
+    return (!findFilters.dateCheck || r.dateCheck === findFilters.dateCheck)
+        && (!findFilters.method   || r.method   === findFilters.method)
+        && (!findFilters.org      || r.org      === findFilters.org)
+        && (!findFilters.obj      || r.obj      === findFilters.obj);
+  });
+  renderFindList(recs);
+  updateFilterIcons();
+}
+
+function updateFilterIcons() {
+  ['dateCheck', 'method', 'org', 'obj'].forEach(function(col) {
+    var btn = document.getElementById('filter-btn-' + col);
+    if (!btn) return;
+    if (findFilters[col]) btn.classList.add('active');
+    else btn.classList.remove('active');
+  });
+}
+
+function openFindFilter(col) {
+  var all = appState.db;
+  function unique(arr) {
+    var seen = {}, out = [];
+    arr.forEach(function(v) { if (v && !seen[v]) { seen[v] = 1; out.push(v); } });
+    return out;
+  }
+  function sortAlpha(a) { return a.sort(function(x, y) { return x.localeCompare(y, 'ru'); }); }
+  function sortDateDesc(a) { return a.sort(function(x, y) { return y.localeCompare(x); }); }
+
+  var cfgMap = {
+    dateCheck: {
+      title: 'Фильтр: дата проверки',
+      items: sortDateDesc(unique(all.map(function(r) { return r.dateCheck; }))),
+      drumCfg: function(items) { return [{ id: 'dateCheck', items: items, value: findFilters.dateCheck || items[0] }]; }
+    },
+    method: {
+      title: 'Фильтр: метод проверки',
+      items: sortAlpha(unique(all.map(function(r) { return r.method; }))),
+      drumCfg: function(items) { return [{ id: 'method', items: items, value: findFilters.method || items[0], minWidth: 200 }]; }
+    },
+    org: {
+      title: 'Фильтр: организация',
+      items: sortAlpha(unique(all.map(function(r) { return r.org; }))),
+      drumCfg: function(items) { return [{ id: 'org', items: items, value: findFilters.org || items[0], fullWidth: true }]; }
+    },
+    obj: {
+      title: 'Фильтр: объект',
+      items: sortAlpha(unique(all.map(function(r) { return r.obj; }))),
+      drumCfg: function(items) { return [{ id: 'obj', items: items, value: findFilters.obj || items[0], fullWidth: true }]; }
+    }
+  };
+
+  var c = cfgMap[col];
+  if (!c || !c.items.length) return;
+
+  openDrumOverlay(c.title, c.drumCfg(c.items), function(d) {
+    findFilters[col] = d[col].getValue();
+    applyFindFilters();
+  });
+
+  var cancelBtn = document.querySelector('#overlay-drum .overlay-btn-cancel');
+  if (cancelBtn) {
+    if (findFilters[col]) {
+      cancelBtn.textContent = 'Сбросить';
+      cancelBtn.onclick = function() { findFilters[col] = ''; closeDrum(); applyFindFilters(); };
+    } else {
+      cancelBtn.textContent = 'Отмена';
+      cancelBtn.onclick = function() { closeDrum(); };
+    }
+  }
+}
 
 // ===== LOBBY =====
 function renderLobby() {
@@ -1528,14 +1608,17 @@ function pluralProverka(n) {
 function renderFindList(records) {
   var tbody = document.getElementById('find-tbody');
   tbody.innerHTML = '';
+  var viol = records.filter(function(r) { return r.works === 'Нет'; }).length;
   document.getElementById('find-count').innerHTML = pluralProverka(records.length);
-  records.forEach(function(r, i) {
+  document.getElementById('find-violation-count').innerHTML = viol + '<br>нарушений';
+  records.forEach(function(r) {
     var tr = document.createElement('tr');
     if (r.works === 'Нет') tr.className = 'has-violation';
     tr.innerHTML =
-      '<td class="td-date">' + (r.dateCheck || '') + '</td>' +
-      '<td class="td-org">' + (r.org || '') + '</td>' +
-      '<td class="td-obj">' + (r.obj || '') + '</td>';
+      '<td>' + esc(r.dateCheck || '') + '</td>' +
+      '<td>' + esc(r.method || '') + '</td>' +
+      '<td>' + esc(r.org || '') + '</td>' +
+      '<td>' + esc(r.obj || '') + '</td>';
     tr.onclick = (function(rec){ return function(){ openDetail(rec, 'find'); }; })(r);
     tbody.appendChild(tr);
   });
