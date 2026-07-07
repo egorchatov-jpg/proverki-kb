@@ -290,7 +290,7 @@ html, body {
 .field-cell.tall { min-height: 80px; align-items: flex-start; }
 .field-cell.dimmed { opacity: 0.35; pointer-events: none; }
 .field-label.dimmed { opacity: 0.35; }
-.field-cell .placeholder { color: var(--text3); }
+.field-cell .placeholder { color: #1a2035; }
 
 .card-validation {
   text-align: center; padding: 14px 0 4px;
@@ -933,17 +933,19 @@ function retrySyncQueue() {
 function syncToServer(record) {
   syncStatus = 'syncing';
   updateSyncIndicator();
+  var ctrl = new AbortController();
+  var timer = setTimeout(function() { ctrl.abort(); }, 8000);
   fetch('/api/save', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ record: record })
+    body: JSON.stringify({ record: record }),
+    signal: ctrl.signal
   })
-  .then(function(r) { return r.json(); })
+  .then(function(r) { clearTimeout(timer); return r.json(); })
   .then(function(d) {
     if (d.success) {
       syncStatus = 'ok';
       removeFromSyncQueue(record.id);
-      // Invalidate cached SHA so the next loadFromServer fetches fresh data
       var shas = getServerShas();
       delete shas['sha' + d.year];
       saveServerShas(shas);
@@ -956,9 +958,10 @@ function syncToServer(record) {
     updateSyncIndicator();
   })
   .catch(function(e) {
+    clearTimeout(timer);
     syncStatus = 'error';
-    addToSyncQueue(record); // retry next time
-    console.warn('[sync] нет соединения, запись в очередь');
+    addToSyncQueue(record);
+    console.warn('[sync] нет соединения или таймаут, запись в очередь');
     updateSyncIndicator();
   });
 }
