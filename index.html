@@ -480,14 +480,15 @@ html, body {
 .find-table tbody tr:active { background: rgba(232,119,34,0.08); }
 .find-table tbody tr.has-violation { background: rgba(192,57,43,0.15); }
 .find-table td { padding: 8px 4px; font-size: 12px; color: #1a2035; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.th-filter-btn {
-  background: none; border: none; cursor: pointer; padding: 0 0 0 2px;
-  color: var(--text2); vertical-align: middle; line-height: 1;
-  display: inline-flex; align-items: center;
-  -webkit-tap-highlight-color: transparent;
+.th-col-btn {
+  background: none; border: none; cursor: pointer; padding: 0;
+  color: var(--text2); text-align: left; line-height: 1.3;
+  font-size: 11px; font-weight: 700; font-family: inherit;
+  display: inline; -webkit-tap-highlight-color: transparent;
 }
-.th-filter-btn.active { color: var(--orange); }
-.th-filter-btn.active .th-fi path { fill: currentColor; }
+.th-col-btn.active { color: var(--orange); }
+.th-col-btn.active .th-fi path { fill: currentColor; }
+.th-fi { vertical-align: middle; margin-left: 2px; }
 
 .find-bottom {
   display: flex; align-items: center; gap: 8px;
@@ -537,6 +538,7 @@ html, body {
   border: 1px solid var(--border); min-height: 44px;
   white-space: pre-wrap; word-break: break-word;
 }
+.detail-val-red { background: rgba(192,57,43,0.15); }
 /* Separator between every consecutive item */
 .detail-row + .detail-row,
 .detail-row + .detail-block,
@@ -774,10 +776,10 @@ html, body {
     <table class="find-table">
       <thead>
         <tr>
-          <th>Дата<br>проверки<button class="th-filter-btn" id="filter-btn-dateCheck" onclick="openFindFilter('dateCheck')"><svg class="th-fi" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th>Метод<br>проверки<button class="th-filter-btn" id="filter-btn-method" onclick="openFindFilter('method')"><svg class="th-fi" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th>Организация<button class="th-filter-btn" id="filter-btn-org" onclick="openFindFilter('org')"><svg class="th-fi" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th>Объект<button class="th-filter-btn" id="filter-btn-obj" onclick="openFindFilter('obj')"><svg class="th-fi" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="filter-btn-dateCheck" onclick="openFindFilter('dateCheck')">Дата<br>проверки<svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="filter-btn-method" onclick="openFindFilter('method')">Метод<br>проверки<svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="filter-btn-org" onclick="openFindFilter('org')">Проверка<br>организации<svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="filter-btn-barrier" onclick="openFindFilter('barrier')">Проверка<br>барьера<svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
         </tr>
       </thead>
       <tbody id="find-tbody"></tbody>
@@ -1328,7 +1330,7 @@ function openPin() {
   showScreen('screen-pin');
 }
 
-var findFilters = { dateCheck: '', method: '', org: '', obj: '' };
+var findFilters = { dateCheck: '', method: '', org: '', barrier: '' };
 
 function openFind() {
   applyFindFilters();
@@ -1340,14 +1342,14 @@ function applyFindFilters() {
     return (!findFilters.dateCheck || r.dateCheck === findFilters.dateCheck)
         && (!findFilters.method   || r.method   === findFilters.method)
         && (!findFilters.org      || r.org      === findFilters.org)
-        && (!findFilters.obj      || r.obj      === findFilters.obj);
+        && (!findFilters.barrier  || r.barrier  === findFilters.barrier);
   });
   renderFindList(recs);
   updateFilterIcons();
 }
 
 function updateFilterIcons() {
-  ['dateCheck', 'method', 'org', 'obj'].forEach(function(col) {
+  ['dateCheck', 'method', 'org', 'barrier'].forEach(function(col) {
     var btn = document.getElementById('filter-btn-' + col);
     if (!btn) return;
     if (findFilters[col]) btn.classList.add('active');
@@ -1381,10 +1383,10 @@ function openFindFilter(col) {
       items: sortAlpha(unique(all.map(function(r) { return r.org; }))),
       drumCfg: function(items) { return [{ id: 'org', items: items, value: findFilters.org || items[0], fullWidth: true }]; }
     },
-    obj: {
-      title: 'Фильтр: объект',
-      items: sortAlpha(unique(all.map(function(r) { return r.obj; }))),
-      drumCfg: function(items) { return [{ id: 'obj', items: items, value: findFilters.obj || items[0], fullWidth: true }]; }
+    barrier: {
+      title: 'Фильтр: проверяемый барьер',
+      items: sortAlpha(unique(all.map(function(r) { return r.barrier; }))),
+      drumCfg: function(items) { return [{ id: 'barrier', items: items, value: findFilters.barrier || items[0], fullWidth: true }]; }
     }
   };
 
@@ -1618,7 +1620,7 @@ function renderFindList(records) {
       '<td>' + esc(r.dateCheck || '') + '</td>' +
       '<td>' + esc(r.method || '') + '</td>' +
       '<td>' + esc(r.org || '') + '</td>' +
-      '<td>' + esc(r.obj || '') + '</td>';
+      '<td>' + esc(r.barrier || '') + '</td>';
     tr.onclick = (function(rec){ return function(){ openDetail(rec, 'find'); }; })(r);
     tbody.appendChild(tr);
   });
@@ -1629,9 +1631,9 @@ function openDetail(r, source) {
   detailSource = source || 'find';
   document.getElementById('detail-title').textContent = 'Проверка №' + (r.num || '?') + ' ' + (r.year || '');
   var body = document.getElementById('detail-body');
-  function row(label, val) {
+  function row(label, val, cls) {
     return '<div class="detail-row"><div class="detail-label">' + label + '</div>' +
-           '<div class="detail-val">' + (val || '—') + '</div></div>';
+           '<div class="detail-val' + (cls ? ' ' + cls : '') + '">' + (val || '—') + '</div></div>';
   }
   function block(label, val) {
     return '<div class="detail-block"><div class="detail-block-label">' + label + '</div>' +
@@ -1647,7 +1649,7 @@ function openDetail(r, source) {
     row('Куратор от заказчика', r.curator) +
     row('Проверяемый барьер', r.barrier) +
     row('Барьер в ПК', r.barrierInPK) +
-    row('Работоспособность барьера', r.works) +
+    row('Работоспособность барьера', r.works, r.works === 'Нет' ? 'detail-val-red' : '') +
     row('Нарушение допустил', r.violator) +
     block('Описание нарушения', r.desc) +
     block('Корректирующие мероприятия', r.corrective) +
