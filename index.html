@@ -905,7 +905,7 @@ function updateSyncIndicator() {
     el.style.color = '';
     el.innerHTML =
       '<div style="color:#c0392b;margin-bottom:4px">⚠ не синхронизировано</div>' +
-      '<div style="color:#c0392b;margin-bottom:10px">отсутствует соединение</div>' +
+      '<div style="color:#c0392b;margin-bottom:10px">нет соединения</div>' +
       '<div style="color:#555;font-size:12px;font-weight:400;line-height:1.4">' +
         'Сохранено на устройстве, синхронизация произойдет автоматически при следующем входе в приложение после восстановлении соединения' +
       '</div>';
@@ -1658,6 +1658,13 @@ function successNext() {
 }
 
 // ===== FIND LIST =====
+function pluralNarushenie(n) {
+  var l2 = n % 100, l1 = n % 10;
+  if (l2 >= 11 && l2 <= 19) return 'нарушений';
+  if (l1 === 1) return 'нарушение';
+  if (l1 >= 2 && l1 <= 4) return 'нарушения';
+  return 'нарушений';
+}
 function pluralProverka(n) {
   var l2 = n % 100, l1 = n % 10;
   var word;
@@ -1672,7 +1679,7 @@ function renderFindList(records) {
   tbody.innerHTML = '';
   var viol = records.filter(function(r) { return r.works === 'Нет'; }).length;
   document.getElementById('find-count').innerHTML = pluralProverka(records.length);
-  document.getElementById('find-violation-count').innerHTML = viol + '<br>нарушений';
+  document.getElementById('find-violation-count').innerHTML = viol + '<br>' + pluralNarushenie(viol);
   records.forEach(function(r) {
     var tr = document.createElement('tr');
     if (r.works === 'Нет') tr.className = 'has-violation';
