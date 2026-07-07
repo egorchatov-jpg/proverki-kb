@@ -454,7 +454,7 @@ html, body {
 .success-btns { display: flex; gap: 10px; }
 .success-btn {
   flex: 1; border: none; cursor: pointer; border-radius: var(--btn-radius);
-  padding: 14px 10px; font-size: 15px; font-weight: 700; color: #fff;
+  height: 53px; padding: 0 10px; font-size: 15px; font-weight: 700; color: #fff;
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
 }
 .success-btn:active { opacity: 0.8; }
@@ -855,8 +855,7 @@ html, body {
 <!-- ===== SUCCESS OVERLAY ===== -->
 <div class="success-overlay" id="success-overlay">
   <div class="success-box">
-    <div class="success-title">Данные сохранены!</div>
-    <div id="sync-indicator" style="font-size:13px;margin-bottom:10px;min-height:18px;text-align:center;"></div>
+    <div id="sync-indicator" style="font-size:20px;font-weight:700;margin-bottom:24px;min-height:28px;text-align:center;"></div>
     <div class="success-btns">
       <button class="success-btn success-btn-exit" onclick="successExit()">Выйти</button>
       <button class="success-btn success-btn-next" onclick="successNext()">Следующая проверка</button>
@@ -1330,7 +1329,12 @@ function openPin() {
   showScreen('screen-pin');
 }
 
-var findFilters = { dateCheck: '', method: '', org: '', barrier: '' };
+var findFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '' };
+
+function dateNumFromStr(s) {
+  var p = s ? s.split('.') : [];
+  return p.length === 3 ? parseInt(p[2] + p[1] + p[0]) : 0;
+}
 
 function openFind() {
   applyFindFilters();
@@ -1339,17 +1343,27 @@ function openFind() {
 
 function applyFindFilters() {
   var recs = appState.db.filter(function(r) {
-    return (!findFilters.dateCheck || r.dateCheck === findFilters.dateCheck)
-        && (!findFilters.method   || r.method   === findFilters.method)
-        && (!findFilters.org      || r.org      === findFilters.org)
-        && (!findFilters.barrier  || r.barrier  === findFilters.barrier);
+    var dateOk = true;
+    if (findFilters.dateFrom || findFilters.dateTo) {
+      var rn   = dateNumFromStr(r.dateCheck);
+      var from = findFilters.dateFrom ? dateNumFromStr(findFilters.dateFrom) : 0;
+      var to   = findFilters.dateTo   ? dateNumFromStr(findFilters.dateTo)   : 99999999;
+      dateOk = rn >= from && rn <= to;
+    }
+    return dateOk
+        && (!findFilters.method  || r.method  === findFilters.method)
+        && (!findFilters.org     || r.org     === findFilters.org)
+        && (!findFilters.barrier || r.barrier === findFilters.barrier);
   });
   renderFindList(recs);
   updateFilterIcons();
 }
 
 function updateFilterIcons() {
-  ['dateCheck', 'method', 'org', 'barrier'].forEach(function(col) {
+  var dateActive = !!(findFilters.dateFrom || findFilters.dateTo);
+  var dateBtn = document.getElementById('filter-btn-dateCheck');
+  if (dateBtn) { if (dateActive) dateBtn.classList.add('active'); else dateBtn.classList.remove('active'); }
+  ['method', 'org', 'barrier'].forEach(function(col) {
     var btn = document.getElementById('filter-btn-' + col);
     if (!btn) return;
     if (findFilters[col]) btn.classList.add('active');
@@ -1365,17 +1379,46 @@ function openFindFilter(col) {
     return out;
   }
   function sortAlpha(a) { return a.sort(function(x, y) { return x.localeCompare(y, 'ru'); }); }
-  function sortDateDesc(a) { return a.sort(function(x, y) { return y.localeCompare(x); }); }
+  function sortDateAsc(a) { return a.sort(function(x, y) { return dateNumFromStr(x) - dateNumFromStr(y); }); }
+  function sortMethod(a) {
+    var order = ['ОСИР', 'ЦРПО', 'Прочее'];
+    return a.sort(function(x, y) {
+      var ix = order.indexOf(x), iy = order.indexOf(y);
+      if (ix < 0) ix = 999; if (iy < 0) iy = 999;
+      return ix - iy;
+    });
+  }
+
+  if (col === 'dateCheck') {
+    var dates = sortDateAsc(unique(all.map(function(r) { return r.dateCheck; })));
+    if (!dates.length) return;
+    var defFrom = findFilters.dateFrom || dates[0];
+    var defTo   = findFilters.dateTo   || dates[dates.length - 1];
+    openDrumOverlay('Фильтр: дата проверки', [
+      { id: 'dateFrom', items: dates, value: defFrom, label: 'с',  minWidth: 165 },
+      { id: 'dateTo',   items: dates, value: defTo,   label: 'по', minWidth: 165 }
+    ], function(d) {
+      findFilters.dateFrom = d['dateFrom'].getValue();
+      findFilters.dateTo   = d['dateTo'].getValue();
+      applyFindFilters();
+    });
+    var cancelBtn = document.querySelector('#overlay-drum .overlay-btn-cancel');
+    if (cancelBtn) {
+      if (findFilters.dateFrom || findFilters.dateTo) {
+        cancelBtn.textContent = 'Сбросить';
+        cancelBtn.onclick = function() { findFilters.dateFrom = ''; findFilters.dateTo = ''; closeDrum(); applyFindFilters(); };
+      } else {
+        cancelBtn.textContent = 'Отмена';
+        cancelBtn.onclick = function() { closeDrum(); };
+      }
+    }
+    return;
+  }
 
   var cfgMap = {
-    dateCheck: {
-      title: 'Фильтр: дата проверки',
-      items: sortDateDesc(unique(all.map(function(r) { return r.dateCheck; }))),
-      drumCfg: function(items) { return [{ id: 'dateCheck', items: items, value: findFilters.dateCheck || items[0] }]; }
-    },
     method: {
       title: 'Фильтр: метод проверки',
-      items: sortAlpha(unique(all.map(function(r) { return r.method; }))),
+      items: sortMethod(unique(all.map(function(r) { return r.method; }))),
       drumCfg: function(items) { return [{ id: 'method', items: items, value: findFilters.method || items[0], minWidth: 200 }]; }
     },
     org: {
