@@ -1332,7 +1332,7 @@ function openFilters() { alert('Фильтры — в разработке'); }
 function renderLobby() {
   var today = todayStr();
   var violations = appState.db.filter(function(r) {
-    return r.dateCheck === today && r.works === 'Нет';
+    return r.dateEntry === today && r.works === 'Нет';
   });
 
   var content = document.getElementById('lobby-content');
