@@ -999,7 +999,7 @@ function mergeWithQueue(serverRecords) {
   var unsynced = queue.filter(function(r) {
     return !fps[[r.dateCheck, r.method, r.org, r.obj, r.barrier, r.violator, r.desc].join('|')];
   });
-  var merged = serverRecords.concat(unsynced);
+  var merged = serverRecords.concat(unsynced).filter(function(r) { return r.dateCheck && r.dateCheck.trim(); });
   merged.sort(function(a, b) { return dateToMs(b.dateCheck) - dateToMs(a.dateCheck); });
   return merged;
 }
@@ -1366,6 +1366,7 @@ function openFind() {
 
 function applyFindFilters() {
   var recs = appState.db.filter(function(r) {
+    if (!r.dateCheck || !r.dateCheck.trim()) return false;
     var dateOk = true;
     if (findFilters.dateFrom || findFilters.dateTo) {
       var rn   = dateNumFromStr(r.dateCheck);
