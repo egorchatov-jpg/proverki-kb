@@ -989,7 +989,13 @@ function mergeWithQueue(serverRecords) {
   serverRecords.forEach(function(r) {
     fps[[r.dateCheck, r.org, r.barrier, r.method].join('|')] = true;
   });
-  // Append queue records not yet on server
+  // Records already on server — remove from queue to prevent duplicate re-sync
+  queue.forEach(function(r) {
+    if (fps[[r.dateCheck, r.org, r.barrier, r.method].join('|')]) {
+      removeFromSyncQueue(r.id);
+    }
+  });
+  // Only append genuinely unsynced records
   var unsynced = queue.filter(function(r) {
     return !fps[[r.dateCheck, r.org, r.barrier, r.method].join('|')];
   });

@@ -99,6 +99,16 @@ async function appendRecord(fileName, record) {
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
+    // Dedup check: cols 1=dateCheck, 2=dateEntry, 5=org, 3=method, 8=barrier
+    const fp = [record.dateCheck, record.org, record.barrier, record.method].join('|');
+    const isDupe = rows.slice(1).some(row =>
+      [String(row[1]||''), String(row[5]||''), String(row[8]||''), String(row[3]||'')].join('|') === fp
+    );
+    if (isDupe) {
+      console.warn('[save] duplicate detected, skipping');
+      return; // report success to client so it clears the retry queue
+    }
+
     // Append new row
     XLSX.utils.sheet_add_aoa(ws, [COLUMNS.map(c => record[c.k] ?? '')], {
       origin: { r: rows.length, c: 0 },
