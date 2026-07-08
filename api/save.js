@@ -47,8 +47,8 @@ function ghFetch(url, opts, timeoutMs = 8000) {
     .finally(() => clearTimeout(timer));
 }
 
-async function ghGet(fileName) {
-  const r = await ghFetch(ghApiUrl(fileName), { headers: GH_HEADERS });
+async function ghGet(fileName, timeoutMs = 8000) {
+  const r = await ghFetch(ghApiUrl(fileName), { headers: GH_HEADERS }, timeoutMs);
   if (r.status === 404) return null;
   if (!r.ok) throw new Error(`GitHub GET "${fileName}": HTTP ${r.status}`);
   return r.json();
@@ -148,7 +148,7 @@ async function appendRecord(fileName, record) {
 async function sendPushToAll(record) {
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) return;
 
-  const subsFile = await ghGet(SUBS_FILE);
+  const subsFile = await ghGet(SUBS_FILE, 4000);
   if (!subsFile || !subsFile.content) return;
 
   let data;
@@ -219,7 +219,12 @@ module.exports = async (req, res) => {
     await appendRecord(fileName, record);
 
     if (record.works === 'Нет') {
-      sendPushToAll(record).catch(e => console.warn('[push] send error:', e.message));
+      // Must be awaited — Vercel terminates the function immediately after res.json(),
+      // so fire-and-forget never completes. Race guards against exceeding the 10s limit.
+      await Promise.race([
+        sendPushToAll(record),
+        new Promise(resolve => setTimeout(resolve, 5000)),
+      ]).catch(e => console.warn('[push] send error:', e.message));
     }
 
     return res.status(200).json({ success: true, num: record.num, year });
