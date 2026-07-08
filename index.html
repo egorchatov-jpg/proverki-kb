@@ -994,7 +994,7 @@ function mergeWithQueue(serverRecords) {
     return !fps[[r.dateCheck, r.org, r.barrier, r.method].join('|')];
   });
   var merged = serverRecords.concat(unsynced);
-  merged.sort(function(a, b) { return dateToMs(a.dateCheck) - dateToMs(b.dateCheck); });
+  merged.sort(function(a, b) { return dateToMs(b.dateCheck) - dateToMs(a.dateCheck); });
   return merged;
 }
 
@@ -1474,7 +1474,7 @@ function openFindFilter(col) {
 function renderLobby() {
   var today = todayStr();
   var violations = appState.db.filter(function(r) {
-    return r.dateEntry === today && r.works === 'Нет';
+    return r.dateEntry.startsWith(today) && r.works === 'Нет';
   });
 
   var content = document.getElementById('lobby-content');
@@ -1559,7 +1559,6 @@ function checkPin() {
 function setTodayDate() {
   var d = new Date();
   cardData.dateCheck = formatDate(d);
-  cardData.dateEntry = todayStr();
   document.getElementById('val-date').textContent = cardData.dateCheck;
   document.getElementById('val-date').classList.remove('placeholder');
 }
@@ -1608,6 +1607,7 @@ function updateValidation() {
 
 function submitCard() {
   cardData.id = Date.now();
+  cardData.dateEntry = dateTimeStr();
   // auto-number within year
   var year = cardData.dateCheck ? cardData.dateCheck.split('.')[2] : new Date().getFullYear();
   var sameYear = appState.db.filter(function(r){ return r.year === year; });
@@ -1619,7 +1619,7 @@ function submitCard() {
   cardData.barrierInPK = pkBarriers.indexOf(barrierName) >= 0 ? 'Да' : 'Нет';
   // insert sorted by dateCheck, then re-assign sequential numbers
   appState.db.push(cardData);
-  appState.db.sort(function(a, b){ return dateToMs(a.dateCheck) - dateToMs(b.dateCheck); });
+  appState.db.sort(function(a, b){ return dateToMs(b.dateCheck) - dateToMs(a.dateCheck); });
   renumberDb();
   saveState();
   syncToServer(Object.assign({}, cardData)); // fire-and-forget sync to server Excel
@@ -2066,6 +2066,12 @@ function dateToMs(s) {
 }
 
 function pad(n) { return String(n).padStart(2,'0'); }
+
+function dateTimeStr() {
+  var d = new Date();
+  return pad(d.getDate()) + '.' + pad(d.getMonth()+1) + '.' + d.getFullYear() +
+         ', ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+}
 </script>
 
 </body>

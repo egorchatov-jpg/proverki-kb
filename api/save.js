@@ -98,11 +98,25 @@ async function appendRecord(fileName, record) {
 
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-    record.num = Math.max(0, rows.length - 1) + 1;
 
+    // Append new row
     XLSX.utils.sheet_add_aoa(ws, [COLUMNS.map(c => record[c.k] ?? '')], {
       origin: { r: rows.length, c: 0 },
     });
+
+    // Sort all data rows by dateCheck (col 1) descending, renumber col 0
+    const allRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    const header = allRows[0];
+    const data = allRows.slice(1);
+    const toDateNum = s => { const p = (s || '').split('.'); return p.length >= 3 ? parseInt(p[2].slice(0,4) + p[1] + p[0]) : 0; };
+    data.sort((a, b) => toDateNum(b[1]) - toDateNum(a[1]));
+    data.forEach((row, i) => { row[0] = i + 1; });
+    const idx = data.findIndex(row => row[1] === (record.dateCheck || '') && row[2] === (record.dateEntry || ''));
+    record.num = idx >= 0 ? idx + 1 : data.length;
+
+    const newWs = XLSX.utils.aoa_to_sheet([header, ...data]);
+    newWs['!cols'] = ws['!cols'];
+    wb.Sheets[wb.SheetNames[0]] = newWs;
 
     const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' }).toString('base64');
     try {
@@ -188,9 +202,8 @@ module.exports = async (req, res) => {
 
     if (!record.dateEntry) {
       const now = new Date();
-      const d = String(now.getDate()).padStart(2, '0');
-      const m = String(now.getMonth() + 1).padStart(2, '0');
-      record.dateEntry = `${d}.${m}.${now.getFullYear()}`;
+      const p = n => String(n).padStart(2, '0');
+      record.dateEntry = `${p(now.getDate())}.${p(now.getMonth()+1)}.${now.getFullYear()}, ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`;
     }
 
     await appendRecord(fileName, record);

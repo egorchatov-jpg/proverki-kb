@@ -20,7 +20,7 @@ const COLUMN_MAP = {
   'Нарушение допустил':                      'violator',
   'Корректирующие мероприятия':              'corrective',
   'Выполнение корректирующих мероприятий':   'correctiveDone',
-  'Мероприятия по оспариванию в СОКБ':       'contestMeasures',
+  'Обоснование для оспаривания в СОКБ':       'contestMeasures',
   'Статус оспаривания в СОКБ':               'contestStatus',
 };
 
@@ -62,7 +62,7 @@ function parseXlsx(base64) {
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(ws, { raw: true, defval: '' });
 
-  return rows.map((row, idx) => {
+  const recs = rows.map(row => {
     const rec = {};
     for (const [col, key] of Object.entries(COLUMN_MAP)) {
       const val = row[col];
@@ -74,10 +74,14 @@ function parseXlsx(base64) {
         rec[key] = String(val);
       }
     }
-    // Always use row position (1-based), not the stored №
-    rec.num = idx + 1;
     return rec;
   });
+
+  // Sort by dateCheck descending (newest first), then renumber
+  const dn = s => { const p = (s || '').split('.'); return p.length >= 3 ? parseInt(p[2].slice(0,4) + p[1] + p[0]) : 0; };
+  recs.sort((a, b) => dn(b.dateCheck) - dn(a.dateCheck));
+  recs.forEach((r, i) => { r.num = i + 1; });
+  return recs;
 }
 
 module.exports = async (req, res) => {
