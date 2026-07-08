@@ -427,13 +427,30 @@ html, body {
 
 /* нарушение допустил */
 .violator-groups { display: flex; flex-direction: column; gap: 12px; }
+.violator-group { display: flex; flex-direction: column; gap: 0; }
 .violator-group-label { font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 4px; }
 .violator-group-inputs { display: flex; flex-direction: column; gap: 6px; }
+.violator-name-row { display: flex; gap: 6px; }
+.violator-name-row .violator-input { flex: 1; min-width: 0; }
 .violator-input {
   width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
   padding: 10px 12px; font-size: 14px; font-family: inherit; color: #1a2035; background: #fff;
 }
 .violator-input:focus { outline: none; border-color: var(--orange); }
+.violator-ctrl-row { display: flex; gap: 10px; justify-content: center; margin-top: 4px; }
+.violator-ctrl-btn {
+  width: 53px; height: 53px; border: none; cursor: pointer;
+  border-radius: 14px; display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s; color: #fff;
+  -webkit-tap-highlight-color: transparent;
+}
+.violator-ctrl-btn:disabled { opacity: 0.35; pointer-events: none; }
+.violator-ctrl-btn.del { background: var(--gray-btn-dark); }
+.violator-ctrl-btn.add { background: var(--orange); }
+.violator-ctrl-btn:active:not(:disabled) { opacity: 0.8; }
+.violator-ctrl-btn svg { width: 24px; height: 24px; }
+/* Светло-красная заливка ячейки "Работоспособность барьера" = Нет */
+.field-cell-red { background: rgba(192,57,43,0.15); }
 
 /* success overlay */
 .success-overlay {
@@ -1583,6 +1600,8 @@ function resetCard() {
     var el = document.getElementById('val-' + k);
     if (el) { el.textContent = k === 'method' || k === 'org' || k === 'barrier' || k === 'works' ? 'Выбрать' : '—'; }
   });
+  var cw = document.getElementById('cell-works');
+  if (cw) cw.classList.remove('field-cell-red');
   setDimmed('inspector', true);
   setDimmed('desc', true);
   setDimmed('violator', true);
@@ -1949,6 +1968,8 @@ function openDrumWorks() {
     cardData.works = d['works'].getValue();
     document.getElementById('val-works').textContent = cardData.works;
     var broken = cardData.works === 'Нет';
+    var cw = document.getElementById('cell-works');
+    if (cw) cw.classList.toggle('field-cell-red', broken);
     setDimmed('desc', !broken);
     setDimmed('violator', !broken);
     if (!broken) {
@@ -2020,40 +2041,126 @@ function applyDesc() {
 }
 
 // Нарушение допустил
-function initViolatorGroups() {
+var violatorCount = 1;
+
+function capFirst(s) { s = (s || '').trim(); return s ? s[0].toUpperCase() + s.slice(1) : ''; }
+
+function getViolatorData() {
+  var data = [];
+  for (var i = 1; i <= violatorCount; i++) {
+    data.push({
+      name: ((document.getElementById('v-name-' + i) || {}).value || ''),
+      last: ((document.getElementById('v-last-' + i) || {}).value || ''),
+      pos:  ((document.getElementById('v-pos-'  + i) || {}).value || '')
+    });
+  }
+  return data;
+}
+
+function updateViolatorApplyBtn() {
+  var allFilled = true;
+  for (var i = 1; i <= violatorCount; i++) {
+    var name = ((document.getElementById('v-name-' + i) || {}).value || '').trim();
+    var last = ((document.getElementById('v-last-' + i) || {}).value || '').trim();
+    var pos  = ((document.getElementById('v-pos-'  + i) || {}).value || '').trim();
+    if (!name || !last || !pos) { allFilled = false; break; }
+  }
+  var btn = document.querySelector('#overlay-violator .overlay-btn-apply');
+  if (btn) btn.disabled = !allFilled;
+}
+
+function renderViolatorGroups(prefill) {
+  var DEL_ICON = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M22 10.5h-6m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z"/></svg>';
+  var ADD_ICON = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z"/></svg>';
   var container = document.getElementById('violator-groups');
   container.innerHTML = '';
-  for (var i = 1; i <= 4; i++) {
-    container.innerHTML +=
-      '<div>' +
-        '<div class="violator-group-label">' + i + '</div>' +
-        '<div class="violator-group-inputs">' +
-          '<input class="violator-input" id="v-fio-' + i + '" type="text" placeholder="ФИО">' +
-          '<input class="violator-input" id="v-pos-' + i + '" type="text" placeholder="Должность">' +
+  for (var i = 1; i <= violatorCount; i++) {
+    var vd = (prefill && prefill[i-1]) || {};
+    var grp = document.createElement('div');
+    grp.className = 'violator-group';
+    grp.innerHTML =
+      '<div class="violator-group-label">' + i + '</div>' +
+      '<div class="violator-group-inputs">' +
+        '<div class="violator-name-row">' +
+          '<input class="violator-input" id="v-name-' + i + '" type="text" placeholder="Имя" autocomplete="off">' +
+          '<input class="violator-input" id="v-last-' + i + '" type="text" placeholder="1-я буква фамилии" autocomplete="off">' +
         '</div>' +
+        '<input class="violator-input" id="v-pos-' + i + '" type="text" placeholder="Должность" autocomplete="off">' +
       '</div>';
+    container.appendChild(grp);
+    if (vd.name) document.getElementById('v-name-' + i).value = vd.name;
+    if (vd.last) document.getElementById('v-last-' + i).value = vd.last;
+    if (vd.pos)  document.getElementById('v-pos-'  + i).value = vd.pos;
   }
+  var ctrlRow = document.createElement('div');
+  ctrlRow.className = 'violator-ctrl-row';
+  var delBtn = document.createElement('button');
+  delBtn.className = 'violator-ctrl-btn del';
+  delBtn.innerHTML = DEL_ICON;
+  delBtn.disabled = violatorCount <= 1;
+  delBtn.onclick = removeViolator;
+  var addBtn = document.createElement('button');
+  addBtn.className = 'violator-ctrl-btn add';
+  addBtn.innerHTML = ADD_ICON;
+  addBtn.disabled = violatorCount >= 5;
+  addBtn.onclick = addViolator;
+  ctrlRow.appendChild(delBtn);
+  ctrlRow.appendChild(addBtn);
+  container.appendChild(ctrlRow);
+  container.querySelectorAll('.violator-input').forEach(function(inp) {
+    inp.addEventListener('input', updateViolatorApplyBtn);
+  });
+  updateViolatorApplyBtn();
+}
+
+function addViolator() {
+  if (violatorCount >= 5) return;
+  var data = getViolatorData();
+  violatorCount++;
+  renderViolatorGroups(data);
+}
+
+function removeViolator() {
+  if (violatorCount <= 1) return;
+  var data = getViolatorData();
+  data.pop();
+  violatorCount--;
+  renderViolatorGroups(data);
+}
+
+function initViolatorGroups() {
+  violatorCount = 1;
+  renderViolatorGroups([]);
 }
 
 function openViolatorOverlay() {
-  // pre-fill
-  var parts = (cardData.violator || '').split(';').map(function(s){ return s.trim(); });
-  for (var i = 1; i <= 4; i++) {
-    var pair = (parts[i-1] || '').split(',').map(function(s){ return s.trim(); });
-    var fio = document.getElementById('v-fio-' + i);
-    var pos = document.getElementById('v-pos-' + i);
-    if (fio) fio.value = pair[0] || '';
-    if (pos) pos.value = pair[1] || '';
+  violatorCount = 1;
+  var prefill = [];
+  if (cardData.violator) {
+    var parts = cardData.violator.split(';').map(function(s){ return s.trim(); }).filter(Boolean);
+    prefill = parts.map(function(p) {
+      var lastComma = p.lastIndexOf(', ');
+      var namePart = lastComma >= 0 ? p.slice(0, lastComma).trim() : p.trim();
+      var pos = lastComma >= 0 ? p.slice(lastComma + 2).trim() : '';
+      var spaceIdx = namePart.lastIndexOf(' ');
+      var name = spaceIdx >= 0 ? namePart.slice(0, spaceIdx).trim() : namePart;
+      var last = spaceIdx >= 0 ? namePart.slice(spaceIdx + 1).replace('.', '').trim() : '';
+      return { name: name, last: last, pos: pos };
+    });
+    if (prefill.length > 0) violatorCount = prefill.length;
   }
+  renderViolatorGroups(prefill);
   document.getElementById('overlay-violator').classList.add('active');
 }
 
 function applyViolator() {
   var parts = [];
-  for (var i = 1; i <= 4; i++) {
-    var fio = (document.getElementById('v-fio-'+i).value||'').trim();
-    var pos = (document.getElementById('v-pos-'+i).value||'').trim();
-    if (fio || pos) parts.push((fio || '') + ', ' + (pos || ''));
+  for (var i = 1; i <= violatorCount; i++) {
+    var name = capFirst(document.getElementById('v-name-' + i).value);
+    var last = capFirst(document.getElementById('v-last-' + i).value);
+    var pos  = (document.getElementById('v-pos-'  + i).value || '').trim();
+    if (!name && !last && !pos) continue;
+    parts.push(name + (last ? ' ' + last[0] + '.' : '') + ', ' + pos);
   }
   cardData.violator = parts.join('; ');
   document.getElementById('val-violator').textContent = cardData.violator || '—';
@@ -2089,6 +2196,19 @@ function dateTimeStr() {
   var d = new Date();
   return pad(d.getDate()) + '.' + pad(d.getMonth()+1) + '.' + d.getFullYear() +
          ', ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+}
+
+// Windows: Enter срабатывает кнопку "Применить" в активном оверлее
+if (/Windows/.test(navigator.userAgent)) {
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    if (e.target && e.target.tagName === 'TEXTAREA') return;
+    var active = document.querySelector('.overlay.active');
+    if (active) {
+      var btn = active.querySelector('.overlay-btn-apply');
+      if (btn && !btn.disabled) { e.preventDefault(); btn.click(); }
+    }
+  });
 }
 </script>
 
