@@ -77,11 +77,12 @@ function parseXlsx(base64) {
     return rec;
   });
 
-  // Sort by dateCheck descending (newest first), then renumber
+  // Filter out empty rows, sort by dateCheck descending, renumber
   const dn = s => { const p = (s || '').split('.'); return p.length >= 3 ? parseInt(p[2].slice(0,4) + p[1] + p[0]) : 0; };
-  recs.sort((a, b) => dn(b.dateCheck) - dn(a.dateCheck));
-  recs.forEach((r, i) => { r.num = i + 1; });
-  return recs;
+  const valid = recs.filter(r => r.dateCheck && r.dateCheck.trim());
+  valid.sort((a, b) => dn(b.dateCheck) - dn(a.dateCheck));
+  valid.forEach((r, i) => { r.num = i + 1; });
+  return valid;
 }
 
 module.exports = async (req, res) => {

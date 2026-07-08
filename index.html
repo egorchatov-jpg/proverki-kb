@@ -987,17 +987,17 @@ function mergeWithQueue(serverRecords) {
   // Build fingerprint map from server data (dateCheck+org+barrier+method)
   var fps = {};
   serverRecords.forEach(function(r) {
-    fps[[r.dateCheck, r.org, r.barrier, r.method].join('|')] = true;
+    fps[[r.dateCheck, r.method, r.org, r.obj, r.barrier, r.violator, r.desc].join('|')] = true;
   });
   // Records already on server — remove from queue to prevent duplicate re-sync
   queue.forEach(function(r) {
-    if (fps[[r.dateCheck, r.org, r.barrier, r.method].join('|')]) {
+    if (fps[[r.dateCheck, r.method, r.org, r.obj, r.barrier, r.violator, r.desc].join('|')]) {
       removeFromSyncQueue(r.id);
     }
   });
   // Only append genuinely unsynced records
   var unsynced = queue.filter(function(r) {
-    return !fps[[r.dateCheck, r.org, r.barrier, r.method].join('|')];
+    return !fps[[r.dateCheck, r.method, r.org, r.obj, r.barrier, r.violator, r.desc].join('|')];
   });
   var merged = serverRecords.concat(unsynced);
   merged.sort(function(a, b) { return dateToMs(b.dateCheck) - dateToMs(a.dateCheck); });

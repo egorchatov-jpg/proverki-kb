@@ -99,10 +99,10 @@ async function appendRecord(fileName, record) {
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-    // Dedup check: cols 1=dateCheck, 2=dateEntry, 5=org, 3=method, 8=barrier
-    const fp = [record.dateCheck, record.org, record.barrier, record.method].join('|');
+    // Dedup check: dateCheck(1)+method(3)+org(5)+obj(6)+barrier(8)+violator(11)+desc(12)
+    const fp = [record.dateCheck, record.method, record.org, record.obj, record.barrier, record.violator, record.desc].join('|');
     const isDupe = rows.slice(1).some(row =>
-      [String(row[1]||''), String(row[5]||''), String(row[8]||''), String(row[3]||'')].join('|') === fp
+      row[1] && [String(row[1]||''), String(row[3]||''), String(row[5]||''), String(row[6]||''), String(row[8]||''), String(row[11]||''), String(row[12]||'')].join('|') === fp
     );
     if (isDupe) {
       console.warn('[save] duplicate detected, skipping');
@@ -114,10 +114,10 @@ async function appendRecord(fileName, record) {
       origin: { r: rows.length, c: 0 },
     });
 
-    // Sort all data rows by dateCheck (col 1) descending, renumber col 0
+    // Sort all data rows by dateCheck (col 1) descending, skip empty rows, renumber col 0
     const allRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
     const header = allRows[0];
-    const data = allRows.slice(1);
+    const data = allRows.slice(1).filter(row => row[1] && String(row[1]).trim());
     const toDateNum = s => { const p = (s || '').split('.'); return p.length >= 3 ? parseInt(p[2].slice(0,4) + p[1] + p[0]) : 0; };
     data.sort((a, b) => toDateNum(b[1]) - toDateNum(a[1]));
     data.forEach((row, i) => { row[0] = i + 1; });
