@@ -461,22 +461,15 @@ html, body {
 .success-btn-exit { background: var(--gray-btn-dark); }
 .success-btn-next { background: var(--orange); }
 
-/* ===== WINDOWS: все экраны ~43vw по центру, скроллбар у правого края браузера ===== */
-.is-win .screen                  { left: 28.333%; right: 0; }
-.is-win .lobby-topbar            { padding-right: 28.333vw; }
-.is-win .lobby-content           { padding-right: 28.333vw; }
-.is-win .lobby-nav               { padding-right: 28.333vw; }
-.is-win .proverki-menu-content   { padding-right: 28.333vw; }
-.is-win .pin-content             { padding-right: 28.333vw; }
-.is-win .card-scroll             { padding-right: 28.333vw; }
-.is-win .card-bottom             { padding-right: 28.333vw; }
-.is-win .find-list-wrap          { padding-right: 28.333vw; }
-.is-win .find-bottom             { padding-right: 28.333vw; }
-.is-win .detail-scroll           { padding-right: 28.333vw; }
-.is-win .detail-back             { padding-right: 28.333vw; }
-/* Оверлеи: тот же столбец 28.333vw..100vw, контент симметрично центрирован */
-.is-win .overlay-box             { margin-left: 28.333vw; width: 71.667vw; padding-right: calc(28.333vw + 20px); }
-.is-win .success-overlay         { padding-left: 28.333vw; padding-right: 28.333vw; }
+/* ===== WINDOWS: все экраны и оверлеи ~43vw, по центру браузера ===== */
+.is-win .screen,
+.is-win .overlay,
+.is-win .success-overlay         { left: 28.333%; right: 28.333%; }
+/* Тонкий скроллбар без стрелок */
+.is-win ::-webkit-scrollbar        { width: 3px; }
+.is-win ::-webkit-scrollbar-track  { background: transparent; }
+.is-win ::-webkit-scrollbar-thumb  { background: rgba(0,0,0,0.25); border-radius: 2px; }
+.is-win ::-webkit-scrollbar-button { display: none; }
 
 /* ===== НАЙТИ ПРОВЕРКУ — список ===== */
 #screen-find { background: var(--bg); }
@@ -909,7 +902,7 @@ function updateSyncIndicator() {
   var el = document.getElementById('sync-indicator');
   if (!el) return;
   if (syncStatus === 'offline') {
-    el.style.fontSize = '15px';
+    el.style.fontSize = '17px';
     el.style.fontWeight = '700';
     el.style.color = '';
     el.innerHTML =
@@ -919,7 +912,7 @@ function updateSyncIndicator() {
         'Сохранено на устройстве, синхронизация произойдет автоматически при следующем входе в приложение после восстановлении соединения' +
       '</div>';
   } else {
-    el.style.fontSize = '20px';
+    el.style.fontSize = '17px';
     el.style.fontWeight = '700';
     var texts  = { idle: '', syncing: '↑ сохранение...', ok: '✓ синхронизировано', error: '⚠ не синхронизировано' };
     var colors = { idle: '', syncing: '#888', ok: '#27ae60', error: '#c0392b' };
