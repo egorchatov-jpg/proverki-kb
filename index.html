@@ -462,16 +462,21 @@ html, body {
 .success-btn-next { background: var(--orange); }
 
 /* ===== WINDOWS: все экраны ~43vw по центру, скроллбар у правого края браузера ===== */
-.is-win .screen         { left: 28.333%; right: 0; }
-.is-win .lobby-topbar   { padding-right: 28.333vw; }
-.is-win .lobby-content  { padding-right: 28.333vw; }
-.is-win .lobby-nav      { padding-right: 28.333vw; }
-.is-win .card-scroll    { padding-right: 28.333vw; }
-.is-win .card-bottom    { padding-right: 28.333vw; }
-.is-win .find-list-wrap { padding-right: 28.333vw; }
-.is-win .find-bottom    { padding-right: 28.333vw; }
-.is-win .detail-scroll  { padding-right: 28.333vw; }
-.is-win .detail-back    { padding-right: 28.333vw; }
+.is-win .screen                  { left: 28.333%; right: 0; }
+.is-win .lobby-topbar            { padding-right: 28.333vw; }
+.is-win .lobby-content           { padding-right: 28.333vw; }
+.is-win .lobby-nav               { padding-right: 28.333vw; }
+.is-win .proverki-menu-content   { padding-right: 28.333vw; }
+.is-win .pin-content             { padding-right: 28.333vw; }
+.is-win .card-scroll             { padding-right: 28.333vw; }
+.is-win .card-bottom             { padding-right: 28.333vw; }
+.is-win .find-list-wrap          { padding-right: 28.333vw; }
+.is-win .find-bottom             { padding-right: 28.333vw; }
+.is-win .detail-scroll           { padding-right: 28.333vw; }
+.is-win .detail-back             { padding-right: 28.333vw; }
+/* Оверлеи: тот же столбец 28.333vw..100vw, контент симметрично центрирован */
+.is-win .overlay-box             { margin-left: 28.333vw; width: 71.667vw; padding-right: calc(28.333vw + 20px); }
+.is-win .success-overlay         { padding-left: 28.333vw; padding-right: 28.333vw; }
 
 /* ===== НАЙТИ ПРОВЕРКУ — список ===== */
 #screen-find { background: var(--bg); }
