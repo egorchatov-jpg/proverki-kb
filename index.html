@@ -438,6 +438,8 @@ html, body {
 }
 .violator-input:focus { outline: none; border-color: var(--orange); }
 .violator-ctrl-row { display: flex; gap: 10px; justify-content: center; margin-top: 4px; }
+.violator-validation { text-align: center; font-size: 13px; font-weight: 700; margin-top: 8px; min-height: 18px; }
+.overlay-btn-apply:disabled { opacity: 0.35; cursor: default; }
 .violator-ctrl-btn {
   width: 53px; height: 53px; border: none; cursor: pointer;
   border-radius: 14px; display: flex; align-items: center; justify-content: center;
@@ -861,7 +863,7 @@ html, body {
 <!-- ===== OVERLAY: НАРУШЕНИЕ ДОПУСТИЛ ===== -->
 <div class="overlay" id="overlay-violator">
   <div class="overlay-box">
-    <div class="overlay-title">Введите ФИО и должность допустившего нарушение</div>
+    <div class="overlay-title">Введите кто допустил нарушение</div>
     <div class="violator-groups" id="violator-groups"></div>
     <div class="overlay-btns">
       <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-violator')">Отмена</button>
@@ -2067,6 +2069,11 @@ function updateViolatorApplyBtn() {
   }
   var btn = document.querySelector('#overlay-violator .overlay-btn-apply');
   if (btn) btn.disabled = !allFilled;
+  var msg = document.getElementById('violator-validation');
+  if (msg) {
+    msg.textContent = allFilled ? 'Заполнены все поля' : 'Заполнены не все поля';
+    msg.style.color = allFilled ? '#27ae60' : '#c0392b';
+  }
 }
 
 function renderViolatorGroups(prefill) {
@@ -2107,6 +2114,10 @@ function renderViolatorGroups(prefill) {
   ctrlRow.appendChild(delBtn);
   ctrlRow.appendChild(addBtn);
   container.appendChild(ctrlRow);
+  var validMsg = document.createElement('div');
+  validMsg.className = 'violator-validation';
+  validMsg.id = 'violator-validation';
+  container.appendChild(validMsg);
   container.querySelectorAll('.violator-input').forEach(function(inp) {
     inp.addEventListener('input', updateViolatorApplyBtn);
   });
