@@ -1304,7 +1304,11 @@ window.addEventListener('DOMContentLoaded', function() {
   setTodayDate();
   loadFromServer();
   document.addEventListener('visibilitychange', function() {
-    if (!document.hidden) loadFromServer();
+    if (!document.hidden) {
+      renderLobby(); // immediately clear stale violations when date changes overnight
+      loadFromServer();
+      if (swRegistration) subscribeToPush(swRegistration); // re-validate push subscription after iOS suspends SW
+    }
   });
 });
 
