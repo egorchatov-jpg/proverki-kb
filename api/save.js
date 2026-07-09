@@ -108,15 +108,26 @@ async function appendRecord(fileName, record) {
       origin: { r: rows.length, c: 0 },
     });
 
-    // Sort all data rows: ascending by dateCheck (col 1), then ascending by org (col 5 = А→Я)
+    // Sort: dateCheck asc (col 1) → barrier А-Я (col 8) → method А-Я (col 3) → obj А-Я (col 6) → dateEntry desc (col 2)
     const allRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
     const header = allRows[0];
     const data = allRows.slice(1).filter(row => row[1] && String(row[1]).trim());
     const toDateNum = s => { const p = (s || '').split('.'); return p.length >= 3 ? parseInt(p[2].slice(0,4) + p[1] + p[0]) : 0; };
+    const toDateEntryNum = s => {
+      const m = String(s || '').match(/(\d{1,2})\.(\d{1,2})\.(\d{4}),?\s*(\d{1,2}):(\d{2}):(\d{2})/);
+      if (!m) return 0;
+      return +m[3]*10000000000 + +m[2]*100000000 + +m[1]*1000000 + +m[4]*10000 + +m[5]*100 + +m[6];
+    };
     data.sort((a, b) => {
-      const dateDiff = toDateNum(a[1]) - toDateNum(b[1]);
-      if (dateDiff !== 0) return dateDiff;
-      return String(a[5] || '').localeCompare(String(b[5] || ''), 'ru');
+      let d = toDateNum(a[1]) - toDateNum(b[1]);                                    // date asc
+      if (d) return d;
+      d = String(a[8] || '').localeCompare(String(b[8] || ''), 'ru');               // barrier А-Я
+      if (d) return d;
+      d = String(a[3] || '').localeCompare(String(b[3] || ''), 'ru');               // method А-Я
+      if (d) return d;
+      d = String(a[6] || '').localeCompare(String(b[6] || ''), 'ru');               // obj А-Я
+      if (d) return d;
+      return toDateEntryNum(b[2]) - toDateEntryNum(a[2]);                           // dateEntry desc
     });
     data.forEach((row, i) => { row[0] = i + 1; });
     const idx = data.findIndex(row => row[1] === (record.dateCheck || '') && row[2] === (record.dateEntry || ''));
