@@ -748,7 +748,7 @@ html, body {
 
       <div class="field-wrap">
         <div class="field-label">Куратор от заказчика</div>
-        <div class="field-cell" id="cell-curator" onclick="openTextOverlay('curator','Введите ФИО куратора от заказчика','val-curator',true)">
+        <div class="field-cell" id="cell-curator" onclick="openCuratorOverlay()">
           <span class="placeholder" id="val-curator">—</span>
         </div>
       </div>
@@ -868,6 +868,27 @@ html, body {
     <div class="overlay-btns">
       <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-violator')">Отмена</button>
       <button class="overlay-btn overlay-btn-apply" onclick="applyViolator()">Применить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CURATOR OVERLAY ===== -->
+<div class="overlay" id="overlay-curator">
+  <div class="overlay-box">
+    <div class="overlay-title">Введите куратора от заказчика</div>
+    <div class="violator-groups">
+      <div class="violator-group-inputs">
+        <div class="violator-name-row">
+          <input class="violator-input" id="c-name" type="text" placeholder="Имя" autocomplete="off" oninput="updateCuratorApplyBtn()">
+          <input class="violator-input" id="c-last" type="text" placeholder="1-я буква фамилии" autocomplete="off" oninput="updateCuratorApplyBtn()">
+        </div>
+        <input class="violator-input" id="c-dept" type="text" placeholder="Департамент" autocomplete="off" oninput="updateCuratorApplyBtn()">
+      </div>
+      <div class="violator-validation" id="curator-validation"></div>
+    </div>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-curator')">Отмена</button>
+      <button class="overlay-btn overlay-btn-apply" id="curator-apply-btn" onclick="applyCurator()">Применить</button>
     </div>
   </div>
 </div>
@@ -2200,6 +2221,48 @@ function applyViolator() {
   cardData.violator = parts.join('; ');
   document.getElementById('val-violator').textContent = cardData.violator || '—';
   closeOverlay('overlay-violator');
+  updateValidation();
+}
+
+// Куратор от заказчика
+function updateCuratorApplyBtn() {
+  var name = (document.getElementById('c-name').value || '').trim();
+  var last = (document.getElementById('c-last').value || '').trim();
+  var dept = (document.getElementById('c-dept').value || '').trim();
+  var allFilled = !!(name && last && dept);
+  var btn = document.getElementById('curator-apply-btn');
+  if (btn) btn.disabled = !allFilled;
+  var msg = document.getElementById('curator-validation');
+  if (msg) {
+    msg.textContent = allFilled ? 'Заполнены все поля' : 'Заполнены не все поля';
+    msg.style.color = allFilled ? '#27ae60' : '#c0392b';
+  }
+}
+
+function openCuratorOverlay() {
+  var name = '', last = '', dept = '';
+  if (cardData.curator) {
+    var lastComma = cardData.curator.lastIndexOf(', ');
+    var namePart = lastComma >= 0 ? cardData.curator.slice(0, lastComma).trim() : cardData.curator.trim();
+    dept = lastComma >= 0 ? cardData.curator.slice(lastComma + 2).trim() : '';
+    var spaceIdx = namePart.lastIndexOf(' ');
+    name = spaceIdx >= 0 ? namePart.slice(0, spaceIdx).trim() : namePart;
+    last = spaceIdx >= 0 ? namePart.slice(spaceIdx + 1).replace('.', '').trim() : '';
+  }
+  document.getElementById('c-name').value = name;
+  document.getElementById('c-last').value = last;
+  document.getElementById('c-dept').value = dept;
+  updateCuratorApplyBtn();
+  document.getElementById('overlay-curator').classList.add('active');
+}
+
+function applyCurator() {
+  var name = capFirst(document.getElementById('c-name').value);
+  var last = capFirst(document.getElementById('c-last').value);
+  var dept = (document.getElementById('c-dept').value || '').trim();
+  cardData.curator = name + (last ? ' ' + last[0] + '.' : '') + (dept ? ', ' + dept : '');
+  document.getElementById('val-curator').textContent = cardData.curator || '—';
+  closeOverlay('overlay-curator');
   updateValidation();
 }
 
