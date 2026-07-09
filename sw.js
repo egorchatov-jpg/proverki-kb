@@ -1,4 +1,4 @@
-const CACHE = 'pkb-v21';
+const CACHE = 'pkb-v22';
 const PRECACHE = ['/', '/manifest.json', '/apple-touch-icon.png', '/favicon.png', '/icon-192.png', '/icon-512.png', '/badge.svg'];
 
 self.addEventListener('install', e => {
@@ -29,8 +29,12 @@ self.addEventListener('push', e => {
       requireInteraction: true,
       data: { url: '/' },
     }).then(() => {
-      // Increment app icon badge so the user sees there are unread notifications
-      if (navigator.setAppBadge) navigator.setAppBadge().catch(() => {});
+      // Count existing notifications and set badge to the total (iOS requires a number, not a dot)
+      return self.registration.getNotifications().then(ns => {
+        if (navigator.setAppBadge) navigator.setAppBadge(ns.length).catch(() => {});
+      }).catch(() => {
+        if (navigator.setAppBadge) navigator.setAppBadge(1).catch(() => {});
+      });
     })
   );
 });
