@@ -108,7 +108,7 @@ async function appendRecord(fileName, record) {
       origin: { r: rows.length, c: 0 },
     });
 
-    // Sort: dateCheck asc (col 1) → barrier А-Я (col 8) → method А-Я (col 3) → obj А-Я (col 6) → dateEntry desc (col 2)
+    // Sort: dateCheck asc (col 1) → org А-Я (col 5) → barrier А-Я (col 8) → method А-Я (col 3) → obj А-Я (col 6) → dateEntry desc (col 2)
     const allRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
     const header = allRows[0];
     const data = allRows.slice(1).filter(row => row[1] && String(row[1]).trim());
@@ -120,6 +120,8 @@ async function appendRecord(fileName, record) {
     };
     data.sort((a, b) => {
       let d = toDateNum(a[1]) - toDateNum(b[1]);                                    // date asc
+      if (d) return d;
+      d = String(a[5] || '').localeCompare(String(b[5] || ''), 'ru');               // org А-Я
       if (d) return d;
       d = String(a[8] || '').localeCompare(String(b[8] || ''), 'ru');               // barrier А-Я
       if (d) return d;

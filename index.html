@@ -2401,9 +2401,11 @@ function dateEntryToMs(s) {
   return new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5], +m[6]).getTime();
 }
 
-// Master comparator: date asc → barrier А-Я → method А-Я → obj А-Я → dateEntry desc
+// Master comparator: date asc → org А-Я → barrier А-Я → method А-Я → obj А-Я → dateEntry desc
 function cmpRecords(a, b) {
   var d = dateToMs(a.dateCheck) - dateToMs(b.dateCheck);
+  if (d) return d;
+  d = (a.org     || '').localeCompare(b.org     || '', 'ru');
   if (d) return d;
   d = (a.barrier || '').localeCompare(b.barrier || '', 'ru');
   if (d) return d;
