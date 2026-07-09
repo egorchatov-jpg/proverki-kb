@@ -1355,6 +1355,21 @@ if (window.visualViewport && !_isIOS) {
   window.visualViewport.addEventListener('scroll', syncOverlayHeight);
 }
 
+// Clear push notifications from the notification drawer and reset the app icon badge.
+// Called on app start and every time the app comes to the foreground.
+function clearNotificationsAndBadge() {
+  // Remove all pending notifications shown by this PWA
+  if (swRegistration) {
+    swRegistration.getNotifications().then(function(list) {
+      list.forEach(function(n) { n.close(); });
+    }).catch(function() {});
+  }
+  // Clear the app icon badge (number / dot shown on the home screen icon)
+  if (navigator.clearAppBadge) {
+    navigator.clearAppBadge().catch(function() {});
+  }
+}
+
 // ===== INIT =====
 window.addEventListener('DOMContentLoaded', function() {
   loadState();
@@ -1364,6 +1379,7 @@ window.addEventListener('DOMContentLoaded', function() {
   initViolatorGroups();
   setTodayDate();
   loadFromServer();
+  clearNotificationsAndBadge();
   // Retry offline queue every 30 seconds even if the page stays focused (e.g. Windows browser tab)
   setInterval(function() {
     if (getSyncQueue().length > 0) retrySyncQueue();
@@ -1372,6 +1388,7 @@ window.addEventListener('DOMContentLoaded', function() {
     if (!document.hidden) {
       renderLobby(); // immediately clear stale violations when date changes overnight
       loadFromServer();
+      clearNotificationsAndBadge();
       if (swRegistration) subscribeToPush(swRegistration); // re-validate push subscription after iOS suspends SW
     }
   });
