@@ -968,7 +968,7 @@ function syncToServer(record) {
   syncStatus = 'syncing';
   updateSyncIndicator();
   var ctrl = new AbortController();
-  var timer = setTimeout(function() { ctrl.abort(); }, 8000);
+  var timer = setTimeout(function() { ctrl.abort(); }, 14000);
   fetch('/api/save', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1311,6 +1311,10 @@ window.addEventListener('DOMContentLoaded', function() {
   initViolatorGroups();
   setTodayDate();
   loadFromServer();
+  // Retry offline queue every 30 seconds even if the page stays focused (e.g. Windows browser tab)
+  setInterval(function() {
+    if (getSyncQueue().length > 0) retrySyncQueue();
+  }, 30000);
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {
       renderLobby(); // immediately clear stale violations when date changes overnight
