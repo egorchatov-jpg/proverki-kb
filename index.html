@@ -440,6 +440,10 @@ html, body {
 .violator-ctrl-row { display: flex; gap: 10px; justify-content: center; margin-top: 4px; }
 .violator-validation { text-align: center; font-size: 13px; font-weight: 700; margin-top: 8px; min-height: 18px; }
 .overlay-btn-apply:disabled { opacity: 0.35; cursor: default; }
+.push-prompt-text {
+  font-size: 15px; color: #1a2035; text-align: center;
+  line-height: 1.55; margin: 0 0 6px;
+}
 .violator-ctrl-btn {
   width: 53px; height: 53px; border: none; cursor: pointer;
   border-radius: 14px; display: flex; align-items: center; justify-content: center;
@@ -915,6 +919,17 @@ html, body {
   </div>
 </div>
 
+<!-- ===== PUSH PERMISSION OVERLAY ===== -->
+<div class="overlay" id="overlay-push-prompt">
+  <div class="overlay-box">
+    <div class="overlay-title">Уведомления о нарушениях</div>
+    <p class="push-prompt-text">Разрешите отправку уведомлений чтобы оперативно получать информацию о выявленных нарушениях требований Каркаса Безопасности</p>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="requestPushPermission()">Понятно</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== SUCCESS OVERLAY ===== -->
 <div class="success-overlay" id="success-overlay">
   <div class="success-box">
@@ -1293,31 +1308,30 @@ function subscribeToPush(reg) {
   });
 }
 
-// Request notification permission on first launch.
-// Relies solely on Notification.permission ('default' = not yet decided) —
-// no localStorage flag, so it always works correctly after reinstall/data-clear.
+// Show the custom push permission overlay on first launch (when permission = 'default').
+// Relies solely on Notification.permission — no localStorage flag, so it always
+// triggers again after reinstall or app data clear.
+var _pushPermReg = null;
+
 function initPushOnFirstLaunch(reg) {
   if (!('PushManager' in window) || !('Notification' in window)) return;
   if (typeof Notification.requestPermission !== 'function') return;
   if (Notification.permission !== 'default') return;
-
-  var done = false;
-  function onPermission(perm) {
-    if (perm === 'granted') subscribeToPush(reg);
-  }
-  function tryRequest() {
-    if (done) return;
-    done = true;
-    document.removeEventListener('click', tryRequest, true);
+  _pushPermReg = reg;
+  // Small delay so the lobby renders before the overlay slides up
+  setTimeout(function() {
     if (Notification.permission !== 'default') return;
-    try { Notification.requestPermission().then(onPermission); } catch(e) {}
-  }
+    document.getElementById('overlay-push-prompt').classList.add('active');
+  }, 800);
+}
 
-  // Show system dialog on the very first tap/click inside the app.
-  // touchend fires before click, so `done` flag prevents double-fire.
-  // capture:true ensures we intercept before app button handlers.
-  document.addEventListener('touchend', tryRequest, { once: true, capture: true, passive: true });
-  document.addEventListener('click', tryRequest, { capture: true });
+function requestPushPermission() {
+  closeOverlay('overlay-push-prompt');
+  if (typeof Notification.requestPermission !== 'function') return;
+  // Must be called synchronously inside a user-gesture handler (tap on "Понятно")
+  Notification.requestPermission().then(function(perm) {
+    if (perm === 'granted' && _pushPermReg) subscribeToPush(_pushPermReg);
+  }).catch(function() {});
 }
 
 // ===== APP STATE =====
