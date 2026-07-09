@@ -984,13 +984,23 @@ function syncToServer(record) {
       delete shas['sha' + d.year];
       saveServerShas(shas);
       console.log('[sync] сохранено на сервере №' + d.num + ' (' + d.year + ')');
-      // Push notifications sent via separate endpoint so /api/save stays within Vercel 10s limit
+      // Push notifications sent via separate endpoint so /api/save stays within Vercel 10s limit.
+      // senderEndpoint is included so the server can exclude this device from recipients.
       if (record.works === 'Нет') {
-        fetch('/api/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ record: record })
-        }).catch(function(e) { console.warn('[notify] failed:', e.message); });
+        var doNotify = function(senderEp) {
+          fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ record: record, senderEndpoint: senderEp || null })
+          }).catch(function(e) { console.warn('[notify] failed:', e.message); });
+        };
+        if (swRegistration) {
+          swRegistration.pushManager.getSubscription()
+            .then(function(sub) { doNotify(sub ? sub.endpoint : null); })
+            .catch(function() { doNotify(null); });
+        } else {
+          doNotify(null);
+        }
       }
     } else {
       syncStatus = 'error';
@@ -1671,8 +1681,6 @@ function submitCard() {
   // save autocomplete
   saveAutocomplete('inspector', cardData.inspector);
   saveAutocomplete('curator', cardData.curator);
-  // notify (if supported)
-  if (cardData.works === 'Нет') sendNotification(cardData);
   document.getElementById('success-overlay').classList.add('active');
 }
 

@@ -57,7 +57,7 @@ module.exports = async (req, res) => {
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) return res.status(200).json({ sent: 0, reason: 'VAPID not configured' });
 
   try {
-    const { record } = req.body || {};
+    const { record, senderEndpoint } = req.body || {};
     if (!record) return res.status(400).json({ error: 'Missing record' });
     if (record.works !== 'Нет') return res.status(200).json({ sent: 0, reason: 'No violation' });
 
@@ -75,6 +75,16 @@ module.exports = async (req, res) => {
     const subs = data.subscriptions || [];
     if (subs.length === 0) return res.status(200).json({ sent: 0, reason: 'Empty subscribers' });
 
+    // Exclude the sending device so it doesn't receive its own notification
+    const recipients = senderEndpoint
+      ? subs.filter(sub => sub.endpoint !== senderEndpoint)
+      : subs;
+
+    if (recipients.length === 0) {
+      console.log(`[notify] no recipients after excluding sender`);
+      return res.status(200).json({ sent: 0, reason: 'No recipients after excluding sender' });
+    }
+
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
 
     const payload = JSON.stringify({
@@ -88,29 +98,39 @@ module.exports = async (req, res) => {
     });
 
     const results = await Promise.allSettled(
-      subs.map(sub => webpush.sendNotification(sub, payload))
+      recipients.map(sub => webpush.sendNotification(sub, payload))
     );
 
     const sent = results.filter(r => r.status === 'fulfilled').length;
 
-    // Remove expired subscriptions (410 = endpoint gone, 404 = not found)
-    const alive = subs.filter((_, i) => {
-      const r = results[i];
+    // Log each failure for diagnostics (visible in Vercel function logs)
+    results.forEach((r, i) => {
       if (r.status === 'rejected') {
+        const ep = (recipients[i].endpoint || '').slice(-30);
         const code = r.reason && r.reason.statusCode;
-        return code !== 410 && code !== 404;
+        console.warn(`[notify] failed ...${ep}: HTTP ${code} — ${r.reason && r.reason.message}`);
       }
-      return true;
     });
 
-    if (alive.length !== subs.length) {
-      data.subscriptions = alive;
+    // Remove expired subscriptions (410 = endpoint gone, 404 = not found)
+    const deadEndpoints = new Set(
+      recipients
+        .filter((_, i) => {
+          const r = results[i];
+          return r.status === 'rejected' &&
+            r.reason && (r.reason.statusCode === 410 || r.reason.statusCode === 404);
+        })
+        .map(s => s.endpoint)
+    );
+
+    if (deadEndpoints.size > 0) {
+      data.subscriptions = subs.filter(s => !deadEndpoints.has(s.endpoint));
       const b64 = Buffer.from(JSON.stringify(data, null, 2), 'utf8').toString('base64');
       await ghPut(SUBS_FILE, b64, subsFile.sha, 'Remove expired push subscriptions').catch(() => {});
     }
 
-    console.log(`[notify] sent ${sent}/${subs.length}`);
-    return res.status(200).json({ sent, total: subs.length });
+    console.log(`[notify] sent ${sent}/${recipients.length} (excluded sender: ${senderEndpoint ? 'yes' : 'no'}, total subs: ${subs.length})`);
+    return res.status(200).json({ sent, total: recipients.length });
   } catch (err) {
     console.error('[notify] error:', err.message);
     return res.status(500).json({ error: err.message });
