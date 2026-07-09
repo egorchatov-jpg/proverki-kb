@@ -893,6 +893,28 @@ html, body {
   </div>
 </div>
 
+<!-- ===== INSPECTOR OVERLAY ===== -->
+<div class="overlay" id="overlay-inspector">
+  <div class="overlay-box">
+    <div class="overlay-title">Введите кто выполнил проверку</div>
+    <div class="violator-groups">
+      <div class="violator-group-inputs">
+        <div class="violator-name-row">
+          <input class="violator-input" id="i-name" type="text" placeholder="Имя" autocomplete="off" oninput="updateInspectorApplyBtn()">
+          <input class="violator-input" id="i-last" type="text" placeholder="1-я буква фамилии" autocomplete="off" oninput="updateInspectorApplyBtn()">
+        </div>
+        <input class="violator-input" id="i-dept" type="text" placeholder="Департамент" autocomplete="off" oninput="updateInspectorApplyBtn()">
+        <input class="violator-input" id="i-org" type="text" placeholder="Организация" autocomplete="off" oninput="updateInspectorApplyBtn()">
+      </div>
+      <div class="violator-validation" id="inspector-validation"></div>
+    </div>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-inspector')">Отмена</button>
+      <button class="overlay-btn overlay-btn-apply" id="inspector-apply-btn" onclick="applyInspector()">Применить</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== SUCCESS OVERLAY ===== -->
 <div class="success-overlay" id="success-overlay">
   <div class="success-box">
@@ -2028,10 +2050,55 @@ function openDrumWorks() {
   });
 }
 
-// Text overlays
-function openInspectorOverlay() {
-  openTextOverlay('inspector','Введите ФИО кто выполнил проверку','val-inspector',true);
+// Проверку выполнил
+function updateInspectorApplyBtn() {
+  var name = (document.getElementById('i-name').value || '').trim();
+  var last = (document.getElementById('i-last').value || '').trim();
+  var dept = (document.getElementById('i-dept').value || '').trim();
+  var org  = (document.getElementById('i-org').value  || '').trim();
+  var allFilled = !!(name && last && dept && org);
+  var btn = document.getElementById('inspector-apply-btn');
+  if (btn) btn.disabled = !allFilled;
+  var msg = document.getElementById('inspector-validation');
+  if (msg) {
+    msg.textContent = allFilled ? 'Заполнены все поля' : 'Заполнены не все поля';
+    msg.style.color = allFilled ? '#27ae60' : '#c0392b';
+  }
 }
+
+function openInspectorOverlay() {
+  var name = '', last = '', dept = '', org = '';
+  if (cardData.inspector) {
+    // Expected format: "Имя Ф., Департамент, Организация"
+    var parts = cardData.inspector.split(', ');
+    var namePart = parts[0] || '';
+    dept = parts[1] || '';
+    org  = parts.slice(2).join(', ') || '';
+    var spaceIdx = namePart.lastIndexOf(' ');
+    name = spaceIdx >= 0 ? namePart.slice(0, spaceIdx).trim() : namePart;
+    last = spaceIdx >= 0 ? namePart.slice(spaceIdx + 1).replace('.', '').trim() : '';
+  }
+  document.getElementById('i-name').value = name;
+  document.getElementById('i-last').value = last;
+  document.getElementById('i-dept').value = dept;
+  document.getElementById('i-org').value  = org;
+  updateInspectorApplyBtn();
+  document.getElementById('overlay-inspector').classList.add('active');
+}
+
+function applyInspector() {
+  var name = capFirst(document.getElementById('i-name').value);
+  var last = capFirst(document.getElementById('i-last').value);
+  var dept = (document.getElementById('i-dept').value || '').trim();
+  var org  = (document.getElementById('i-org').value  || '').trim();
+  cardData.inspector = name + (last ? ' ' + last[0] + '.' : '') +
+    (dept ? ', ' + dept : '') + (org ? ', ' + org : '');
+  document.getElementById('val-inspector').textContent = cardData.inspector || '—';
+  closeOverlay('overlay-inspector');
+  updateValidation();
+}
+
+// Text overlays
 
 function openTextOverlay(key, title, valId, withAutocomplete) {
   currentTextKey = key;
