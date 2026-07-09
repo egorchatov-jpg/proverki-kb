@@ -984,6 +984,14 @@ function syncToServer(record) {
       delete shas['sha' + d.year];
       saveServerShas(shas);
       console.log('[sync] сохранено на сервере №' + d.num + ' (' + d.year + ')');
+      // Push notifications sent via separate endpoint so /api/save stays within Vercel 10s limit
+      if (record.works === 'Нет') {
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ record: record })
+        }).catch(function(e) { console.warn('[notify] failed:', e.message); });
+      }
     } else {
       syncStatus = 'error';
       addToSyncQueue(record);

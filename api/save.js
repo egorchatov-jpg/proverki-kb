@@ -1,14 +1,8 @@
-const XLSX     = require('xlsx');
-const webpush  = require('web-push');
+const XLSX = require('xlsx');
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'egorchatov-jpg';
 const GITHUB_REPO  = process.env.GITHUB_DATA_REPO || 'proverki-kb-data';
-const SUBS_FILE    = 'subscriptions.json';
-
-const VAPID_PUBLIC  = process.env.VAPID_PUBLIC_KEY;
-const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:egorchatov@gmail.com';
 
 const COLUMNS = [
   { h: '№',                                       k: 'num'             },
@@ -145,53 +139,6 @@ async function appendRecord(fileName, record) {
   }
 }
 
-async function sendPushToAll(record) {
-  if (!VAPID_PUBLIC || !VAPID_PRIVATE) return;
-
-  const subsFile = await ghGet(SUBS_FILE, 4000);
-  if (!subsFile || !subsFile.content) return;
-
-  let data;
-  try {
-    const txt = Buffer.from(subsFile.content.replace(/\n/g, ''), 'base64').toString('utf8');
-    data = JSON.parse(txt);
-  } catch (e) { return; }
-
-  const subs = data.subscriptions || [];
-  if (subs.length === 0) return;
-
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
-
-  const payload = JSON.stringify({
-    title: '⚠ Нарушение КБ',
-    body: [
-      record.org || '',
-      record.barrier ? 'Барьер: ' + record.barrier : '',
-      record.desc || '',
-    ].filter(Boolean).join('\n'),
-    tag: 'violation-' + (record.id || Date.now()),
-  });
-
-  const results = await Promise.allSettled(
-    subs.map(sub => webpush.sendNotification(sub, payload))
-  );
-
-  const alive = subs.filter((_, i) => {
-    const r = results[i];
-    if (r.status === 'rejected') {
-      const code = r.reason && r.reason.statusCode;
-      return code !== 410 && code !== 404;
-    }
-    return true;
-  });
-
-  if (alive.length !== subs.length) {
-    data.subscriptions = alive;
-    const b64 = Buffer.from(JSON.stringify(data, null, 2), 'utf8').toString('base64');
-    await ghPut(SUBS_FILE, b64, subsFile.sha, 'Remove expired push subscriptions').catch(() => {});
-  }
-}
-
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -218,15 +165,8 @@ module.exports = async (req, res) => {
 
     await appendRecord(fileName, record);
 
-    if (record.works === 'Нет') {
-      // Must be awaited — Vercel terminates the function immediately after res.json(),
-      // so fire-and-forget never completes. Race guards against exceeding the 10s limit.
-      await Promise.race([
-        sendPushToAll(record),
-        new Promise(resolve => setTimeout(resolve, 5000)),
-      ]).catch(e => console.warn('[push] send error:', e.message));
-    }
-
+    // Push notifications are sent separately by the client via /api/notify,
+    // so this function stays within Vercel's 10-second limit.
     return res.status(200).json({ success: true, num: record.num, year });
   } catch (err) {
     console.error('[save] error:', err.message);
