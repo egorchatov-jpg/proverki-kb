@@ -108,12 +108,16 @@ async function appendRecord(fileName, record) {
       origin: { r: rows.length, c: 0 },
     });
 
-    // Sort all data rows by dateCheck (col 1) descending, skip empty rows, renumber col 0
+    // Sort all data rows: ascending by dateCheck (col 1), then ascending by org (col 5 = А→Я)
     const allRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
     const header = allRows[0];
     const data = allRows.slice(1).filter(row => row[1] && String(row[1]).trim());
     const toDateNum = s => { const p = (s || '').split('.'); return p.length >= 3 ? parseInt(p[2].slice(0,4) + p[1] + p[0]) : 0; };
-    data.sort((a, b) => toDateNum(b[1]) - toDateNum(a[1]));
+    data.sort((a, b) => {
+      const dateDiff = toDateNum(a[1]) - toDateNum(b[1]);
+      if (dateDiff !== 0) return dateDiff;
+      return String(a[5] || '').localeCompare(String(b[5] || ''), 'ru');
+    });
     data.forEach((row, i) => { row[0] = i + 1; });
     const idx = data.findIndex(row => row[1] === (record.dateCheck || '') && row[2] === (record.dateEntry || ''));
     record.num = idx >= 0 ? idx + 1 : data.length;
