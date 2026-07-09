@@ -97,8 +97,10 @@ module.exports = async (req, res) => {
       tag: 'violation-' + (record.id || Date.now()),
     });
 
+    // urgency:'high' wakes Android in Doze mode via FCM high-priority delivery
+    const pushOptions = { urgency: 'high' };
     const results = await Promise.allSettled(
-      recipients.map(sub => webpush.sendNotification(sub, payload))
+      recipients.map(sub => webpush.sendNotification(sub, payload, pushOptions))
     );
 
     const sent = results.filter(r => r.status === 'fulfilled').length;

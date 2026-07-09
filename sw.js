@@ -1,5 +1,5 @@
-const CACHE = 'pkb-v19';
-const PRECACHE = ['/', '/manifest.json', '/apple-touch-icon.png', '/favicon.png', '/icon-192.png', '/icon-512.png'];
+const CACHE = 'pkb-v20';
+const PRECACHE = ['/', '/manifest.json', '/apple-touch-icon.png', '/favicon.png', '/icon-192.png', '/icon-512.png', '/badge.svg'];
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -22,7 +22,7 @@ self.addEventListener('push', e => {
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: '/icon-192.png',
-      badge: '/favicon.png',
+      badge: '/badge.svg',
       tag: data.tag || 'violation',
       renotify: true,
       vibrate: [200, 100, 200, 100, 200],
