@@ -259,6 +259,8 @@ html, body {
 .screen-pin--dark .pin-dot.filled { background: #222; }
 .screen-pin--dark .pin-key  { background: #222; }
 .screen-pin--dark .pin-key.del { background: var(--gray-btn); }
+/* Empty spacer stays invisible in dark mode */
+.screen-pin--dark .pin-key.empty { background: transparent !important; box-shadow: none !important; }
 
 /* ===== SCREEN: КАРТОЧКА ПРОВЕРКИ ===== */
 #screen-card { background: var(--bg); }
@@ -629,56 +631,116 @@ html, body {
   overscroll-behavior-y: none;
 }
 
-/* ===== SCREEN: SETTINGS ===== */
-#screen-settings { background: var(--bg); }
-.settings-header {
-  display: flex; align-items: center;
-  padding: 14px 14px 0;
-  flex-shrink: 0;
+/* ===== SCREENS: SETTINGS FAMILY ===== */
+#screen-settings,
+#screen-export,
+#screen-barriers-years,
+#screen-barriers-list,
+#screen-methods { background: var(--bg); }
+
+/* Shared title at top of each settings sub-screen */
+.settings-screen-title {
+  font-size: 16px; font-weight: 700; color: #1a2035; text-align: center;
+  padding: 20px 16px 10px; flex-shrink: 0; line-height: 1.4;
 }
-.settings-header-title {
-  flex: 1; text-align: center;
-  font-size: 17px; font-weight: 700; color: #1a2035;
-  margin-right: 44px; /* offset for back button */
-}
-.settings-back-btn {
-  width: 44px; height: 44px; border: none; cursor: pointer;
-  background: var(--gray-btn); border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: var(--btn-shadow); transition: opacity 0.15s; flex-shrink: 0;
-}
-.settings-back-btn:active { opacity: 0.75; }
-.settings-back-btn svg { width: 22px; height: 22px; stroke: #fff; }
-.settings-body {
+/* Shared scrollable body */
+.settings-screen-body {
   flex: 1; display: flex; flex-direction: column;
-  align-items: center; padding: 20px 16px; gap: 12px;
+  align-items: center; padding: 8px 16px 4px; gap: 12px;
   overflow-y: auto;
 }
+/* Shared footer with bottom-aligned buttons */
+.settings-footer {
+  display: flex; justify-content: center; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  flex-shrink: 0;
+}
+/* Wide gray buttons in settings main screen */
 .settings-wide-btn {
-  width: 100%; max-width: 360px;
-  padding: 16px 20px;
+  width: 100%; max-width: 360px; padding: 16px 20px;
   background: var(--gray-btn); color: #fff;
   font-size: 16px; font-weight: 600;
-  border: none; border-radius: 14px; cursor: pointer;
-  text-align: center;
+  border: none; border-radius: 14px; cursor: pointer; text-align: center;
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
 }
 .settings-wide-btn:active { opacity: 0.75; }
-
-/* ===== OVERLAY: YEAR SELECTOR ===== */
-.overlay-year-list {
-  display: flex; flex-direction: column;
-  align-items: center; gap: 10px; width: 100%; margin: 8px 0 2px;
+/* Orange year action button — same width as a single nav-btn */
+.year-action-btn {
+  width: calc((100vw - 48px) / 3);
+  height: 53px;
+  background: var(--orange); color: #fff;
+  font-size: 16px; font-weight: 700;
+  border: none; border-radius: var(--btn-radius); cursor: pointer;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+  display: flex; align-items: center; justify-content: center;
 }
-.year-sel-btn {
-  width: calc(33.333% - 7px); min-width: 90px;
-  padding: 13px 10px;
+.year-action-btn:active { opacity: 0.78; }
+/* Bottom Назад / Сохранить button — same width as single nav-btn */
+.screen-back-btn {
+  width: calc((100vw - 48px) / 3);
+  height: 53px;
   background: var(--gray-btn); color: #fff;
   font-size: 15px; font-weight: 700;
-  border: none; border-radius: 12px; cursor: pointer;
+  border: none; border-radius: var(--btn-radius); cursor: pointer;
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
 }
-.year-sel-btn:active { opacity: 0.75; }
+.screen-back-btn:active { opacity: 0.78; }
+.screen-save-btn {
+  width: calc((100vw - 48px) / 3);
+  height: 53px;
+  background: var(--orange); color: #fff;
+  font-size: 15px; font-weight: 700;
+  border: none; border-radius: var(--btn-radius); cursor: pointer;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+}
+.screen-save-btn:active { opacity: 0.78; }
+
+/* ===== SCREEN: МЕТОДЫ ПРОВЕРОК ===== */
+.methods-table-wrap { flex: 1; overflow-y: auto; width: 100%; }
+.methods-table { width: 100%; border-collapse: collapse; }
+.methods-th {
+  font-size: 11px; font-weight: 700; color: var(--text2); text-align: center;
+  padding: 8px 4px; border-bottom: 2px solid var(--border);
+  position: sticky; top: 0; background: var(--bg); white-space: nowrap;
+}
+.methods-th-name { text-align: left; padding-left: 8px; }
+.methods-td { padding: 11px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.methods-td-name { font-size: 14px; color: #1a2035; font-weight: 500; padding-left: 8px; }
+.methods-td-cb { text-align: center; }
+.method-circle-cb,
+.method-square-cb { width: 20px; height: 20px; cursor: pointer; accent-color: var(--orange); }
+.methods-action-row {
+  display: flex; justify-content: center; gap: 14px;
+  padding: 12px 14px 6px; flex-shrink: 0;
+}
+.method-sq-btn {
+  width: 50px; height: 50px; border: none; border-radius: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+}
+.method-sq-btn:active { opacity: 0.75; }
+.method-sq-btn.minus { background: var(--gray-btn); }
+.method-sq-btn.minus:disabled { opacity: 0.32; cursor: default; }
+.method-sq-btn.plus  { background: var(--orange); }
+.method-new-row {
+  display: flex; gap: 8px; align-items: center;
+  padding: 8px 14px 4px; flex-shrink: 0;
+}
+.method-new-input {
+  flex: 1; height: 44px; border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 0 12px; font-size: 14px; background: #fff;
+}
+.method-save-btn {
+  width: 44px; height: 44px; flex-shrink: 0;
+  background: var(--orange); color: #fff;
+  border: none; border-radius: 10px; cursor: pointer;
+  font-size: 22px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+}
+.method-save-btn:active { opacity: 0.75; }
+
 
 /* ===== OVERLAY: BARRIERS PK LIST ===== */
 .barriers-pk-list {
@@ -999,49 +1061,74 @@ html, body {
 
 <!-- ===== SETTINGS SCREEN ===== -->
 <div class="screen" id="screen-settings">
-  <div class="settings-header">
-    <button class="settings-back-btn" onclick="showScreen('screen-lobby')" title="Назад">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  <div class="settings-screen-title">Настройки</div>
+  <div class="settings-screen-body">
+    <button class="settings-wide-btn" onclick="openExportScreen()">Выгрузить проверки КБ</button>
+    <button class="settings-wide-btn" onclick="openBarriersPKYearsScreen()">Барьеры ПК</button>
+    <button class="settings-wide-btn" onclick="openMethodsScreen()">Методы проверок</button>
+  </div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="showScreen('screen-lobby')">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: ВЫГРУЗИТЬ ПРОВЕРКИ КБ ===== -->
+<div class="screen" id="screen-export">
+  <div class="settings-screen-title">Выгрузить проверки КБ</div>
+  <div class="settings-screen-body" id="export-year-list"></div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="showScreen('screen-settings')">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: БАРЬЕРЫ ПК — ВЫБОР ГОДА ===== -->
+<div class="screen" id="screen-barriers-years">
+  <div class="settings-screen-title">Отметьте барьеры Каркаса Безопасности, вошедшие в производственный контракт</div>
+  <div class="settings-screen-body" id="barriers-year-list"></div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="showScreen('screen-settings')">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: БАРЬЕРЫ ПК — СПИСОК ===== -->
+<div class="screen" id="screen-barriers-list">
+  <div class="settings-screen-title" id="barriers-list-title">Барьеры ПК</div>
+  <div class="barriers-pk-list" id="barriers-pk-list" style="margin:0 14px;flex:1;overflow-y:auto;border-radius:10px;border:1px solid var(--border);"></div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="showScreen('screen-barriers-years')">Назад</button>
+    <button class="screen-save-btn" onclick="saveBarriersPK()">Сохранить</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: МЕТОДЫ ПРОВЕРОК ===== -->
+<div class="screen" id="screen-methods">
+  <div class="settings-screen-title">Методы проверок</div>
+  <div class="methods-table-wrap">
+    <table class="methods-table">
+      <thead>
+        <tr>
+          <th class="methods-th" style="width:44px;">Выбрать</th>
+          <th class="methods-th methods-th-name">Метод</th>
+          <th class="methods-th" style="width:74px;">Показывать</th>
+        </tr>
+      </thead>
+      <tbody id="methods-tbody"></tbody>
+    </table>
+  </div>
+  <div id="method-new-row" style="display:none;" class="method-new-row">
+    <input class="method-new-input" id="method-new-input" type="text" placeholder="Название метода" autocomplete="off">
+    <button class="method-save-btn" onclick="saveNewMethod()">✓</button>
+  </div>
+  <div class="methods-action-row">
+    <button class="method-sq-btn minus" id="method-btn-minus" onclick="deleteSelectedMethods()" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="22" height="22"><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
-    <div class="settings-header-title">Настройки</div>
+    <button class="method-sq-btn plus" onclick="showAddMethodInput()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="22" height="22"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
   </div>
-  <div class="settings-body">
-    <button class="settings-wide-btn" onclick="openExportOverlay()">Выгрузить проверки КБ</button>
-    <button class="settings-wide-btn" onclick="openBarriersPKYearsOverlay()">Барьеры ПК</button>
-  </div>
-</div>
-
-<!-- ===== EXPORT: выбор года ===== -->
-<div class="overlay" id="overlay-export">
-  <div class="overlay-box">
-    <div class="overlay-title">Выберите базу данных проверок КБ для выгрузки в файл excel</div>
-    <div class="overlay-year-list" id="export-year-list"></div>
-    <div class="overlay-btns">
-      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-export')">Закрыть</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== БАРЬЕРЫ ПК: выбор года ===== -->
-<div class="overlay" id="overlay-barriers-years">
-  <div class="overlay-box">
-    <div class="overlay-title">Отметьте барьеры Каркаса Безопасности, вошедшие в производственный контракт</div>
-    <div class="overlay-year-list" id="barriers-year-list"></div>
-    <div class="overlay-btns">
-      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-barriers-years')">Закрыть</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== БАРЬЕРЫ ПК: список барьеров с чекбоксами ===== -->
-<div class="overlay" id="overlay-barriers-list">
-  <div class="overlay-box">
-    <div class="overlay-title" id="barriers-list-title">Барьеры ПК</div>
-    <div class="barriers-pk-list" id="barriers-pk-list"></div>
-    <div class="overlay-btns">
-      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-barriers-list')">Отмена</button>
-      <button class="overlay-btn overlay-btn-apply" onclick="saveBarriersPK()">Сохранить</button>
-    </div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="showScreen('screen-settings')">Назад</button>
   </div>
 </div>
 
@@ -1299,7 +1386,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -1451,13 +1538,21 @@ function requestPushPermission() {
 }
 
 // ===== APP STATE =====
+var DEFAULT_METHODS = [
+  { name: 'ОСИР',         show: true },
+  { name: 'ЦРПО',         show: true },
+  { name: 'Самопроверка', show: true },
+  { name: 'Прочее',       show: true, fixed: true }
+];
+
 var appState = {
   pinUnlocked: false,
   db: [],          // массив записей проверок
   orgs: [],        // список организаций (из настроек)
   barriers: [],    // список барьеров (из настроек)
   autocomplete: {}, // { fieldKey: [sorted strings] }
-  barriersPK: {}   // { '2026': ['ДТП.04', 'ПБ.01'], ... }
+  barriersPK: {},   // { '2026': ['ДТП.04', 'ПБ.01'], ... }
+  methods: null     // null → will be filled by loadState
 };
 
 var cardData = {};
@@ -1565,13 +1660,19 @@ function loadState() {
       appState.barriers = parsed.barriers || ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
       appState.autocomplete = parsed.autocomplete || {};
       appState.barriersPK = parsed.barriersPK || {};
-      renumberDb(); // fix any stale numbers from previous sessions
+      appState.methods = parsed.methods && parsed.methods.length
+        ? parsed.methods
+        : DEFAULT_METHODS.map(function(m) { return Object.assign({}, m); });
+      renumberDb();
     } else {
       appState.orgs = ['АО «ЕВРАКОР»', 'ООО «ЭСМ»'];
       appState.barriers = ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
       appState.barriersPK = {};
+      appState.methods = DEFAULT_METHODS.map(function(m) { return Object.assign({}, m); });
     }
-  } catch(e) {}
+  } catch(e) {
+    appState.methods = DEFAULT_METHODS.map(function(m) { return Object.assign({}, m); });
+  }
 }
 
 function saveState() {
@@ -1581,7 +1682,8 @@ function saveState() {
       orgs: appState.orgs,
       barriers: appState.barriers,
       autocomplete: appState.autocomplete,
-      barriersPK: appState.barriersPK || {}
+      barriersPK: appState.barriersPK || {},
+      methods: appState.methods || DEFAULT_METHODS
     }));
   } catch(e) {}
 }
@@ -1955,18 +2057,18 @@ function getSettingsYears() {
   return Object.keys(ySet).sort(function(a, b) { return +b - +a; });
 }
 
-function openExportOverlay() {
+function openExportScreen() {
   var years = getSettingsYears();
   var list = document.getElementById('export-year-list');
   list.innerHTML = '';
   years.forEach(function(year) {
     var btn = document.createElement('button');
-    btn.className = 'year-sel-btn';
+    btn.className = 'year-action-btn';
     btn.textContent = year;
     btn.onclick = function() { downloadExcel(year, btn); };
     list.appendChild(btn);
   });
-  document.getElementById('overlay-export').classList.add('active');
+  showScreen('screen-export');
 }
 
 function downloadExcel(year, btn) {
@@ -1996,21 +2098,18 @@ function downloadExcel(year, btn) {
 // ===== BARRIERS PK =====
 var _bpkYear = null; // year currently being edited
 
-function openBarriersPKYearsOverlay() {
+function openBarriersPKYearsScreen() {
   var years = getSettingsYears();
   var list = document.getElementById('barriers-year-list');
   list.innerHTML = '';
   years.forEach(function(year) {
     var btn = document.createElement('button');
-    btn.className = 'year-sel-btn';
+    btn.className = 'year-action-btn';
     btn.textContent = year;
-    btn.onclick = function() {
-      closeOverlay('overlay-barriers-years');
-      openBarriersPKList(year);
-    };
+    btn.onclick = function() { openBarriersPKList(year); };
     list.appendChild(btn);
   });
-  document.getElementById('overlay-barriers-years').classList.add('active');
+  showScreen('screen-barriers-years');
 }
 
 function openBarriersPKList(year) {
@@ -2049,7 +2148,7 @@ function openBarriersPKList(year) {
       list.appendChild(item);
     });
   }
-  document.getElementById('overlay-barriers-list').classList.add('active');
+  showScreen('screen-barriers-list');
 }
 
 function saveBarriersPK() {
@@ -2061,7 +2160,100 @@ function saveBarriersPK() {
   if (!appState.barriersPK) appState.barriersPK = {};
   appState.barriersPK[_bpkYear] = selected;
   saveState();
-  closeOverlay('overlay-barriers-list');
+  showScreen('screen-barriers-years');
+}
+
+// ===== METHODS SCREEN =====
+function openMethodsScreen() {
+  renderMethodsTable();
+  document.getElementById('method-new-row').style.display = 'none';
+  document.getElementById('method-new-input').value = '';
+  showScreen('screen-methods');
+}
+
+function renderMethodsTable() {
+  var methods = appState.methods || DEFAULT_METHODS;
+  var tbody = document.getElementById('methods-tbody');
+  tbody.innerHTML = '';
+  methods.forEach(function(m, idx) {
+    var tr = document.createElement('tr');
+    // Выбрать (round checkbox for deletion) — not shown for fixed items
+    var tdSel = document.createElement('td');
+    tdSel.className = 'methods-td methods-td-cb';
+    if (!m.fixed) {
+      var cbSel = document.createElement('input');
+      cbSel.type = 'checkbox';
+      cbSel.className = 'method-circle-cb';
+      cbSel.dataset.idx = idx;
+      cbSel.style.borderRadius = '50%';
+      cbSel.addEventListener('change', updateMinusBtnState);
+      tdSel.appendChild(cbSel);
+    }
+    // Метод (name)
+    var tdName = document.createElement('td');
+    tdName.className = 'methods-td methods-td-name';
+    tdName.textContent = m.name;
+    // Показывать (square checkbox for drum visibility)
+    var tdShow = document.createElement('td');
+    tdShow.className = 'methods-td methods-td-cb';
+    var cbShow = document.createElement('input');
+    cbShow.type = 'checkbox';
+    cbShow.className = 'method-square-cb';
+    cbShow.checked = (m.show !== false);
+    cbShow.dataset.idx = idx;
+    cbShow.addEventListener('change', function() {
+      appState.methods[+this.dataset.idx].show = this.checked;
+      saveState();
+    });
+    tdShow.appendChild(cbShow);
+    tr.appendChild(tdSel);
+    tr.appendChild(tdName);
+    tr.appendChild(tdShow);
+    tbody.appendChild(tr);
+  });
+  updateMinusBtnState();
+}
+
+function updateMinusBtnState() {
+  var anyChecked = !!document.querySelector('#methods-tbody .method-circle-cb:checked');
+  var btn = document.getElementById('method-btn-minus');
+  if (btn) btn.disabled = !anyChecked;
+}
+
+function deleteSelectedMethods() {
+  var selected = [];
+  document.querySelectorAll('#methods-tbody .method-circle-cb:checked').forEach(function(cb) {
+    selected.push(+cb.dataset.idx);
+  });
+  if (!selected.length) return;
+  appState.methods = (appState.methods || DEFAULT_METHODS)
+    .filter(function(m, i) { return m.fixed || selected.indexOf(i) < 0; });
+  saveState();
+  renderMethodsTable();
+}
+
+function showAddMethodInput() {
+  var row = document.getElementById('method-new-row');
+  row.style.display = 'flex';
+  document.getElementById('method-new-input').focus();
+}
+
+function saveNewMethod() {
+  var input = document.getElementById('method-new-input');
+  var name = input.value.trim();
+  if (!name) return;
+  var methods = appState.methods || DEFAULT_METHODS.map(function(m) { return Object.assign({}, m); });
+  // Always insert above 'Прочее' (last fixed item)
+  var procheeIdx = methods.length;
+  for (var i = methods.length - 1; i >= 0; i--) {
+    if (methods[i].fixed) { procheeIdx = i; break; }
+  }
+  methods.splice(procheeIdx, 0, { name: name, show: true });
+  appState.methods = methods;
+  saveState();
+  input.value = '';
+  document.getElementById('method-new-row').style.display = 'none';
+  renderMethodsTable();
 }
 
 function successExit() {
@@ -2312,8 +2504,13 @@ function openDrumDate() {
 }
 
 function openDrumMethod() {
+  var visibleMethods = (appState.methods || DEFAULT_METHODS)
+    .filter(function(m) { return m.show !== false; })
+    .map(function(m) { return m.name; });
+  if (!visibleMethods.length) { alert('Нет доступных методов. Настройте их в разделе «Методы проверок».'); return; }
+  var def = (visibleMethods.indexOf(cardData.method) >= 0) ? cardData.method : visibleMethods[0];
   openDrumOverlay('Выберите метод проверки', [
-    { id: 'method', items: ['ОСИР','ЦРПО','Прочее'], value: cardData.method || 'ОСИР', minWidth: 200 }
+    { id: 'method', items: visibleMethods, value: def, minWidth: 200 }
   ], function(d) {
     cardData.method = d['method'].getValue();
     document.getElementById('val-method').textContent = cardData.method;
