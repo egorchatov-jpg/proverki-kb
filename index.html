@@ -708,35 +708,17 @@ html, body {
 .methods-td { padding: 11px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .methods-td-name { font-size: 14px; color: #1a2035; font-weight: 500; padding-left: 8px; }
 .methods-td-cb { text-align: center; }
-/* ── Custom round checkbox (Выбрать, fills GREY when checked) ── */
+/* Left checkbox (Выбрать) — native style, fills GREY when checked */
 .method-circle-cb {
-  appearance: none; -webkit-appearance: none;
-  width: 22px; height: 22px; border-radius: 50%;
-  border: 2px solid #c8ccd4; background: #fff;
-  cursor: pointer; flex-shrink: 0; position: relative; margin: 0;
-  transition: background 0.12s, border-color 0.12s;
+  width: 22px; height: 22px; margin: 0;
+  cursor: pointer; flex-shrink: 0;
+  accent-color: var(--gray-btn);
 }
-.method-circle-cb:checked { background: var(--gray-btn); border-color: var(--gray-btn); }
-.method-circle-cb:checked::after {
-  content: ''; position: absolute; top: 3px; left: 7px;
-  width: 5px; height: 9px;
-  border: 2.5px solid #fff; border-top: none; border-left: none;
-  transform: rotate(45deg);
-}
-/* ── Custom square checkbox (Показывать, fills ORANGE when checked) ── */
+/* Right checkbox (Показывать) — native style, fills ORANGE when checked */
 .method-square-cb {
-  appearance: none; -webkit-appearance: none;
-  width: 22px; height: 22px; border-radius: 5px;
-  border: 2px solid #c8ccd4; background: #fff;
-  cursor: pointer; flex-shrink: 0; position: relative; margin: 0;
-  transition: background 0.12s, border-color 0.12s;
-}
-.method-square-cb:checked { background: var(--orange); border-color: var(--orange); }
-.method-square-cb:checked::after {
-  content: ''; position: absolute; top: 3px; left: 7px;
-  width: 5px; height: 9px;
-  border: 2.5px solid #fff; border-top: none; border-left: none;
-  transform: rotate(45deg);
+  width: 22px; height: 22px; margin: 0;
+  cursor: pointer; flex-shrink: 0;
+  accent-color: var(--orange);
 }
 .methods-action-row {
   display: flex; justify-content: center; gap: 14px;
@@ -760,10 +742,7 @@ html, body {
   border-radius: 10px; padding: 0 12px; font-size: 14px; background: #fff;
   outline: none; transition: border-color 0.15s, box-shadow 0.15s;
 }
-.method-new-input:focus {
-  border-color: var(--orange);
-  box-shadow: 0 0 0 2.5px rgba(230, 126, 34, 0.18);
-}
+.method-new-input:focus { border-color: var(--orange); }
 .method-save-btn {
   width: 44px; height: 44px; flex-shrink: 0;
   background: var(--orange); color: #fff;
@@ -1159,7 +1138,9 @@ html, body {
   </div>
   <div id="method-new-row" style="display:none;" class="method-new-row">
     <input class="method-new-input" id="method-new-input" type="text" placeholder="Название метода" autocomplete="off">
-    <button class="method-save-btn" onclick="saveNewMethod()">✓</button>
+    <button class="method-save-btn" onclick="saveNewMethod()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><polyline points="4 12 9 17 20 6"/></svg>
+    </button>
   </div>
   <div class="settings-footer">
     <button class="screen-back-btn" onclick="showScreen('screen-settings')">Назад</button>
