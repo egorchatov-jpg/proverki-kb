@@ -708,18 +708,44 @@ html, body {
 .methods-td { padding: 11px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .methods-td-name { font-size: 14px; color: #1a2035; font-weight: 500; padding-left: 8px; }
 .methods-td-cb { text-align: center; }
-/* Left checkbox (Выбрать) — native style, fills GREY when checked */
+/* Left checkbox (Выбрать) — fills GREY when checked */
 .method-circle-cb {
   width: 22px; height: 22px; margin: 0;
   cursor: pointer; flex-shrink: 0;
   accent-color: var(--gray-btn);
 }
-/* Right checkbox (Показывать) — native style, fills ORANGE when checked */
+/* Right checkbox (Показывать) — fills ORANGE when checked */
 .method-square-cb {
   width: 22px; height: 22px; margin: 0;
   cursor: pointer; flex-shrink: 0;
   accent-color: var(--orange);
 }
+/* Windows / Android: custom look — rounded corners, white checkmarks */
+.is-not-ios .method-circle-cb,
+.is-not-ios .method-square-cb {
+  appearance: none; -webkit-appearance: none;
+  border-radius: 6px;
+  border: 2px solid #c8ccd4; background: #fff;
+  position: relative; transition: background 0.12s, border-color 0.12s;
+}
+.is-not-ios .method-circle-cb:checked { background: var(--gray-btn); border-color: var(--gray-btn); }
+.is-not-ios .method-square-cb:checked { background: var(--orange);   border-color: var(--orange); }
+.is-not-ios .method-circle-cb:checked::after,
+.is-not-ios .method-square-cb:checked::after {
+  content: ''; position: absolute; top: 3px; left: 7px;
+  width: 5px; height: 9px;
+  border: 2.5px solid #fff; border-top: none; border-left: none;
+  transform: rotate(45deg);
+}
+/* Method input cancel button */
+.method-cancel-btn {
+  width: 44px; height: 44px; flex-shrink: 0;
+  background: var(--gray-btn); color: #fff;
+  border: none; border-radius: 10px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+}
+.method-cancel-btn:active { opacity: 0.75; }
 .methods-action-row {
   display: flex; justify-content: center; gap: 14px;
   padding: 14px 14px 8px;
@@ -1138,6 +1164,9 @@ html, body {
   </div>
   <div id="method-new-row" style="display:none;" class="method-new-row">
     <input class="method-new-input" id="method-new-input" type="text" placeholder="Название метода" autocomplete="off">
+    <button class="method-cancel-btn" onclick="hideAddMethodInput()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
     <button class="method-save-btn" onclick="saveNewMethod()">
       <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><polyline points="4 12 9 17 20 6"/></svg>
     </button>
@@ -1587,6 +1616,7 @@ function closeDetail() { showScreen(detailSource === 'lobby' ? 'screen-lobby' : 
 // iOS already positions fixed elements relative to visual viewport — no fix needed there.
 var _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+if (!_isIOS) document.documentElement.classList.add('is-not-ios');
 if (window.visualViewport && !_isIOS) {
   function syncOverlayHeight() {
     var h = window.visualViewport.height + 'px';
@@ -2251,6 +2281,13 @@ function showAddMethodInput() {
   var row = document.getElementById('method-new-row');
   row.style.display = 'flex';
   document.getElementById('method-new-input').focus();
+}
+
+function hideAddMethodInput() {
+  var input = document.getElementById('method-new-input');
+  input.value = '';
+  input.blur(); // dismiss keyboard
+  document.getElementById('method-new-row').style.display = 'none';
 }
 
 function saveNewMethod() {
