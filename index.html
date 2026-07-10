@@ -720,22 +720,28 @@ html, body {
   cursor: pointer; flex-shrink: 0;
   accent-color: var(--orange);
 }
-/* Windows / Android: custom look — rounded corners, white checkmarks */
+/* Windows / Android: identical square-rounded shape for BOTH checkbox columns */
 .is-not-ios .method-circle-cb,
 .is-not-ios .method-square-cb {
   appearance: none; -webkit-appearance: none;
-  border-radius: 6px;
+  border-radius: 6px;           /* same for both — no "circle" on Win/Android */
   border: 2px solid #c8ccd4; background: #fff;
   position: relative; transition: background 0.12s, border-color 0.12s;
 }
 .is-not-ios .method-circle-cb:checked { background: var(--gray-btn); border-color: var(--gray-btn); }
 .is-not-ios .method-square-cb:checked { background: var(--orange);   border-color: var(--orange); }
+/* Checkmark: centred horizontally and vertically inside the box */
 .is-not-ios .method-circle-cb:checked::after,
 .is-not-ios .method-square-cb:checked::after {
-  content: ''; position: absolute; top: 3px; left: 7px;
+  content: '';
+  position: absolute;
+  /* start at centre of 22×22 box */
+  top: 50%; left: 50%;
+  /* arm sizes: 5px right, 9px down (before rotation) */
   width: 5px; height: 9px;
   border: 2.5px solid #fff; border-top: none; border-left: none;
-  transform: rotate(45deg);
+  /* shift back half-width, shift up ~60 % so visual weight centres */
+  transform: translate(-50%, -62%) rotate(45deg);
 }
 /* Method input cancel button */
 .method-cancel-btn {
@@ -1106,7 +1112,8 @@ html, body {
     <button class="settings-wide-btn" onclick="openMethodsScreen()">Методы проверок</button>
   </div>
   <div class="settings-footer">
-    <button class="screen-back-btn" onclick="showScreen('screen-lobby')">Назад</button>
+    <!-- exitSettings syncs settings to server before returning to lobby -->
+    <button class="screen-back-btn" onclick="exitSettings()">Назад</button>
   </div>
 </div>
 
@@ -1983,7 +1990,8 @@ function updatePinDots() {
 function checkPin() {
   if (pinMode === 'settings') {
     if (SETTINGS_PINS[pinValue]) {
-      showScreen('screen-settings');
+      // Sync settings from server, then show settings screen
+      syncSettingsFromServer(function() { showScreen('screen-settings'); });
     } else {
       document.getElementById('pin-error').textContent = 'Неверный пароль';
       pinValue = '';
@@ -1999,6 +2007,66 @@ function checkPin() {
       updatePinDots();
     }
   }
+}
+
+// ===== SETTINGS SYNC =====
+
+/**
+ * Sync settings FROM server and merge into appState.
+ * Calls callback() when done (or on error — still proceeds).
+ * Settings never touch existing Excel records (data preservation rule).
+ */
+function syncSettingsFromServer(callback) {
+  var errEl = document.getElementById('pin-error');
+  if (errEl) errEl.textContent = 'Загрузка настроек…';
+  var ctrl  = new AbortController();
+  var timer = setTimeout(function() { ctrl.abort(); }, 8000);
+  fetch('/api/settings', { signal: ctrl.signal })
+    .then(function(r) {
+      clearTimeout(timer);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(data) {
+      if (errEl) errEl.textContent = '';
+      // Merge server settings — never rewrite Excel records (values used only for NEW entries)
+      if (data.methods  && data.methods.length)  appState.methods    = data.methods;
+      if (data.barriersPK)                        appState.barriersPK = data.barriersPK;
+      if (data.orgs     && data.orgs.length)      appState.orgs       = data.orgs;
+      if (data.barriers && data.barriers.length)  appState.barriers   = data.barriers;
+      saveState();
+      if (callback) callback();
+    })
+    .catch(function(e) {
+      clearTimeout(timer);
+      console.warn('[settings] sync from server failed:', e.message);
+      if (errEl) errEl.textContent = '';
+      if (callback) callback(); // proceed even if offline
+    });
+}
+
+/**
+ * Push current settings TO server (fire-and-forget).
+ * Called when admin exits settings screen.
+ */
+function syncSettingsToServer() {
+  var settings = {
+    methods:    appState.methods    || DEFAULT_METHODS,
+    barriersPK: appState.barriersPK || {},
+    orgs:       appState.orgs       || [],
+    barriers:   appState.barriers   || []
+  };
+  fetch('/api/settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings)
+  }).catch(function(e) { console.warn('[settings] sync to server failed:', e.message); });
+}
+
+/** Exit settings screen: sync to server, then go back to lobby. */
+function exitSettings() {
+  syncSettingsToServer();
+  showScreen('screen-lobby');
 }
 
 // ===== CARD =====
