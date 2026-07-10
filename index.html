@@ -254,6 +254,12 @@ html, body {
 }
 .pin-back-btn:active { opacity: 0.8; }
 
+/* Dark variant for settings PIN — only colour changes */
+.screen-pin--dark .pin-dot  { border-color: #222; }
+.screen-pin--dark .pin-dot.filled { background: #222; }
+.screen-pin--dark .pin-key  { background: #222; }
+.screen-pin--dark .pin-key.del { background: var(--gray-btn); }
+
 /* ===== SCREEN: КАРТОЧКА ПРОВЕРКИ ===== */
 #screen-card { background: var(--bg); }
 .card-scroll {
@@ -622,6 +628,75 @@ html, body {
 .lobby-content, .find-list-wrap, .detail-scroll, .card-scroll {
   overscroll-behavior-y: none;
 }
+
+/* ===== SCREEN: SETTINGS ===== */
+#screen-settings { background: var(--bg); }
+.settings-header {
+  display: flex; align-items: center;
+  padding: 14px 14px 0;
+  flex-shrink: 0;
+}
+.settings-header-title {
+  flex: 1; text-align: center;
+  font-size: 17px; font-weight: 700; color: #1a2035;
+  margin-right: 44px; /* offset for back button */
+}
+.settings-back-btn {
+  width: 44px; height: 44px; border: none; cursor: pointer;
+  background: var(--gray-btn); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s; flex-shrink: 0;
+}
+.settings-back-btn:active { opacity: 0.75; }
+.settings-back-btn svg { width: 22px; height: 22px; stroke: #fff; }
+.settings-body {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; padding: 20px 16px; gap: 12px;
+  overflow-y: auto;
+}
+.settings-wide-btn {
+  width: 100%; max-width: 360px;
+  padding: 16px 20px;
+  background: var(--gray-btn); color: #fff;
+  font-size: 16px; font-weight: 600;
+  border: none; border-radius: 14px; cursor: pointer;
+  text-align: center;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+}
+.settings-wide-btn:active { opacity: 0.75; }
+
+/* ===== OVERLAY: YEAR SELECTOR ===== */
+.overlay-year-list {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 10px; width: 100%; margin: 8px 0 2px;
+}
+.year-sel-btn {
+  width: calc(33.333% - 7px); min-width: 90px;
+  padding: 13px 10px;
+  background: var(--gray-btn); color: #fff;
+  font-size: 15px; font-weight: 700;
+  border: none; border-radius: 12px; cursor: pointer;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+}
+.year-sel-btn:active { opacity: 0.75; }
+
+/* ===== OVERLAY: BARRIERS PK LIST ===== */
+.barriers-pk-list {
+  display: flex; flex-direction: column;
+  width: 100%; max-height: 52vh; overflow-y: auto;
+  margin: 8px 0 2px;
+  border-radius: 10px; border: 1px solid var(--border);
+}
+.barrier-pk-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 12px; gap: 12px;
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+}
+.barrier-pk-item:last-child { border-bottom: none; }
+.barrier-pk-name { font-size: 14px; color: #1a2035; font-weight: 500; flex: 1; }
+.barrier-pk-label { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #666; white-space: nowrap; cursor: pointer; }
+.barrier-pk-label input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--orange); cursor: pointer; }
 </style>
 </head>
 <body>
@@ -708,7 +783,7 @@ html, body {
       <button class="pin-key" onclick="pinPress('0')">0</button>
       <button class="pin-key del" onclick="pinDel()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg></button>
     </div>
-    <button class="pin-back-btn" onclick="showScreen('screen-proverki-menu')">Назад</button>
+    <button class="pin-back-btn" onclick="pinGoBack()">Назад</button>
   </div>
 </div>
 
@@ -918,6 +993,54 @@ html, body {
     <div class="overlay-btns">
       <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-inspector')">Отмена</button>
       <button class="overlay-btn overlay-btn-apply" id="inspector-apply-btn" onclick="applyInspector()">Применить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SETTINGS SCREEN ===== -->
+<div class="screen" id="screen-settings">
+  <div class="settings-header">
+    <button class="settings-back-btn" onclick="showScreen('screen-lobby')" title="Назад">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="settings-header-title">Настройки</div>
+  </div>
+  <div class="settings-body">
+    <button class="settings-wide-btn" onclick="openExportOverlay()">Выгрузить проверки КБ</button>
+    <button class="settings-wide-btn" onclick="openBarriersPKYearsOverlay()">Барьеры ПК</button>
+  </div>
+</div>
+
+<!-- ===== EXPORT: выбор года ===== -->
+<div class="overlay" id="overlay-export">
+  <div class="overlay-box">
+    <div class="overlay-title">Выберите базу данных проверок КБ для выгрузки в файл excel</div>
+    <div class="overlay-year-list" id="export-year-list"></div>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-export')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== БАРЬЕРЫ ПК: выбор года ===== -->
+<div class="overlay" id="overlay-barriers-years">
+  <div class="overlay-box">
+    <div class="overlay-title">Отметьте барьеры Каркаса Безопасности, вошедшие в производственный контракт</div>
+    <div class="overlay-year-list" id="barriers-year-list"></div>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-barriers-years')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== БАРЬЕРЫ ПК: список барьеров с чекбоксами ===== -->
+<div class="overlay" id="overlay-barriers-list">
+  <div class="overlay-box">
+    <div class="overlay-title" id="barriers-list-title">Барьеры ПК</div>
+    <div class="barriers-pk-list" id="barriers-pk-list"></div>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-barriers-list')">Отмена</button>
+      <button class="overlay-btn overlay-btn-apply" onclick="saveBarriersPK()">Сохранить</button>
     </div>
   </div>
 </div>
@@ -1311,34 +1434,20 @@ function subscribeToPush(reg) {
   });
 }
 
-// Show the custom push permission overlay on first launch (when permission = 'default').
-// Relies solely on Notification.permission — no localStorage flag, so it always
-// triggers again after reinstall or app data clear.
-var _pushPermReg = null;
-
-function initPushOnFirstLaunch(reg) {
-  if (!('PushManager' in window) || !('Notification' in window)) return;
-  if (typeof Notification.requestPermission !== 'function') return;
-  if (Notification.permission !== 'default') return;
-  // Only prompt when running as an installed PWA on the home screen
-  var isStandalone = window.matchMedia('(display-mode: standalone)').matches
-                  || window.navigator.standalone === true;
-  if (!isStandalone) return;
-  _pushPermReg = reg;
-  // Small delay so the lobby renders before the overlay slides up
-  setTimeout(function() {
-    if (Notification.permission !== 'default') return;
-    document.getElementById('overlay-push-prompt').classList.add('active');
-  }, 800);
-}
-
 function requestPushPermission() {
   closeOverlay('overlay-push-prompt');
-  if (typeof Notification.requestPermission !== 'function') return;
-  // Must be called synchronously inside a user-gesture handler (tap on "Понятно")
-  Notification.requestPermission().then(function(perm) {
-    if (perm === 'granted' && _pushPermReg) subscribeToPush(_pushPermReg);
-  }).catch(function() {});
+  if (typeof Notification.requestPermission !== 'function') {
+    _finishInit(); // no API — just complete init
+    return;
+  }
+  // System dialog appears here, strictly AFTER the user tapped "Понятно".
+  // SW is registered only after permission is resolved so Chrome cannot
+  // auto-prompt before this point.
+  Notification.requestPermission().then(function() {
+    _finishInit();
+  }).catch(function() {
+    _finishInit();
+  });
 }
 
 // ===== APP STATE =====
@@ -1347,7 +1456,8 @@ var appState = {
   db: [],          // массив записей проверок
   orgs: [],        // список организаций (из настроек)
   barriers: [],    // список барьеров (из настроек)
-  autocomplete: {} // { fieldKey: [sorted strings] }
+  autocomplete: {}, // { fieldKey: [sorted strings] }
+  barriersPK: {}   // { '2026': ['ДТП.04', 'ПБ.01'], ... }
 };
 
 var cardData = {};
@@ -1391,28 +1501,58 @@ function clearNotificationsAndBadge() {
   }
 }
 
+// ===== PUSH INIT =====
+// The SW is registered ONLY after the push-permission overlay is dismissed.
+// On Android Chrome, registering a SW with a push listener can trigger
+// Chrome's own automatic permission dialog before our overlay appears.
+// Deferring SW registration eliminates that race on both Android and iOS.
+
+function _finishInit() {
+  registerSW();
+  clearNotificationsAndBadge();
+}
+
+// Called at the end of DOMContentLoaded.
+// If the PWA is installed and permission is still 'default' — show our overlay
+// and defer SW registration.  Otherwise complete init immediately.
+function _showPushPromptOrFinish() {
+  try {
+    var isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                    || window.navigator.standalone === true;
+    if (isStandalone
+        && ('Notification' in window)
+        && (typeof Notification.requestPermission === 'function')
+        && Notification.permission === 'default') {
+      var overlay = document.getElementById('overlay-push-prompt');
+      if (overlay) {
+        overlay.classList.add('active');
+        return; // _finishInit() is called from requestPushPermission() on "Понятно"
+      }
+    }
+  } catch (e) { /* ignore — fall through to _finishInit */ }
+  _finishInit();
+}
+
 // ===== INIT =====
 window.addEventListener('DOMContentLoaded', function() {
   loadState();
-  registerSW();
   renderLobby();
   initDateDrum();
   initViolatorGroups();
   setTodayDate();
-  loadFromServer();
-  clearNotificationsAndBadge();
-  // Retry offline queue every 30 seconds even if the page stays focused (e.g. Windows browser tab)
+  loadFromServer(); // independent of SW / push permission
   setInterval(function() {
     if (getSyncQueue().length > 0) retrySyncQueue();
   }, 30000);
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {
-      renderLobby(); // immediately clear stale violations when date changes overnight
+      renderLobby();
       loadFromServer();
       clearNotificationsAndBadge();
-      if (swRegistration) subscribeToPush(swRegistration); // re-validate push subscription after iOS suspends SW
+      if (swRegistration) subscribeToPush(swRegistration);
     }
   });
+  _showPushPromptOrFinish();
 });
 
 function loadState() {
@@ -1424,10 +1564,12 @@ function loadState() {
       appState.orgs = parsed.orgs || ['АО «ЕВРАКОР»', 'ООО «ЭСМ»'];
       appState.barriers = parsed.barriers || ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
       appState.autocomplete = parsed.autocomplete || {};
+      appState.barriersPK = parsed.barriersPK || {};
       renumberDb(); // fix any stale numbers from previous sessions
     } else {
       appState.orgs = ['АО «ЕВРАКОР»', 'ООО «ЭСМ»'];
       appState.barriers = ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
+      appState.barriersPK = {};
     }
   } catch(e) {}
 }
@@ -1438,7 +1580,8 @@ function saveState() {
       db: appState.db,
       orgs: appState.orgs,
       barriers: appState.barriers,
-      autocomplete: appState.autocomplete
+      autocomplete: appState.autocomplete,
+      barriersPK: appState.barriersPK || {}
     }));
   } catch(e) {}
 }
@@ -1448,7 +1591,6 @@ function registerSW() {
     navigator.serviceWorker.register('/sw.js').then(function(reg) {
       swRegistration = reg;
       subscribeToPush(reg);
-      initPushOnFirstLaunch(reg);
     }).catch(function(){});
   }
 }
@@ -1471,10 +1613,17 @@ function goLobby() {
 function openProverki()  { showScreen('screen-proverki-menu'); }
 function openMeropr()    { /* TODO */ alert('Раздел «Мероприятия» — в разработке'); }
 function openStat()      { /* TODO */ alert('Раздел «Статистика» — в разработке'); }
-function openSettings()  { /* TODO */ alert('Настройки — в разработке'); }
+function openSettings() {
+  pinMode = 'settings';
+  document.getElementById('screen-pin').classList.add('screen-pin--dark');
+  resetPin();
+  showScreen('screen-pin');
+}
 
 function openPin() {
   if (appState.pinUnlocked) { openCard(); return; }
+  pinMode = 'card';
+  document.getElementById('screen-pin').classList.remove('screen-pin--dark');
   resetPin();
   showScreen('screen-pin');
 }
@@ -1651,11 +1800,17 @@ function renderLobby() {
 // ===== PIN =====
 var pinValue = '';
 var PIN_CODE = '1111';
+var SETTINGS_PINS = { '3333': 'admin', '4444': 'superuser' };
+var pinMode = 'card'; // 'card' | 'settings'
 
 function resetPin() {
   pinValue = '';
   updatePinDots();
   document.getElementById('pin-error').textContent = '';
+}
+
+function pinGoBack() {
+  showScreen(pinMode === 'settings' ? 'screen-lobby' : 'screen-proverki-menu');
 }
 
 function pinPress(d) {
@@ -1679,13 +1834,23 @@ function updatePinDots() {
 }
 
 function checkPin() {
-  if (pinValue === PIN_CODE) {
-    appState.pinUnlocked = true;
-    openCard();
+  if (pinMode === 'settings') {
+    if (SETTINGS_PINS[pinValue]) {
+      showScreen('screen-settings');
+    } else {
+      document.getElementById('pin-error').textContent = 'Неверный пароль';
+      pinValue = '';
+      updatePinDots();
+    }
   } else {
-    document.getElementById('pin-error').textContent = 'Неверный пароль';
-    pinValue = '';
-    updatePinDots();
+    if (pinValue === PIN_CODE) {
+      appState.pinUnlocked = true;
+      openCard();
+    } else {
+      document.getElementById('pin-error').textContent = 'Неверный пароль';
+      pinValue = '';
+      updatePinDots();
+    }
   }
 }
 
@@ -1749,10 +1914,9 @@ function submitCard() {
   var sameYear = appState.db.filter(function(r){ return r.year === year; });
   cardData.num = sameYear.length + 1;
   cardData.year = year;
-  // Барьер в ПК (auto)
-  var pkBarriers = (appState.barriers || []).filter(function(b){ return b.inPK; }).map(function(b){ return typeof b === 'string' ? b : b.name; });
-  var barrierName = cardData.barrier;
-  cardData.barrierInPK = pkBarriers.indexOf(barrierName) >= 0 ? 'Да' : 'Нет';
+  // Барьер в ПК (auto) — проверяем по году даты проверки
+  var pkForYear = (appState.barriersPK || {})[year] || [];
+  cardData.barrierInPK = pkForYear.indexOf(cardData.barrier) >= 0 ? 'Да' : 'Нет';
   // insert sorted by dateCheck, then re-assign sequential numbers
   appState.db.push(cardData);
   appState.db.sort(cmpRecords);
@@ -1780,6 +1944,124 @@ function sendNotification(r) {
   if (Notification.permission === 'granted') {
     new Notification('Нарушение КБ', { body: (r.org || '') + ' — ' + (r.barrier || '') + '\n' + (r.desc || '') });
   }
+}
+
+// ===== EXPORT =====
+// Collect unique years from appState.db + current year, newest first.
+function getSettingsYears() {
+  var ySet = {};
+  ySet[String(new Date().getFullYear())] = true;
+  (appState.db || []).forEach(function(r) { if (r.year) ySet[String(r.year)] = true; });
+  return Object.keys(ySet).sort(function(a, b) { return +b - +a; });
+}
+
+function openExportOverlay() {
+  var years = getSettingsYears();
+  var list = document.getElementById('export-year-list');
+  list.innerHTML = '';
+  years.forEach(function(year) {
+    var btn = document.createElement('button');
+    btn.className = 'year-sel-btn';
+    btn.textContent = year;
+    btn.onclick = function() { downloadExcel(year, btn); };
+    list.appendChild(btn);
+  });
+  document.getElementById('overlay-export').classList.add('active');
+}
+
+function downloadExcel(year, btn) {
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  fetch('/api/export?year=' + encodeURIComponent(year))
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.blob();
+    })
+    .then(function(blob) {
+      var a = document.createElement('a');
+      var url = URL.createObjectURL(blob);
+      a.href = url;
+      a.download = 'Проверки КБ ' + year + '.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      if (btn) { btn.textContent = year; btn.disabled = false; }
+    })
+    .catch(function(e) {
+      if (btn) { btn.textContent = year; btn.disabled = false; }
+      alert('Ошибка выгрузки: ' + e.message);
+    });
+}
+
+// ===== BARRIERS PK =====
+var _bpkYear = null; // year currently being edited
+
+function openBarriersPKYearsOverlay() {
+  var years = getSettingsYears();
+  var list = document.getElementById('barriers-year-list');
+  list.innerHTML = '';
+  years.forEach(function(year) {
+    var btn = document.createElement('button');
+    btn.className = 'year-sel-btn';
+    btn.textContent = year;
+    btn.onclick = function() {
+      closeOverlay('overlay-barriers-years');
+      openBarriersPKList(year);
+    };
+    list.appendChild(btn);
+  });
+  document.getElementById('overlay-barriers-years').classList.add('active');
+}
+
+function openBarriersPKList(year) {
+  _bpkYear = year;
+  var pkForYear = (appState.barriersPK || {})[year] || [];
+  var barriers = (appState.barriers || [])
+    .map(function(b) { return typeof b === 'string' ? b : b.name; })
+    .sort(function(a, b) { return a.localeCompare(b, 'ru'); });
+
+  document.getElementById('barriers-list-title').textContent = 'Барьеры КБ в ПК — ' + year;
+  var list = document.getElementById('barriers-pk-list');
+  list.innerHTML = '';
+
+  if (!barriers.length) {
+    var msg = document.createElement('div');
+    msg.style.cssText = 'padding:16px;text-align:center;color:#888;font-size:14px;';
+    msg.textContent = 'Список барьеров пуст. Добавьте барьеры в настройках.';
+    list.appendChild(msg);
+  } else {
+    barriers.forEach(function(name) {
+      var item = document.createElement('div');
+      item.className = 'barrier-pk-item';
+      var nameEl = document.createElement('div');
+      nameEl.className = 'barrier-pk-name';
+      nameEl.textContent = name;
+      var label = document.createElement('label');
+      label.className = 'barrier-pk-label';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = pkForYear.indexOf(name) >= 0;
+      cb.dataset.barrier = name;
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode('барьер в ПК'));
+      item.appendChild(nameEl);
+      item.appendChild(label);
+      list.appendChild(item);
+    });
+  }
+  document.getElementById('overlay-barriers-list').classList.add('active');
+}
+
+function saveBarriersPK() {
+  if (!_bpkYear) return;
+  var selected = [];
+  document.querySelectorAll('#barriers-pk-list input[type="checkbox"]').forEach(function(cb) {
+    if (cb.checked) selected.push(cb.dataset.barrier);
+  });
+  if (!appState.barriersPK) appState.barriersPK = {};
+  appState.barriersPK[_bpkYear] = selected;
+  saveState();
+  closeOverlay('overlay-barriers-list');
 }
 
 function successExit() {
@@ -2056,11 +2338,22 @@ function openDrumOrg() {
 }
 
 function openDrumBarrier() {
-  var barriers = appState.barriers.map(function(b){ return typeof b === 'string' ? b : b.name; });
-  barriers.sort(function(a,b){ return a.localeCompare(b,'ru'); });
-  if (!barriers.length) { alert('Список барьеров пуст. Добавьте барьеры в настройках.'); return; }
+  var allBarriers = appState.barriers.map(function(b){ return typeof b === 'string' ? b : b.name; });
+  var year = cardData.dateCheck ? cardData.dateCheck.split('.')[2] : String(new Date().getFullYear());
+  var pkForYear = (appState.barriersPK || {})[year];
+  // If PK is configured for this year, show only PK barriers; otherwise show all
+  var barriers = (pkForYear && pkForYear.length > 0)
+    ? allBarriers.filter(function(b) { return pkForYear.indexOf(b) >= 0; })
+    : allBarriers;
+  barriers.sort(function(a, b){ return a.localeCompare(b, 'ru'); });
+  if (!barriers.length) {
+    alert(pkForYear && pkForYear.length === 0
+      ? 'Для ' + year + ' нет барьеров в ПК. Настройте их в разделе «Барьеры ПК».'
+      : 'Список барьеров пуст. Добавьте барьеры в настройках.');
+    return;
+  }
   openDrumOverlay('Выберите проверяемый барьер', [
-    { id: 'barrier', items: barriers, value: cardData.barrier || barriers[0], minWidth: 200 }
+    { id: 'barrier', items: barriers, value: (barriers.indexOf(cardData.barrier) >= 0 ? cardData.barrier : barriers[0]), minWidth: 200 }
   ], function(d) {
     cardData.barrier = d['barrier'].getValue();
     document.getElementById('val-barrier').textContent = cardData.barrier;
@@ -2393,7 +2686,7 @@ function dateToMs(s) {
   try { return parseDate(s).getTime(); } catch(e){ return 0; }
 }
 
-// Parse "DD.MM.YYYY, HH:MM:SS" → ms timestamp (0 if unparseable)
+// "DD.MM.YYYY, HH:MM:SS" → ms timestamp (0 if unparseable)
 function dateEntryToMs(s) {
   if (!s) return 0;
   var m = String(s).match(/(\d{1,2})\.(\d{1,2})\.(\d{4}),?\s*(\d{1,2}):(\d{2}):(\d{2})/);
@@ -2401,7 +2694,9 @@ function dateEntryToMs(s) {
   return new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5], +m[6]).getTime();
 }
 
-// Master comparator: date asc → org А-Я → barrier А-Я → method А-Я → obj А-Я → dateEntry desc
+// Master comparator:
+// 1. дата проверки ↑  2. орг А-Я  3. барьер А-Я  4. метод А-Я
+// 5. объект А-Я  6. дата+время внесения ↓ (полный timestamp, включает чч:мм:сс)
 function cmpRecords(a, b) {
   var d = dateToMs(a.dateCheck) - dateToMs(b.dateCheck);
   if (d) return d;
