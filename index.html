@@ -658,7 +658,7 @@ html, body {
 }
 /* Wide gray buttons in settings main screen */
 .settings-wide-btn {
-  width: 100%; max-width: 360px; padding: 16px 20px;
+  width: calc((100vw - 48px) / 3); padding: 16px 20px;
   background: var(--gray-btn); color: #fff;
   font-size: 16px; font-weight: 600;
   border: none; border-radius: 14px; cursor: pointer; text-align: center;
@@ -2278,9 +2278,10 @@ function renderMethodsTable() {
     var cbSel = document.createElement('input');
     cbSel.type = 'checkbox'; cbSel.className = 'method-circle-cb'; cbSel.dataset.idx = idx;
     // "Прочее" cannot be selected for deletion
-    if (m.name === 'Прочее') cbSel.disabled = true;
-    cbSel.addEventListener('change', updateMethodMinusBtnState);
-    tdSel.appendChild(cbSel);
+    if (m.name !== 'Прочее') {
+      cbSel.addEventListener('change', updateMethodMinusBtnState);
+      tdSel.appendChild(cbSel);
+    }
     // Метод (name)
     var tdName = document.createElement('td');
     tdName.className = 'methods-td methods-td-name'; tdName.textContent = m.name;
@@ -2753,17 +2754,8 @@ function openDrumOrg() {
 
 function openDrumBarrier() {
   var year = cardData.dateCheck ? cardData.dateCheck.split('.')[2] : String(new Date().getFullYear());
-  var cfg = (appState.barriersConfig || {})[year];
-  var barriers;
-  if (cfg && cfg.length) {
-    barriers = cfg.filter(function(b) { return b.show !== false; }).map(function(b) { return b.name; });
-  } else {
-    var pkForYear = (appState.barriersPK || {})[year];
-    var all = (appState.barriers || []).map(function(b){ return typeof b === 'string' ? b : b.name; });
-    barriers = (pkForYear && pkForYear.length > 0)
-      ? all.filter(function(b) { return pkForYear.indexOf(b) >= 0; })
-      : all;
-  }
+  var list = getBarriersForYear(year);
+  var barriers = list.filter(function(b) { return b.show !== false; }).map(function(b) { return b.name; });
   barriers.sort(function(a, b){ return a.localeCompare(b, 'ru'); });
   if (!barriers.length) {
     alert('Список барьеров пуст для ' + year + '. Настройте их в разделе «Барьеры ПК».');
