@@ -2259,6 +2259,96 @@ function downloadExcel(year, btn) {
 // ===== BARRIERS PK =====
 var _bpkYear = null; // year currently being edited
 
+function openMethodsScreen() {
+  document.getElementById('method-new-row').style.display = 'none';
+  document.getElementById('method-new-input').value = '';
+  renderMethodsTable();
+  showScreen('screen-methods');
+}
+
+function renderMethodsTable() {
+  var list = appState.methods || [];
+  var tbody = document.getElementById('methods-tbody');
+  tbody.innerHTML = '';
+  list.forEach(function(m, idx) {
+    var tr = document.createElement('tr');
+    // Выбрать (left, circle)
+    var tdSel = document.createElement('td');
+    tdSel.className = 'methods-td methods-td-cb';
+    var cbSel = document.createElement('input');
+    cbSel.type = 'checkbox'; cbSel.className = 'method-circle-cb'; cbSel.dataset.idx = idx;
+    // "Прочее" cannot be selected for deletion
+    if (m.name === 'Прочее') cbSel.disabled = true;
+    cbSel.addEventListener('change', updateMethodMinusBtnState);
+    tdSel.appendChild(cbSel);
+    // Метод (name)
+    var tdName = document.createElement('td');
+    tdName.className = 'methods-td methods-td-name'; tdName.textContent = m.name;
+    // Показывать (right, square)
+    var tdShow = document.createElement('td');
+    tdShow.className = 'methods-td methods-td-cb';
+    var cbShow = document.createElement('input');
+    cbShow.type = 'checkbox'; cbShow.className = 'method-square-cb';
+    cbShow.checked = (m.show !== false); cbShow.dataset.idx = idx;
+    cbShow.addEventListener('change', function() {
+      (appState.methods || [])[+this.dataset.idx].show = this.checked;
+      saveState();
+    });
+    tdShow.appendChild(cbShow);
+    tr.appendChild(tdSel); tr.appendChild(tdName); tr.appendChild(tdShow);
+    tbody.appendChild(tr);
+  });
+  updateMethodMinusBtnState();
+}
+
+function updateMethodMinusBtnState() {
+  var anyChecked = !!document.querySelector('#methods-tbody .method-circle-cb:checked:not(:disabled)');
+  var btn = document.getElementById('method-btn-minus');
+  if (btn) btn.disabled = !anyChecked;
+}
+
+function deleteSelectedMethods() {
+  var selected = [];
+  document.querySelectorAll('#methods-tbody .method-circle-cb:checked:not(:disabled)').forEach(function(cb) {
+    selected.push(+cb.dataset.idx);
+  });
+  if (!selected.length) return;
+  appState.methods = (appState.methods || []).filter(function(_, i) { return selected.indexOf(i) < 0; });
+  saveState();
+  renderMethodsTable();
+}
+
+function showAddMethodInput() {
+  document.getElementById('method-new-row').style.display = 'flex';
+  document.getElementById('method-new-input').focus();
+}
+
+function hideAddMethodInput() {
+  var input = document.getElementById('method-new-input');
+  input.value = ''; input.blur();
+  document.getElementById('method-new-row').style.display = 'none';
+}
+
+function saveNewMethod() {
+  var input = document.getElementById('method-new-input');
+  var name = input.value.trim();
+  if (!name) return;
+  var methods = appState.methods || [];
+  // Insert before "Прочее" (always last)
+  var lastIdx = methods.length - 1;
+  var last = methods[lastIdx];
+  if (last && last.name === 'Прочее') {
+    methods.splice(lastIdx, 0, { name: name, show: true });
+  } else {
+    methods.push({ name: name, show: true });
+  }
+  appState.methods = methods;
+  saveState();
+  input.value = '';
+  document.getElementById('method-new-row').style.display = 'none';
+  renderMethodsTable();
+}
+
 function openBarriersPKYearsScreen() {
   var years = getSettingsYears();
   var list = document.getElementById('barriers-year-list');
