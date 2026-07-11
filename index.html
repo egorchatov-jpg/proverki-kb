@@ -1806,6 +1806,11 @@ function loadState() {
       } else {
         appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
       }
+      // Migrate old 2-item org list to DEFAULT_ORGS
+      if (appState.orgs.length <= 2 ||
+          appState.orgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; })) {
+        appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
+      }
       appState.barriers = parsed.barriers || ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
       appState.autocomplete = parsed.autocomplete || {};
       appState.barriersPK    = parsed.barriersPK    || {};
