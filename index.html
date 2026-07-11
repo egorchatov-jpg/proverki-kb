@@ -636,7 +636,7 @@ html, body {
 #screen-export,
 #screen-barriers-years,
 #screen-barriers-list,
-#screen-methods { background: var(--bg); }
+#screen-methods, #screen-orgs { background: var(--bg); }
 
 /* Shared title at top of each settings sub-screen */
 .settings-screen-title {
@@ -1114,6 +1114,7 @@ html, body {
     <button class="settings-wide-btn" onclick="openExportScreen()">Выгрузить проверки КБ</button>
     <button class="settings-wide-btn" onclick="openBarriersPKYearsScreen()">Барьеры ПК</button>
     <button class="settings-wide-btn" onclick="openMethodsScreen()">Методы проверок</button>
+    <button class="settings-wide-btn" onclick="openOrgsScreen()">Проверяемые организации</button>
   </div>
   <div class="settings-footer">
     <!-- exitSettings syncs settings to server before returning to lobby -->
@@ -1134,14 +1135,6 @@ html, body {
 <div class="screen" id="screen-barriers-years">
   <div class="settings-screen-title">Отметьте барьеры Каркаса Безопасности, вошедшие в производственный контракт</div>
   <div class="settings-screen-body" id="barriers-year-list"></div>
-  <div class="methods-action-row" id="barriers-year-action-row">
-    <button class="method-sq-btn minus" id="barriers-year-minus" onclick="removeBarriersYear()" disabled>
-      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </button>
-    <button class="method-sq-btn plus" id="barriers-year-plus" onclick="addBarriersYear()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </button>
-  </div>
   <div class="settings-footer">
     <button class="screen-back-btn" onclick="showScreen('screen-settings')">Назад</button>
   </div>
@@ -1220,6 +1213,43 @@ html, body {
   </div>
   <div class="settings-footer">
     <button class="screen-back-btn" onclick="showScreen('screen-settings')">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: ПРОВЕРЯЕМЫЕ ОРГАНИЗАЦИИ ===== -->
+<div class="screen" id="screen-orgs">
+  <div class="settings-screen-title">Проверяемые организации</div>
+  <div class="methods-table-wrap">
+    <table class="methods-table">
+      <thead>
+        <tr>
+          <th class="methods-th" style="width:44px;">Выбрать</th>
+          <th class="methods-th methods-th-name">Организация</th>
+          <th class="methods-th" style="width:74px;">Показывать</th>
+        </tr>
+      </thead>
+      <tbody id="orgs-tbody"></tbody>
+    </table>
+    <div class="methods-action-row">
+      <button class="method-sq-btn minus" id="org-btn-minus" onclick="deleteSelectedOrgs()" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <button class="method-sq-btn plus" onclick="showAddOrgInput()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="org-new-row" style="display:none;" class="method-new-row">
+    <input class="method-new-input" id="org-new-input" type="text" placeholder="Название организации" autocomplete="off">
+    <button class="method-cancel-btn" onclick="hideAddOrgInput()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <button class="method-save-btn" onclick="saveNewOrg()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><polyline points="4 12 9 17 20 6"/></svg>
+    </button>
+  </div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="backFromOrgsScreen()">Назад</button>
   </div>
 </div>
 
@@ -1477,7 +1507,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -1644,6 +1674,19 @@ var DEFAULT_METHODS = [
   { name: 'Прочее',       show: true, fixed: true }
 ];
 
+var DEFAULT_ORGS = [
+  'ЕВРАКОР',
+  'Лесные технологии',
+  'НГСК',
+  'НСС',
+  'СИБИТЕК',
+  'СФГ',
+  'Тюменьвторсырье',
+  'ЭСМ',
+  'Юграгидрострой',
+  'ЮНС'
+];
+
 var appState = {
   pinUnlocked: false,
   db: [],          // массив записей проверок
@@ -1756,7 +1799,13 @@ function loadState() {
     if (saved) {
       var parsed = JSON.parse(saved);
       appState.db = parsed.db || [];
-      appState.orgs = parsed.orgs || ['АО «ЕВРАКОР»', 'ООО «ЭСМ»'];
+      if (parsed.orgs && parsed.orgs.length) {
+        if (typeof parsed.orgs[0] === 'string') {
+          appState.orgs = parsed.orgs.map(function(n) { return { name: n, show: true }; });
+        } else { appState.orgs = parsed.orgs; }
+      } else {
+        appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
+      }
       appState.barriers = parsed.barriers || ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
       appState.autocomplete = parsed.autocomplete || {};
       appState.barriersPK    = parsed.barriersPK    || {};
@@ -1766,7 +1815,7 @@ function loadState() {
         : DEFAULT_METHODS.map(function(m) { return Object.assign({}, m); });
       renumberDb();
     } else {
-      appState.orgs = ['АО «ЕВРАКОР»', 'ООО «ЭСМ»'];
+      appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
       appState.barriers = ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
       appState.barriersPK = {};
       appState.methods = DEFAULT_METHODS.map(function(m) { return Object.assign({}, m); });
@@ -2086,7 +2135,11 @@ function syncSettingsFromServer(callback) {
       // Merge server settings — never rewrite Excel records (values used only for NEW entries)
       if (data.methods  && data.methods.length)  appState.methods    = data.methods;
       if (data.barriersPK)                        appState.barriersPK = data.barriersPK;
-      if (data.orgs     && data.orgs.length)      appState.orgs       = data.orgs;
+      if (data.orgs && data.orgs.length) {
+        if (typeof data.orgs[0] === 'string') {
+          appState.orgs = data.orgs.map(function(n) { return { name: n, show: true }; });
+        } else { appState.orgs = data.orgs; }
+      }
       if (data.barriers && data.barriers.length)  appState.barriers      = data.barriers;
       if (data.barriersConfig) appState.barriersConfig = data.barriersConfig;
       saveState();
@@ -2391,6 +2444,20 @@ function renderBarriersYearList() {
     btn.onclick = function() { openBarriersPKList(year); };
     list.appendChild(btn);
   });
+  // +/- row rendered inside the scrollable area, right below year buttons
+  var actionRow = document.createElement('div');
+  actionRow.className = 'methods-action-row';
+  actionRow.style.flexShrink = '0';
+  var minusBtn = document.createElement('button');
+  minusBtn.className = 'method-sq-btn minus'; minusBtn.id = 'barriers-year-minus';
+  minusBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+  minusBtn.onclick = removeBarriersYear;
+  var plusBtn = document.createElement('button');
+  plusBtn.className = 'method-sq-btn plus'; plusBtn.id = 'barriers-year-plus';
+  plusBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+  plusBtn.onclick = addBarriersYear;
+  actionRow.appendChild(minusBtn); actionRow.appendChild(plusBtn);
+  list.appendChild(actionRow);
   updateBarriersYearBtns();
 }
 
@@ -2415,7 +2482,7 @@ function addBarriersYear() {
   var prevList = getBarriersForYear(prevYear);
   // Copy barrier names from previous year, all checkboxes cleared
   appState.barriersConfig[newYear] = prevList.map(function(b) {
-    return { name: b.name, inPK: false, show: true };
+    return { name: b.name, inPK: false, show: false };
   });
   saveState();
   renderBarriersYearList();
@@ -2540,6 +2607,91 @@ function backFromBarriersList() {
     saveState();
   }
   showScreen('screen-barriers-years');
+}
+
+function openOrgsScreen() {
+  document.getElementById('org-new-row').style.display = 'none';
+  document.getElementById('org-new-input').value = '';
+  renderOrgsTable();
+  showScreen('screen-orgs');
+}
+
+function renderOrgsTable() {
+  var list = appState.orgs || [];
+  var tbody = document.getElementById('orgs-tbody');
+  tbody.innerHTML = '';
+  list.forEach(function(o, idx) {
+    var tr = document.createElement('tr');
+    var tdSel = document.createElement('td');
+    tdSel.className = 'methods-td methods-td-cb';
+    var cbSel = document.createElement('input');
+    cbSel.type = 'checkbox'; cbSel.className = 'method-circle-cb'; cbSel.dataset.idx = idx;
+    cbSel.addEventListener('change', updateOrgMinusBtnState);
+    tdSel.appendChild(cbSel);
+    var tdName = document.createElement('td');
+    tdName.className = 'methods-td methods-td-name'; tdName.textContent = o.name;
+    var tdShow = document.createElement('td');
+    tdShow.className = 'methods-td methods-td-cb';
+    var cbShow = document.createElement('input');
+    cbShow.type = 'checkbox'; cbShow.className = 'method-square-cb';
+    cbShow.checked = (o.show !== false); cbShow.dataset.idx = idx;
+    cbShow.addEventListener('change', function() {
+      (appState.orgs || [])[+this.dataset.idx].show = this.checked;
+      saveState();
+    });
+    tdShow.appendChild(cbShow);
+    tr.appendChild(tdSel); tr.appendChild(tdName); tr.appendChild(tdShow);
+    tbody.appendChild(tr);
+  });
+  updateOrgMinusBtnState();
+}
+
+function updateOrgMinusBtnState() {
+  var anyChecked = !!document.querySelector('#orgs-tbody .method-circle-cb:checked');
+  var btn = document.getElementById('org-btn-minus');
+  if (btn) btn.disabled = !anyChecked;
+}
+
+function deleteSelectedOrgs() {
+  var selected = [];
+  document.querySelectorAll('#orgs-tbody .method-circle-cb:checked').forEach(function(cb) {
+    selected.push(+cb.dataset.idx);
+  });
+  if (!selected.length) return;
+  appState.orgs = (appState.orgs || []).filter(function(_, i) { return selected.indexOf(i) < 0; });
+  saveState();
+  renderOrgsTable();
+}
+
+function showAddOrgInput() {
+  document.getElementById('org-new-row').style.display = 'flex';
+  document.getElementById('org-new-input').focus();
+}
+
+function hideAddOrgInput() {
+  var input = document.getElementById('org-new-input');
+  input.value = ''; input.blur();
+  document.getElementById('org-new-row').style.display = 'none';
+}
+
+function saveNewOrg() {
+  var input = document.getElementById('org-new-input');
+  var name = input.value.trim();
+  if (!name) return;
+  if (!appState.orgs) appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
+  appState.orgs.push({ name: name, show: true });
+  saveState();
+  input.value = '';
+  document.getElementById('org-new-row').style.display = 'none';
+  renderOrgsTable();
+}
+
+function backFromOrgsScreen() {
+  if (appState.orgs) {
+    appState.orgs.sort(function(a, b) { return a.name.localeCompare(b.name, 'ru'); });
+    saveState();
+  }
+  showScreen('screen-settings');
 }
 
 function successExit() {
@@ -2809,7 +2961,9 @@ function openDrumMethod() {
 }
 
 function openDrumOrg() {
-  var orgs = appState.orgs.slice().sort(function(a,b){ return a.localeCompare(b,'ru'); });
+  var orgs = (appState.orgs || []).filter(function(o) { return o.show !== false; })
+    .map(function(o) { return o.name; })
+    .sort(function(a,b){ return a.localeCompare(b,'ru'); });
   if (!orgs.length) { alert('Список организаций пуст. Добавьте организации в настройках.'); return; }
   openDrumOverlay('Выберите проверяемую организацию', [
     { id: 'org', items: orgs, value: cardData.org || orgs[0], fullWidth: true }
