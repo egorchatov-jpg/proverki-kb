@@ -2894,10 +2894,7 @@ function openDrumOverlay(title, drumConfigs, callback) {
     createDrumEl(cfg.id, cfg.items, wrap);
     if (cfg.value !== undefined) DRUM_INSTANCES[cfg.id].setValue(cfg.value);
     if (cfg.fullWidth) {
-      block.style.width = '100%';
-      group.style.width = '100%';
       wrap.classList.add('full-width');
-      // Use actual overlay width (Windows has constrained overlay)
       var isWinDrum = document.documentElement.classList.contains('is-win');
       var overlayW = isWinDrum ? Math.floor(window.innerWidth * 0.43334) : window.innerWidth;
       var wFactor = cfg.widthFactor || 1.0;
@@ -2980,7 +2977,7 @@ function openDrumOrg() {
     .sort(function(a,b){ return a.localeCompare(b,'ru'); });
   if (!orgs.length) { alert('Список организаций пуст. Добавьте организации в настройках.'); return; }
   openDrumOverlay('Выберите проверяемую организацию', [
-    { id: 'org', items: orgs, value: cardData.org || orgs[0], fullWidth: true, widthFactor: 0.9 }
+    { id: 'org', items: orgs, value: cardData.org || orgs[0], fullWidth: true, widthFactor: 0.8 }
   ], function(d) {
     cardData.org = d['org'].getValue();
     document.getElementById('val-org').textContent = cardData.org;
