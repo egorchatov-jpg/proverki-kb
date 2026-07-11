@@ -363,8 +363,8 @@ html, body {
 .overlay-textarea:focus { outline: none; border-color: var(--orange); }
 .overlay-input {
   width: 100%; border: 1.5px solid var(--border);
-  border-radius: 12px; padding: 12px 14px;
-  font-size: 15px; font-family: inherit; color: #1a2035;
+  border-radius: 10px; padding: 10px 12px;
+  font-size: 14px; font-family: inherit; color: #1a2035;
   background: #fff;
 }
 .overlay-input:focus { outline: none; border-color: var(--orange); }
@@ -2897,7 +2897,11 @@ function openDrumOverlay(title, drumConfigs, callback) {
       block.style.width = '100%';
       group.style.width = '100%';
       wrap.classList.add('full-width');
-      wrap.style.width = Math.max(100, window.innerWidth - 80) + 'px';
+      // Use actual overlay width (Windows has constrained overlay)
+      var isWinDrum = document.documentElement.classList.contains('is-win');
+      var overlayW = isWinDrum ? Math.floor(window.innerWidth * 0.43334) : window.innerWidth;
+      var wFactor = cfg.widthFactor || 1.0;
+      wrap.style.width = Math.max(100, Math.round((overlayW - 48) * wFactor)) + 'px';
     } else if (cfg.minWidth) {
       var curW = parseInt(wrap.style.width) || 0;
       if (curW < cfg.minWidth) wrap.style.width = cfg.minWidth + 'px';
@@ -2963,9 +2967,9 @@ function openDrumMethod() {
     cardData.method = d['method'].getValue();
     document.getElementById('val-method').textContent = cardData.method;
     document.getElementById('val-method').classList.remove('placeholder');
-    var isProchee = cardData.method === 'Прочее';
-    setDimmed('inspector', !isProchee);
-    if (!isProchee) { cardData.inspector = ''; document.getElementById('val-inspector').textContent = '—'; }
+    var isLocked = (cardData.method === 'ОСИР' || cardData.method === 'ЦРПО');
+    setDimmed('inspector', isLocked);
+    if (isLocked) { cardData.inspector = ''; document.getElementById('val-inspector').textContent = '—'; }
     updateValidation();
   });
 }
@@ -2976,7 +2980,7 @@ function openDrumOrg() {
     .sort(function(a,b){ return a.localeCompare(b,'ru'); });
   if (!orgs.length) { alert('Список организаций пуст. Добавьте организации в настройках.'); return; }
   openDrumOverlay('Выберите проверяемую организацию', [
-    { id: 'org', items: orgs, value: cardData.org || orgs[0], fullWidth: true }
+    { id: 'org', items: orgs, value: cardData.org || orgs[0], fullWidth: true, widthFactor: 0.9 }
   ], function(d) {
     cardData.org = d['org'].getValue();
     document.getElementById('val-org').textContent = cardData.org;
@@ -3105,7 +3109,11 @@ function pickAutocomplete(val) {
   document.getElementById('autocomplete-list').style.display = 'none';
 }
 
-function closeTextOverlay() { document.getElementById('overlay-text').classList.remove('active'); }
+function closeTextOverlay() {
+  var inp = document.getElementById('text-overlay-input');
+  if (inp) inp.blur();
+  document.getElementById('overlay-text').classList.remove('active');
+}
 
 function applyTextOverlay() {
   var val = document.getElementById('text-overlay-input').value.trim();
