@@ -2144,6 +2144,11 @@ function syncSettingsFromServer(callback) {
         if (typeof data.orgs[0] === 'string') {
           appState.orgs = data.orgs.map(function(n) { return { name: n, show: true }; });
         } else { appState.orgs = data.orgs; }
+        // Migrate stale 2-item server data to DEFAULT_ORGS
+        if (appState.orgs.length <= 2 ||
+            appState.orgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; })) {
+          appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
+        }
       }
       if (data.barriers && data.barriers.length)  appState.barriers      = data.barriers;
       if (data.barriersConfig) appState.barriersConfig = data.barriersConfig;
