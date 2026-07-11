@@ -2111,7 +2111,7 @@ var pinMode = 'card'; // 'card' | 'settings' | 'admin-update'
 
 /* ---- Password helpers ---- */
 function getDefaultPasswords() {
-  return { superuser: '2003', admin: '3333', inspector: '1111', orgs: {} };
+  return { superuser: '2023', admin: '3333', inspector: '1111', orgs: {} };
 }
 function getPw() {
   if (!appState.passwords) appState.passwords = getDefaultPasswords();
@@ -2130,7 +2130,7 @@ function generateUniquePassword() {
   }
   return null; // extremely unlikely (> 8 900 passwords used)
 }
-function getDefaultUsedPasswords() { return ['2003', '3333', '1111', '2222']; }
+function getDefaultUsedPasswords() { return ['2023', '3333', '1111', '2222']; }
 /** Ensure every current org has a password entry (default '2222'). */
 function ensureOrgPasswords() {
   var pw = getPw();
@@ -2876,12 +2876,6 @@ function renderPasswordsScreen() {
     row.appendChild(btn);
     return row;
   }
-
-  // Суперпользователь
-  body.appendChild(makePwRow('Суперпользователь', pw.superuser, function() {
-    var newPw = generateUniquePassword();
-    if (newPw) { pw.superuser = newPw; saveState(); renderPasswordsScreen(); }
-  }));
 
   // Администратор — requires superuser PIN confirmation
   body.appendChild(makePwRow('Администратор', pw.admin, function() {
