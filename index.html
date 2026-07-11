@@ -698,6 +698,35 @@ html, body {
 }
 .screen-save-btn:active { opacity: 0.78; }
 
+/* ===== SCREEN: УПРАВЛЕНИЕ ПАРОЛЯМИ ===== */
+#screen-passwords { background: var(--bg); }
+.pw-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 8px 16px; }
+.pw-section-title {
+  font-size: 12px; font-weight: 700; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 14px 0 4px; border-top: 1px solid var(--border); margin-top: 4px;
+}
+.pw-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--border);
+}
+.pw-label {
+  flex: 1; font-size: 14px; font-weight: 600; color: #1a2035;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pw-cell {
+  width: 74px; flex-shrink: 0;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  padding: 7px 4px; font-size: 16px; font-family: monospace;
+  color: #1a2035; background: #f0f0f0; text-align: center; letter-spacing: 3px;
+}
+.pw-update-btn {
+  background: var(--orange); color: #fff; border: none;
+  border-radius: 8px; padding: 8px 12px;
+  font-size: 13px; font-weight: 700; cursor: pointer; flex-shrink: 0;
+}
+.pw-update-btn:active { opacity: 0.75; }
+
 /* ===== SCREEN: МЕТОДЫ ПРОВЕРОК ===== */
 .methods-table-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; }
 .methods-table { width: 100%; border-collapse: collapse; }
@@ -1116,6 +1145,7 @@ html, body {
     <button class="settings-wide-btn" onclick="openBarriersPKYearsScreen()">Барьеры ПК</button>
     <button class="settings-wide-btn" onclick="openMethodsScreen()">Методы проверок</button>
     <button class="settings-wide-btn" onclick="openOrgsScreen()">Проверяемые организации</button>
+    <button class="settings-wide-btn" onclick="openPasswordsScreen()">Управление паролями</button>
   </div>
   <div class="settings-footer">
     <!-- exitSettings syncs settings to server before returning to lobby -->
@@ -1251,6 +1281,15 @@ html, body {
   </div>
   <div class="settings-footer">
     <button class="screen-back-btn" onclick="backFromOrgsScreen()">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: УПРАВЛЕНИЕ ПАРОЛЯМИ ===== -->
+<div class="screen" id="screen-passwords">
+  <div class="settings-screen-title">Управление паролями</div>
+  <div class="pw-body" id="passwords-body"></div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="backFromPasswordsScreen()">Назад</button>
   </div>
 </div>
 
@@ -1508,7 +1547,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -1819,12 +1858,17 @@ function loadState() {
       appState.methods = parsed.methods && parsed.methods.length
         ? parsed.methods
         : DEFAULT_METHODS.map(function(m) { return Object.assign({}, m); });
+      // Passwords
+      appState.passwords     = parsed.passwords     || getDefaultPasswords();
+      appState.usedPasswords = parsed.usedPasswords || getDefaultUsedPasswords();
       renumberDb();
     } else {
       appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
       appState.barriers = ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
       appState.barriersPK = {};
       appState.methods = DEFAULT_METHODS.map(function(m) { return Object.assign({}, m); });
+      appState.passwords     = getDefaultPasswords();
+      appState.usedPasswords = getDefaultUsedPasswords();
     }
   } catch(e) {
     appState.methods = DEFAULT_METHODS.map(function(m) { return Object.assign({}, m); });
@@ -1839,7 +1883,9 @@ function saveState() {
       barriers: appState.barriers,
       autocomplete: appState.autocomplete,
       barriersPK: appState.barriersPK || {},
-      methods: appState.methods || DEFAULT_METHODS
+      methods: appState.methods || DEFAULT_METHODS,
+      passwords: appState.passwords || getDefaultPasswords(),
+      usedPasswords: appState.usedPasswords || getDefaultUsedPasswords()
     }));
   } catch(e) {}
 }
@@ -2061,9 +2107,38 @@ function renderLobby() {
 
 // ===== PIN =====
 var pinValue = '';
-var PIN_CODE = '1111';
-var SETTINGS_PINS = { '3333': 'admin', '4444': 'superuser' };
-var pinMode = 'card'; // 'card' | 'settings'
+var pinMode = 'card'; // 'card' | 'settings' | 'admin-update'
+
+/* ---- Password helpers ---- */
+function getDefaultPasswords() {
+  return { superuser: '2003', admin: '3333', inspector: '1111', orgs: {} };
+}
+function getPw() {
+  if (!appState.passwords) appState.passwords = getDefaultPasswords();
+  return appState.passwords;
+}
+/** Generate a 4-digit PIN never used before across all roles. */
+function generateUniquePassword() {
+  if (!appState.usedPasswords) appState.usedPasswords = getDefaultUsedPasswords();
+  var used = appState.usedPasswords;
+  for (var i = 0; i < 9000; i++) {
+    var pin = String(1000 + Math.floor(Math.random() * 9000));
+    if (used.indexOf(pin) < 0) {
+      appState.usedPasswords = used.concat([pin]);
+      return pin;
+    }
+  }
+  return null; // extremely unlikely (> 8 900 passwords used)
+}
+function getDefaultUsedPasswords() { return ['2003', '3333', '1111', '2222']; }
+/** Ensure every current org has a password entry (default '2222'). */
+function ensureOrgPasswords() {
+  var pw = getPw();
+  if (!pw.orgs) pw.orgs = {};
+  (appState.orgs || []).forEach(function(o) {
+    if (!pw.orgs[o.name]) pw.orgs[o.name] = '2222';
+  });
+}
 
 function resetPin() {
   pinValue = '';
@@ -2072,6 +2147,7 @@ function resetPin() {
 }
 
 function pinGoBack() {
+  if (pinMode === 'admin-update') { pinMode = 'settings'; showScreen('screen-passwords'); return; }
   showScreen(pinMode === 'settings' ? 'screen-lobby' : 'screen-proverki-menu');
 }
 
@@ -2096,10 +2172,33 @@ function updatePinDots() {
 }
 
 function checkPin() {
+  var pw = getPw();
+
+  // ---- admin-update mode: require superuser PIN to update admin password ----
+  if (pinMode === 'admin-update') {
+    if (pinValue === pw.superuser) {
+      var newAdminPw = generateUniquePassword();
+      if (newAdminPw) { appState.passwords.admin = newAdminPw; saveState(); }
+      resetPin();
+      pinMode = 'settings';
+      showScreen('screen-passwords');
+      renderPasswordsScreen();
+    } else {
+      document.getElementById('pin-error').textContent = 'Неверный пароль суперпользователя';
+      pinValue = '';
+      updatePinDots();
+    }
+    return;
+  }
+
+  // ---- settings mode ----
   if (pinMode === 'settings') {
-    if (SETTINGS_PINS[pinValue]) {
+    var role = (pinValue === pw.superuser) ? 'superuser'
+             : (pinValue === pw.admin)     ? 'admin'
+             : null;
+    if (role) {
+      _currentRole = role;
       _settingsUnlocked = true;
-      // Sync settings from server, then show settings screen
       syncSettingsFromServer(function() { showScreen('screen-settings'); });
     } else {
       document.getElementById('pin-error').textContent = 'Неверный пароль';
@@ -2107,7 +2206,8 @@ function checkPin() {
       updatePinDots();
     }
   } else {
-    if (pinValue === PIN_CODE) {
+    // card mode — superuser / admin / inspector all allowed
+    if (pinValue === pw.superuser || pinValue === pw.admin || pinValue === pw.inspector) {
       appState.pinUnlocked = true;
       openCard();
     } else {
@@ -2153,6 +2253,23 @@ function syncSettingsFromServer(callback) {
       }
       if (data.barriers && data.barriers.length)  appState.barriers      = data.barriers;
       if (data.barriersConfig) appState.barriersConfig = data.barriersConfig;
+      if (data.passwords) {
+        // Merge server passwords — keep local if server missing a key
+        var sp = data.passwords;
+        if (!appState.passwords) appState.passwords = getDefaultPasswords();
+        if (sp.superuser)  appState.passwords.superuser  = sp.superuser;
+        if (sp.admin)      appState.passwords.admin      = sp.admin;
+        if (sp.inspector)  appState.passwords.inspector  = sp.inspector;
+        if (sp.orgs)       appState.passwords.orgs       = Object.assign(appState.passwords.orgs || {}, sp.orgs);
+      }
+      if (data.usedPasswords && data.usedPasswords.length) {
+        // Union of local and server used lists
+        var serverUsed = data.usedPasswords;
+        var localUsed  = appState.usedPasswords || [];
+        var merged = localUsed.slice();
+        serverUsed.forEach(function(p) { if (merged.indexOf(p) < 0) merged.push(p); });
+        appState.usedPasswords = merged;
+      }
       saveState();
       if (callback) callback();
     })
@@ -2170,10 +2287,12 @@ function syncSettingsFromServer(callback) {
  */
 function syncSettingsToServer() {
   var settings = {
-    methods:    appState.methods    || DEFAULT_METHODS,
-    barriersPK: appState.barriersPK || {},
-    orgs:       appState.orgs       || [],
-    barriers:   appState.barriers   || []
+    methods:       appState.methods       || DEFAULT_METHODS,
+    barriersPK:    appState.barriersPK    || {},
+    orgs:          appState.orgs          || [],
+    barriers:      appState.barriers      || [],
+    passwords:     appState.passwords     || getDefaultPasswords(),
+    usedPasswords: appState.usedPasswords || getDefaultUsedPasswords()
   };
   fetch('/api/settings', {
     method: 'PUT',
@@ -2337,6 +2456,7 @@ function downloadExcel(year, btn) {
 // ===== BARRIERS PK =====
 var _bpkYear = null; // year currently being edited
 var _settingsUnlocked = false; // true after settings PIN entered in this session
+var _currentRole = null;        // 'superuser' | 'admin' — set on successful settings PIN
 
 function openMethodsScreen() {
   document.getElementById('method-new-row').style.display = 'none';
@@ -2669,7 +2789,11 @@ function deleteSelectedOrgs() {
     selected.push(+cb.dataset.idx);
   });
   if (!selected.length) return;
+  // Remove passwords for deleted orgs
+  var deletedNames = selected.map(function(i) { return (appState.orgs || [])[i].name; });
   appState.orgs = (appState.orgs || []).filter(function(_, i) { return selected.indexOf(i) < 0; });
+  var pw = getPw();
+  deletedNames.forEach(function(n) { if (pw.orgs) delete pw.orgs[n]; });
   saveState();
   renderOrgsTable();
 }
@@ -2691,6 +2815,13 @@ function saveNewOrg() {
   if (!name) return;
   if (!appState.orgs) appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
   appState.orgs.push({ name: name, show: true });
+  // Generate unique password for the new org
+  var pw = getPw();
+  if (!pw.orgs) pw.orgs = {};
+  if (!pw.orgs[name]) {
+    var newOrgPw = generateUniquePassword();
+    pw.orgs[name] = newOrgPw || '2222';
+  }
   saveState();
   input.value = '';
   document.getElementById('org-new-row').style.display = 'none';
@@ -2703,6 +2834,89 @@ function backFromOrgsScreen() {
     saveState();
   }
   showScreen('screen-settings');
+}
+
+// ===== УПРАВЛЕНИЕ ПАРОЛЯМИ =====
+
+function openPasswordsScreen() {
+  ensureOrgPasswords();
+  renderPasswordsScreen();
+  showScreen('screen-passwords');
+}
+
+function backFromPasswordsScreen() {
+  saveState();
+  showScreen('screen-settings');
+}
+
+function renderPasswordsScreen() {
+  var pw = getPw();
+  var body = document.getElementById('passwords-body');
+  body.innerHTML = '';
+
+  function makePwRow(label, password, onUpdate) {
+    var row = document.createElement('div');
+    row.className = 'pw-row';
+
+    var lbl = document.createElement('span');
+    lbl.className = 'pw-label';
+    lbl.textContent = label;
+
+    var cell = document.createElement('span');
+    cell.className = 'pw-cell';
+    cell.textContent = password || '—';
+
+    var btn = document.createElement('button');
+    btn.className = 'pw-update-btn';
+    btn.textContent = 'Обновить';
+    btn.onclick = onUpdate;
+
+    row.appendChild(lbl);
+    row.appendChild(cell);
+    row.appendChild(btn);
+    return row;
+  }
+
+  // Суперпользователь
+  body.appendChild(makePwRow('Суперпользователь', pw.superuser, function() {
+    var newPw = generateUniquePassword();
+    if (newPw) { pw.superuser = newPw; saveState(); renderPasswordsScreen(); }
+  }));
+
+  // Администратор — requires superuser PIN confirmation
+  body.appendChild(makePwRow('Администратор', pw.admin, function() {
+    // Open dark PIN screen in admin-update mode
+    pinMode = 'admin-update';
+    document.getElementById('screen-pin').classList.add('screen-pin--dark');
+    resetPin();
+    showScreen('screen-pin');
+  }));
+
+  // Проверяющий
+  body.appendChild(makePwRow('Проверяющий', pw.inspector, function() {
+    var newPw = generateUniquePassword();
+    if (newPw) { pw.inspector = newPw; saveState(); renderPasswordsScreen(); }
+  }));
+
+  // Section: Проверяемые организации
+  var secTitle = document.createElement('div');
+  secTitle.className = 'pw-section-title';
+  secTitle.textContent = 'Проверяемые организации';
+  body.appendChild(secTitle);
+
+  var orgs = (appState.orgs || []).slice().sort(function(a, b) {
+    return a.name.localeCompare(b.name, 'ru');
+  });
+  orgs.forEach(function(o) {
+    if (!pw.orgs) pw.orgs = {};
+    var orgPw = pw.orgs[o.name] || '2222';
+    body.appendChild(makePwRow(o.name, orgPw, (function(orgName) {
+      return function() {
+        var newPw = generateUniquePassword();
+        if (newPw) { pw.orgs[orgName] = newPw; saveState(); renderPasswordsScreen(); }
+      };
+    }(o.name))));
+  });
 }
 
 function successExit() {
