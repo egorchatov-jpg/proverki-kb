@@ -647,7 +647,7 @@ html, body {
 .settings-screen-body {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; padding: 8px 16px 4px; gap: 12px;
-  overflow-y: auto;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
 }
 /* Shared footer with bottom-aligned buttons */
 .settings-footer {
@@ -658,13 +658,14 @@ html, body {
 }
 /* Wide gray buttons in settings main screen */
 .settings-wide-btn {
-  width: calc((100vw - 48px) / 3); padding: 16px 20px;
+  width: 100%; padding: 16px 20px;
   background: var(--gray-btn); color: #fff;
   font-size: 16px; font-weight: 600;
   border: none; border-radius: 14px; cursor: pointer; text-align: center;
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
 }
 .settings-wide-btn:active { opacity: 0.75; }
+.is-win .settings-wide-btn { width: calc((100vw - 48px) / 3); }
 /* Orange year action button — same width as a single nav-btn */
 .year-action-btn {
   width: calc((100vw - 48px) / 3);
@@ -1133,6 +1134,14 @@ html, body {
 <div class="screen" id="screen-barriers-years">
   <div class="settings-screen-title">Отметьте барьеры Каркаса Безопасности, вошедшие в производственный контракт</div>
   <div class="settings-screen-body" id="barriers-year-list"></div>
+  <div class="methods-action-row" id="barriers-year-action-row">
+    <button class="method-sq-btn minus" id="barriers-year-minus" onclick="removeBarriersYear()" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <button class="method-sq-btn plus" id="barriers-year-plus" onclick="addBarriersYear()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
   <div class="settings-footer">
     <button class="screen-back-btn" onclick="showScreen('screen-settings')">Назад</button>
   </div>
@@ -1808,6 +1817,10 @@ function openProverki()  { showScreen('screen-proverki-menu'); }
 function openMeropr()    { /* TODO */ alert('Раздел «Мероприятия» — в разработке'); }
 function openStat()      { /* TODO */ alert('Раздел «Статистика» — в разработке'); }
 function openSettings() {
+  if (_settingsUnlocked) {
+    syncSettingsFromServer(function() { showScreen('screen-settings'); });
+    return;
+  }
   pinMode = 'settings';
   document.getElementById('screen-pin').classList.add('screen-pin--dark');
   resetPin();
@@ -2030,6 +2043,7 @@ function updatePinDots() {
 function checkPin() {
   if (pinMode === 'settings') {
     if (SETTINGS_PINS[pinValue]) {
+      _settingsUnlocked = true;
       // Sync settings from server, then show settings screen
       syncSettingsFromServer(function() { showScreen('screen-settings'); });
     } else {
@@ -2258,6 +2272,7 @@ function downloadExcel(year, btn) {
 
 // ===== BARRIERS PK =====
 var _bpkYear = null; // year currently being edited
+var _settingsUnlocked = false; // true after settings PIN entered in this session
 
 function openMethodsScreen() {
   document.getElementById('method-new-row').style.display = 'none';
@@ -2351,7 +2366,22 @@ function saveNewMethod() {
 }
 
 function openBarriersPKYearsScreen() {
-  var years = getSettingsYears();
+  renderBarriersYearList();
+  showScreen('screen-barriers-years');
+}
+
+function getBarriersYears() {
+  var currentYear = new Date().getFullYear();
+  var ySet = {};
+  ySet[String(currentYear)] = true;
+  if (appState.barriersConfig) {
+    Object.keys(appState.barriersConfig).forEach(function(y) { ySet[y] = true; });
+  }
+  return Object.keys(ySet).sort(function(a, b) { return +b - +a; });
+}
+
+function renderBarriersYearList() {
+  var years = getBarriersYears();
   var list = document.getElementById('barriers-year-list');
   list.innerHTML = '';
   years.forEach(function(year) {
@@ -2361,7 +2391,45 @@ function openBarriersPKYearsScreen() {
     btn.onclick = function() { openBarriersPKList(year); };
     list.appendChild(btn);
   });
-  showScreen('screen-barriers-years');
+  updateBarriersYearBtns();
+}
+
+function updateBarriersYearBtns() {
+  var years = getBarriersYears();
+  var currentYear = new Date().getFullYear();
+  var maxYear = years.length ? +years[0] : currentYear;
+  var minusBtn = document.getElementById('barriers-year-minus');
+  var plusBtn  = document.getElementById('barriers-year-plus');
+  if (plusBtn)  plusBtn.disabled  = maxYear >= 2050;
+  if (minusBtn) minusBtn.disabled = maxYear <= currentYear;
+}
+
+function addBarriersYear() {
+  var years = getBarriersYears();
+  var currentYear = new Date().getFullYear();
+  var maxYear = years.length ? +years[0] : currentYear;
+  if (maxYear >= 2050) return;
+  var newYear  = String(maxYear + 1);
+  var prevYear = String(maxYear);
+  if (!appState.barriersConfig) appState.barriersConfig = {};
+  var prevList = getBarriersForYear(prevYear);
+  // Copy barrier names from previous year, all checkboxes cleared
+  appState.barriersConfig[newYear] = prevList.map(function(b) {
+    return { name: b.name, inPK: false, show: true };
+  });
+  saveState();
+  renderBarriersYearList();
+}
+
+function removeBarriersYear() {
+  var years = getBarriersYears();
+  var currentYear = new Date().getFullYear();
+  if (!years.length) return;
+  var maxYear = +years[0];
+  if (maxYear <= currentYear) return; // protect current and past years
+  if (appState.barriersConfig) delete appState.barriersConfig[String(maxYear)];
+  saveState();
+  renderBarriersYearList();
 }
 
 function getBarriersForYear(year) {
