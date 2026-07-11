@@ -432,6 +432,7 @@ html, body {
   white-space: nowrap; padding: 0 8px;
 }
 .drum-wrap.full-width .drum-item { overflow: hidden; white-space: nowrap; }
+.drum-wrap.left-align .drum-item { justify-content: flex-start; padding-left: 12px; }
 
 /* нарушение допустил */
 .violator-groups { display: flex; flex-direction: column; gap: 12px; }
@@ -2899,6 +2900,7 @@ function openDrumOverlay(title, drumConfigs, callback) {
       var overlayW = isWinDrum ? Math.floor(window.innerWidth * 0.43334) : window.innerWidth;
       var wFactor = cfg.widthFactor || 1.0;
       wrap.style.width = Math.max(100, Math.round((overlayW - 48) * wFactor)) + 'px';
+      if (cfg.leftAlign) wrap.classList.add('left-align');
     } else if (cfg.minWidth) {
       var curW = parseInt(wrap.style.width) || 0;
       if (curW < cfg.minWidth) wrap.style.width = cfg.minWidth + 'px';
@@ -2977,7 +2979,7 @@ function openDrumOrg() {
     .sort(function(a,b){ return a.localeCompare(b,'ru'); });
   if (!orgs.length) { alert('Список организаций пуст. Добавьте организации в настройках.'); return; }
   openDrumOverlay('Выберите проверяемую организацию', [
-    { id: 'org', items: orgs, value: cardData.org || orgs[0], fullWidth: true, widthFactor: 0.8 }
+    { id: 'org', items: orgs, value: cardData.org || orgs[0], fullWidth: true, widthFactor: 0.8, leftAlign: true }
   ], function(d) {
     cardData.org = d['org'].getValue();
     document.getElementById('val-org').textContent = cardData.org;
