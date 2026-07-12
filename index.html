@@ -2034,7 +2034,7 @@ function openFindFilter(col) {
     org: {
       title: 'Фильтр: организация',
       items: sortAlpha(unique(all.map(function(r) { return r.org; }))),
-      drumCfg: function(items) { return [{ id: 'org', items: items, value: findFilters.org || items[0], fullWidth: true }]; }
+      drumCfg: function(items) { return [{ id: 'org', items: items, value: findFilters.org || items[0], fullWidth: true, widthFactor: 0.8, leftAlign: true }]; }
     },
     barrier: {
       title: 'Фильтр: проверяемый барьер',
