@@ -567,8 +567,8 @@ html, body {
 
 /* ===== CORRECTIVE LIST row colours ===== */
 .corr-row-none    { background: rgba(192,57,43,0.10); }
-.corr-row-entered { background: rgba(27,58,107,0.10); }
-.corr-row-overdue { background: rgba(27,58,107,0.10); }
+.corr-row-entered { background: rgba(27,58,107,0.18); }
+.corr-row-overdue { background: rgba(27,58,107,0.18); }
 .corr-row-done    { background: rgba(39,174,96,0.10); }
 .corr-status-none    { color: var(--red);   font-size: 11px; }
 .corr-status-entered { color: var(--navy);  font-size: 11px; }
@@ -3453,7 +3453,7 @@ function createCorrMeasureEl(m, idx) {
   var dlCell = document.createElement('div');
   dlCell.className = 'corr-m-cell corr-m-half';
   dlCell.id = 'corr-dl-' + idx;
-  dlCell.textContent = 'Срок: ' + (m.deadline || formatDate(new Date()));
+  dlCell.textContent = 'Выполнить до: ' + (m.deadline || formatDate(new Date()));
   dlCell.addEventListener('click', (function(i){ return function() { openDeadlineDrum(i); }; })(idx));
 
   var stCell = document.createElement('div');
@@ -3534,7 +3534,7 @@ function openDeadlineDrum(idx) {
     var deadline = d['dd'].getValue() + '.' + __mmStr + '.' + d['yy'].getValue();
     correctiveMeasures[idx].deadline = deadline;
     var dlCell = document.getElementById('corr-dl-' + idx);
-    if (dlCell) dlCell.textContent = 'Срок: ' + deadline;
+    if (dlCell) dlCell.textContent = 'Выполнить до: ' + deadline;
     setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
     checkCorrFilled();
   });
