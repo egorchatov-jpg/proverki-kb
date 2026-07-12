@@ -20,8 +20,7 @@ const COLUMNS = [
   { h: 'Нарушение допустил',                      k: 'violator'        },
   { h: 'Описание нарушения',                      k: 'desc'            },
   { h: 'Корректирующие мероприятия',              k: 'corrective'      },
-  { h: 'Обоснование для оспаривания в СОКБ',       k: 'contestMeasures' },
-  { h: 'Статус оспаривания в СОКБ',               k: 'contestStatus'   },
+  { h: 'Оспаривание в СОКБ',                      k: 'contestMeasures' },
 ];
 
 function ghApiUrl(fileName) {
@@ -108,16 +107,9 @@ function buildColIdx(header) {
   if (idx.contestMeasures === undefined) {
     const ci = header.findIndex(h => {
       const lower = String(h || '').toLowerCase();
-      return lower.includes('обоснование') && lower.includes('сокб');
+      return (lower.includes('оспаривание') || lower.includes('обоснование')) && lower.includes('сокб');
     });
     if (ci >= 0) idx.contestMeasures = ci;
-  }
-  if (idx.contestStatus === undefined) {
-    const ci = header.findIndex(h => {
-      const lower = String(h || '').toLowerCase();
-      return lower.includes('статус') && lower.includes('сокб');
-    });
-    if (ci >= 0) idx.contestStatus = ci;
   }
   return idx;
 }

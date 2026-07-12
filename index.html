@@ -1516,7 +1516,7 @@ var SYNC_QUEUE_KEY   = 'pkb-sync-queue';
 var UPDATE_QUEUE_KEY = 'pkb-update-queue';
 var SERVER_SHA_KEY   = 'pkb-server-shas';
 var DATA_VERSION_KEY = 'pkb-data-version';
-var CURRENT_DATA_VERSION = 'v4-excel-migrate';
+var CURRENT_DATA_VERSION = 'v5-contest-col';
 var VAPID_KEY_STORE = 'pkb-vapid-key';
 var swRegistration   = null;
 
@@ -1570,7 +1570,7 @@ function removeFromSyncQueue(id) {
 }
 
 // --- Offline retry queue for record UPDATES (corrective, SOKB, etc.) ---
-var UPDATE_FIELD_KEYS = ['corrective', 'contestMeasures', 'contestStatus'];
+var UPDATE_FIELD_KEYS = ['corrective', 'contestMeasures'];
 
 function getUpdateQueue() {
   try { return JSON.parse(localStorage.getItem(UPDATE_QUEUE_KEY) || '[]'); } catch(e) { return []; }
@@ -2349,6 +2349,19 @@ function openPin() {
 
 var findFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '' };
 
+function sortByDateCheckAsc(recs) {
+  return recs.slice().sort(function(a, b) {
+    return dateNumFromStr(a.dateCheck) - dateNumFromStr(b.dateCheck);
+  });
+}
+function scrollCheckListToEnd(screenId) {
+  requestAnimationFrame(function() {
+    var scr = document.getElementById(screenId);
+    if (!scr) return;
+    var wrap = scr.querySelector('.find-list-wrap');
+    if (wrap) wrap.scrollTop = wrap.scrollHeight;
+  });
+}
 function dateNumFromStr(s) {
   var p = s ? s.split('.') : [];
   return p.length === 3 ? parseInt(p[2] + p[1] + p[0]) : 0;
@@ -3407,6 +3420,7 @@ function renderCorrectiveList() {
   if (f.status) {
     violations = violations.filter(function(r) { return getCorrectiveStatus(r) === f.status; });
   }
+  violations = sortByDateCheckAsc(violations);
   var tbody = document.getElementById('corr-list-tbody');
   tbody.innerHTML = '';
   var statusLabel = { none: 'Не внесено', entered: 'Внесено', overdue: 'Просрочено', done: 'Выполнено' };
@@ -3429,6 +3443,7 @@ function renderCorrectiveList() {
   var enteredCount = violations.filter(function(r) { return getCorrectiveStatus(r) !== 'none'; }).length;
   var cntR = document.getElementById('corr-entered-count');
   if (cntR) cntR.innerHTML = enteredCount + '<br>внесено';
+  scrollCheckListToEnd('screen-corrective-list');
 }
 
 function openCorrFilter(col) {
@@ -3874,6 +3889,7 @@ function pluralProverka(n) {
 function renderFindList(records) {
   var tbody = document.getElementById('find-tbody');
   tbody.innerHTML = '';
+  records = sortByDateCheckAsc(records);
   var viol = records.filter(function(r) { return r.works === 'Нет'; }).length;
   document.getElementById('find-count').innerHTML = pluralProverka(records.length);
   document.getElementById('find-violation-count').innerHTML = viol + '<br>' + pluralNarushenie(viol);
@@ -3888,6 +3904,7 @@ function renderFindList(records) {
     tr.onclick = (function(rec){ return function(){ openDetail(rec, 'find'); }; })(r);
     tbody.appendChild(tr);
   });
+  scrollCheckListToEnd('screen-find');
 }
 
 // ===== DETAIL =====
@@ -3926,8 +3943,7 @@ function openDetail(r, source) {
     row('Нарушение допустил', r.violator) +
     block('Описание нарушения', r.desc) +
     corrBlock +
-    block('Обоснование для оспаривания в СОКБ', r.contestMeasures) +
-    row('Статус оспаривания в СОКБ', r.contestStatus);
+    block('Оспаривание в СОКБ', r.contestMeasures);
   document.getElementById('detail-scroll').scrollTop = 0;
   showScreen('screen-detail');
 }

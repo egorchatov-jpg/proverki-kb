@@ -5,7 +5,9 @@ const GITHUB_OWNER = process.env.GITHUB_OWNER || 'egorchatov-jpg';
 const GITHUB_REPO  = process.env.GITHUB_DATA_REPO || 'proverki-kb-data';
 
 const CORRECTIVE_HEADER = 'Корректирующие мероприятия';
-const REMOVED_HEADER    = 'Выполнение корректирующих мероприятий';
+const REMOVED_CORR_EXEC   = 'Выполнение корректирующих мероприятий';
+const REMOVED_CONTEST_STATUS = 'Статус оспаривания в СОКБ';
+const CONTEST_HEADER = 'Оспаривание в СОКБ';
 
 const EXPECTED_HEADERS = [
   '№', 'Дата проверки', 'Дата внесения проверки', 'Метод проверки',
@@ -13,8 +15,10 @@ const EXPECTED_HEADERS = [
   'Куратор от заказчика', 'Проверяемый барьер', 'Барьер в ПК',
   'Работоспособность барьера', 'Нарушение допустил', 'Описание нарушения',
   CORRECTIVE_HEADER,
-  'Обоснование для оспаривания в СОКБ', 'Статус оспаривания в СОКБ',
+  CONTEST_HEADER,
 ];
+
+const COL_COUNT = EXPECTED_HEADERS.length;
 
 function ghApiUrl(filePath) {
   return `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(filePath)}`;
@@ -56,29 +60,41 @@ function normHeader(h) {
   return String(h || '').trim().replace(/\s+/g, ' ');
 }
 
+function removeColumn(rows, header, predicate, log) {
+  const idx = header.findIndex(predicate);
+  if (idx < 0) return { rows, changed: false };
+  log.push(`Удалён столбец ${idx + 1}: «${header[idx]}»`);
+  return {
+    rows: rows.map(row => {
+      const r = [...row];
+      if (r.length > idx) r.splice(idx, 1);
+      return r;
+    }),
+    changed: true,
+  };
+}
+
 function migrateRows(rows) {
   if (!rows.length) return { rows, changed: false, log: [] };
 
   const log = [];
   let changed = false;
   rows = rows.map(r => [...(r || [])]);
-  const header = rows[0].map(normHeader);
+  let header = rows[0].map(normHeader);
 
-  const removeIdx = header.findIndex(h =>
-    h === REMOVED_HEADER ||
+  let res = removeColumn(rows, header, h =>
+    h === REMOVED_CORR_EXEC ||
     (/выполнение/i.test(h) && /корректиру/i.test(h) && /мероприят/i.test(h))
-  );
-  if (removeIdx >= 0) {
-    log.push(`Удалён столбец ${removeIdx + 1}: «${header[removeIdx]}»`);
-    rows = rows.map(row => {
-      const r = [...row];
-      if (r.length > removeIdx) r.splice(removeIdx, 1);
-      return r;
-    });
-    changed = true;
-  }
+  , log);
+  if (res.changed) { rows = res.rows; changed = true; header = rows[0].map(normHeader); }
 
-  rows.forEach(r => { while (r.length < 16) r.push(''); });
+  res = removeColumn(rows, header, h =>
+    h === REMOVED_CONTEST_STATUS ||
+    (/статус/i.test(h) && /сокб/i.test(h))
+  , log);
+  if (res.changed) { rows = res.rows; changed = true; header = rows[0].map(normHeader); }
+
+  rows.forEach(r => { while (r.length < COL_COUNT) r.push(''); });
 
   if (normHeader(rows[0][13]) !== CORRECTIVE_HEADER) {
     log.push(`Столбец 14: «${normHeader(rows[0][13])}» → «${CORRECTIVE_HEADER}»`);
@@ -91,8 +107,8 @@ function migrateRows(rows) {
   if (oldHeader !== EXPECTED_HEADERS.join('|')) changed = true;
 
   for (let i = 1; i < rows.length; i++) {
-    while (rows[i].length < 16) rows[i].push('');
-    if (rows[i].length > 16) { rows[i] = rows[i].slice(0, 16); changed = true; }
+    while (rows[i].length < COL_COUNT) rows[i].push('');
+    if (rows[i].length > COL_COUNT) { rows[i] = rows[i].slice(0, COL_COUNT); changed = true; }
   }
 
   return { rows, changed, log };
@@ -114,12 +130,12 @@ async function migrateFile(fileName) {
   newWs['!cols'] = [
     { wch: 4 }, { wch: 12 }, { wch: 18 }, { wch: 14 }, { wch: 18 },
     { wch: 24 }, { wch: 24 }, { wch: 18 }, { wch: 20 }, { wch: 10 },
-    { wch: 20 }, { wch: 18 }, { wch: 40 }, { wch: 30 }, { wch: 30 }, { wch: 24 },
+    { wch: 20 }, { wch: 18 }, { wch: 40 }, { wch: 30 }, { wch: 30 },
   ];
   wb.Sheets[wb.SheetNames[0]] = newWs;
 
   const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' }).toString('base64');
-  await ghPut(fileName, b64, meta.sha, `Миграция: столбец 14 исправлен, столбец 15 удалён — ${fileName}`);
+  await ghPut(fileName, b64, meta.sha, `Миграция: столбец 16 удалён, столбец 15 переименован — ${fileName}`);
   return { file: fileName, status: 'migrated', log };
 }
 

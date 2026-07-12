@@ -20,8 +20,7 @@ const COLUMN_DEFS = [
   { h: 'Нарушение допустил',                      k: 'violator'        },
   { h: 'Описание нарушения',                      k: 'desc'            },
   { h: 'Корректирующие мероприятия',              k: 'corrective'      },
-  { h: 'Обоснование для оспаривания в СОКБ',       k: 'contestMeasures' },
-  { h: 'Статус оспаривания в СОКБ',               k: 'contestStatus'   },
+  { h: 'Оспаривание в СОКБ',                      k: 'contestMeasures' },
 ];
 
 function pad(n) { return String(n).padStart(2, '0'); }
@@ -56,8 +55,9 @@ function headerToKey(h) {
   if (lower.includes('выполнение') && lower.includes('корректиру')) {
     return null;
   }
+  if (lower.includes('оспаривание') && lower.includes('сокб')) return 'contestMeasures';
   if (lower.includes('обоснование') && lower.includes('сокб')) return 'contestMeasures';
-  if (lower.includes('статус') && lower.includes('сокб')) return 'contestStatus';
+  if (lower.includes('статус') && lower.includes('сокб')) return null;
   if (lower.includes('дата') && lower.includes('внесен')) return 'dateEntry';
   if (lower.includes('дата') && lower.includes('проверк')) return 'dateCheck';
   if (n === '№' || lower === 'no' || lower === 'n') return 'num';
@@ -119,7 +119,7 @@ function parseXlsx(base64) {
     const p = (s || '').split('.');
     return p.length >= 3 ? parseInt(p[2].slice(0, 4) + p[1] + p[0]) : 0;
   };
-  recs.sort((a, b) => dn(b.dateCheck) - dn(a.dateCheck));
+  recs.sort((a, b) => dn(a.dateCheck) - dn(b.dateCheck));
   recs.forEach((r, i) => { r.num = i + 1; });
   return recs;
 }
