@@ -1512,8 +1512,9 @@ function renumberDb() {
 // ===== SERVER SYNC =====
 var syncStatus = 'idle'; // 'idle' | 'syncing' | 'ok' | 'error'
 var VAPID_PUBLIC_KEY = 'BMf-a1sd8WQK4qNSZm1TCy4WxlzSj0YsbG3cBfmcGn6K1gVLqUWyK96hKEfjg6S2pD0dlNIXYknIy2NqUzBBIYU'; // replaced by setup-server.ps1
-var SYNC_QUEUE_KEY  = 'pkb-sync-queue';
-var SERVER_SHA_KEY  = 'pkb-server-shas';
+var SYNC_QUEUE_KEY   = 'pkb-sync-queue';
+var UPDATE_QUEUE_KEY = 'pkb-update-queue';
+var SERVER_SHA_KEY   = 'pkb-server-shas';
 var VAPID_KEY_STORE = 'pkb-vapid-key';
 var swRegistration   = null;
 
@@ -1565,6 +1566,140 @@ function removeFromSyncQueue(id) {
     localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q));
   } catch(e) {}
 }
+
+// --- Offline retry queue for record UPDATES (corrective, SOKB, etc.) ---
+var UPDATE_FIELD_KEYS = ['corrective', 'contestMeasures', 'contestStatus'];
+
+function getUpdateQueue() {
+  try { return JSON.parse(localStorage.getItem(UPDATE_QUEUE_KEY) || '[]'); } catch(e) { return []; }
+}
+function addToUpdateQueue(item) {
+  try {
+    var q = getUpdateQueue();
+    var idx = q.findIndex(function(r) { return r.dateEntry === item.dateEntry; });
+    if (idx >= 0) {
+      Object.assign(q[idx].fields, item.fields);
+      q[idx].year = item.year;
+      q[idx].updatedAt = item.updatedAt || Date.now();
+    } else {
+      q.push(item);
+    }
+    localStorage.setItem(UPDATE_QUEUE_KEY, JSON.stringify(q));
+  } catch(e) {}
+}
+function removeFromUpdateQueue(dateEntry) {
+  try {
+    var q = getUpdateQueue().filter(function(r) { return r.dateEntry !== dateEntry; });
+    localStorage.setItem(UPDATE_QUEUE_KEY, JSON.stringify(q));
+  } catch(e) {}
+}
+function hasPendingSync() {
+  return getSyncQueue().length > 0 || getUpdateQueue().length > 0;
+}
+function updateSyncStatusFromQueues() {
+  if (hasPendingSync()) syncStatus = 'offline';
+  else if (syncStatus === 'offline') syncStatus = 'ok';
+}
+
+function syncUpdateToServer(item) {
+  syncStatus = 'syncing';
+  updateSyncIndicator();
+  var ctrl = new AbortController();
+  var timer = setTimeout(function() { ctrl.abort(); }, 14000);
+  fetch('/api/update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dateEntry: item.dateEntry, year: item.year, fields: item.fields }),
+    signal: ctrl.signal
+  })
+  .then(function(r) { clearTimeout(timer); return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      removeFromUpdateQueue(item.dateEntry);
+      updateSyncStatusFromQueues();
+      console.log('[update-sync] сохранено на сервере:', item.dateEntry);
+    } else {
+      syncStatus = 'error';
+      addToUpdateQueue(item);
+      console.warn('[update-sync] ошибка сервера:', d.error);
+    }
+    updateSyncIndicator();
+  })
+  .catch(function(e) {
+    clearTimeout(timer);
+    syncStatus = 'offline';
+    addToUpdateQueue(item);
+    console.warn('[update-sync] нет соединения, в очередь:', item.dateEntry);
+    updateSyncIndicator();
+  });
+}
+
+function retryUpdateQueue() {
+  var q = getUpdateQueue();
+  if (!q.length) return;
+  console.log('[update-sync] повтор очереди: ' + q.length + ' обновлений');
+  q.forEach(function(item) { syncUpdateToServer(item); });
+}
+
+function retryAllQueues() {
+  retrySyncQueue();
+  retryUpdateQueue();
+}
+
+// Seed update queue from local DB when local fields differ from server (migration + safety net)
+function seedUpdateQueueFromLocalDb(serverRecords) {
+  var serverByEntry = {};
+  serverRecords.forEach(function(r) { if (r.dateEntry) serverByEntry[r.dateEntry] = r; });
+  (appState.db || []).forEach(function(local) {
+    if (!local.dateEntry) return;
+    var server = serverByEntry[local.dateEntry];
+    if (!server) return;
+    var fields = {};
+    UPDATE_FIELD_KEYS.forEach(function(k) {
+      var lv = (local[k] || '').trim();
+      var sv = (server[k] || '').trim();
+      if (lv && lv !== sv) fields[k] = local[k];
+    });
+    if (!Object.keys(fields).length) return;
+    var year = local.year || (local.dateCheck ? local.dateCheck.split('.')[2] : String(new Date().getFullYear()));
+    addToUpdateQueue({ dateEntry: local.dateEntry, year: year, fields: fields, updatedAt: Date.now() });
+  });
+}
+
+// Apply pending field updates from queue onto server records
+function applyPendingUpdates(records) {
+  var queue = getUpdateQueue();
+  if (!queue.length) return records;
+  var byEntry = {};
+  records.forEach(function(r) { if (r.dateEntry) byEntry[r.dateEntry] = r; });
+  queue.forEach(function(item) {
+    var rec = byEntry[item.dateEntry];
+    if (!rec) return;
+    var allSynced = true;
+    Object.keys(item.fields).forEach(function(k) {
+      var serverVal = (rec[k] || '').trim();
+      var queuedVal = (item.fields[k] || '').trim();
+      if (serverVal === queuedVal) return;
+      allSynced = false;
+      if (queuedVal) rec[k] = item.fields[k];
+    });
+    if (allSynced) removeFromUpdateQueue(item.dateEntry);
+  });
+  return records;
+}
+
+// Generic: save field update locally + queue + sync (corrective, SOKB, etc.)
+function saveRecordFieldUpdate(dateEntry, year, fields) {
+  var rec = appState.db.find(function(r) { return r.dateEntry === dateEntry; });
+  if (rec) {
+    Object.keys(fields).forEach(function(k) { rec[k] = fields[k]; });
+  }
+  saveState();
+  var item = { dateEntry: dateEntry, year: year, fields: fields, updatedAt: Date.now() };
+  addToUpdateQueue(item);
+  syncUpdateToServer(item);
+}
+
 function retrySyncQueue() {
   var q = getSyncQueue();
   if (q.length === 0) return;
@@ -1587,8 +1722,9 @@ function syncToServer(record) {
   .then(function(r) { clearTimeout(timer); return r.json(); })
   .then(function(d) {
     if (d.success) {
-      syncStatus = 'ok';
       removeFromSyncQueue(record.id);
+      updateSyncStatusFromQueues();
+      if (!hasPendingSync()) syncStatus = 'ok';
       var shas = getServerShas();
       delete shas['sha' + d.year];
       saveServerShas(shas);
@@ -1697,31 +1833,15 @@ function loadFromServer(onDone) {
     if (d.unchanged) {
       // File unchanged on server — cached data is already current
       console.log('[server] без изменений, данные актуальны');
-      retrySyncQueue();
+      retryAllQueues();
       finish(true);
       return;
     }
 
     if (d && Array.isArray(d.records)) {
-      // Preserve locally saved corrective (and contest) fields before overwriting with server data.
-      // /api/update may not have flushed to Excel yet when the next sync arrives.
-      var _localCorrMap = {};
-      var _localContestMap = {};
-      (appState.db || []).forEach(function(r) {
-        if (r.dateEntry) {
-          if (r.corrective)       _localCorrMap[r.dateEntry]    = r.corrective;
-          if (r.contestMeasures)  _localContestMap[r.dateEntry] = { m: r.contestMeasures, s: r.contestStatus };
-        }
-      });
+      seedUpdateQueueFromLocalDb(d.records);
       appState.db = mergeWithQueue(d.records);
-      appState.db.forEach(function(r) {
-        if (!r.dateEntry) return;
-        if (!r.corrective      && _localCorrMap[r.dateEntry])    r.corrective      = _localCorrMap[r.dateEntry];
-        if (!r.contestMeasures && _localContestMap[r.dateEntry]) {
-          r.contestMeasures = _localContestMap[r.dateEntry].m;
-          r.contestStatus   = _localContestMap[r.dateEntry].s;
-        }
-      });
+      appState.db = applyPendingUpdates(appState.db);
       renumberDb();
       saveState();
       renderLobby();
@@ -1729,7 +1849,7 @@ function loadFromServer(onDone) {
       if (fs && fs.classList.contains('active')) applyFindFilters();
       var cs = document.getElementById('screen-corrective-list');
       if (cs && cs.classList.contains('active')) renderCorrectiveList();
-      retrySyncQueue();
+      retryAllQueues();
     }
     finish(true);
   })
@@ -2021,7 +2141,7 @@ window.addEventListener('DOMContentLoaded', function() {
   setTodayDate();
   loadFromServer(); // independent of SW / push permission
   setInterval(function() {
-    if (getSyncQueue().length > 0) retrySyncQueue();
+    if (hasPendingSync()) retryAllQueues();
   }, 30000);
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {
@@ -3634,16 +3754,10 @@ function saveCorrMeasures() {
   var text = formatCorrText(correctiveMeasures);
   correctiveRecord.corrective = text;
   _correctiveSavedText = text;
-  saveState();
+  var year = correctiveRecord.year || (correctiveRecord.dateCheck ? correctiveRecord.dateCheck.split('.')[2] : String(new Date().getFullYear()));
+  saveRecordFieldUpdate(correctiveRecord.dateEntry, year, { corrective: text });
   renderCorrectiveList();
   openDetail(correctiveRecord, 'corrective');
-  // Persist to Excel
-  var year = correctiveRecord.year || (correctiveRecord.dateCheck ? correctiveRecord.dateCheck.split('.')[2] : String(new Date().getFullYear()));
-  fetch('/api/update', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ dateEntry: correctiveRecord.dateEntry, year: year, fields: { corrective: text } })
-  }).catch(function(e) { console.warn('[corrective] save failed:', e.message); });
 }
 
 function successExit() {
