@@ -576,9 +576,8 @@ html, body {
 .corr-status-done    { color: var(--green); font-size: 11px; }
 
 /* Detail card corrective block — navy highlight (from corrective screen) */
-.detail-block-navy { background: rgba(27,58,107,0.06); border-radius: 10px; padding: 4px 0; }
 .detail-block-navy .detail-block-label { color: var(--navy); font-weight: 700; }
-.detail-block-navy .detail-block-val   { background: rgba(27,58,107,0.07); border-color: rgba(27,58,107,0.25); cursor: pointer; }
+.detail-block-navy .detail-block-val   { border: 2px solid var(--navy); cursor: pointer; background: #fff; }
 
 /* Navy drum overlay theme */
 #overlay-drum.navy-theme .overlay-box { background: #eaf0fb; }
@@ -598,7 +597,7 @@ html, body {
   border: 1px solid rgba(27,58,107,0.15);
 }
 .corr-info-line { color: #1a2035; }
-.corr-info-desc { color: var(--text2); }
+.corr-info-desc { color: #1a2035; }
 .corr-section-hd {
   font-size: 14px; font-weight: 700; color: #1a2035;
   margin: 10px 0 6px; text-align: left;
@@ -617,7 +616,7 @@ html, body {
 .corr-m-sel-lbl { font-size: 12px; font-weight: 600; color: var(--text2); }
 .corr-m-desc {
   width: 100%; min-height: 58px; border: 1.5px solid var(--border);
-  border-radius: 10px; padding: 10px 12px; font-size: 14px;
+  border-radius: 10px; padding: 10px 12px; font-size: 13px;
   font-family: inherit; color: #1a2035; background: #fff;
   resize: none; box-sizing: border-box;
 }
@@ -644,9 +643,9 @@ html, body {
   display: flex; align-items: center; justify-content: center;
   gap: 8px; padding: 10px 0 4px;
 }
-.corr-action-hint { font-size: 11px; font-weight: 600; white-space: pre-line; text-align: center; }
-.corr-hint-gray  { color: var(--text2); }
-.corr-hint-navy  { color: var(--navy); }
+.corr-action-hint { font-size: 11px; font-weight: 600; white-space: pre-line; }
+.corr-hint-gray  { color: var(--text2); text-align: right; }
+.corr-hint-navy  { color: var(--navy); text-align: left; }
 .method-sq-btn.corr-plus { background: var(--navy); }
 .corr-valid-msg { text-align: center; font-size: 13px; font-weight: 700; min-height: 18px; padding: 16px 0 8px; }
 .corr-footer {
@@ -690,6 +689,7 @@ html, body {
   white-space: pre-wrap; word-break: break-word;
 }
 .detail-val-red { background: rgba(192,57,43,0.15); }
+.detail-val-works-no { color: var(--red); font-weight: 700; }
 /* Separator between every consecutive item */
 .detail-row + .detail-row,
 .detail-row + .detail-block,
@@ -1044,7 +1044,7 @@ html, body {
   <div class="find-bottom">
     <div class="find-count" id="corr-list-count">0<br>нарушений</div>
     <button class="find-bottom-btn find-btn-cancel" onclick="showScreen('screen-meropr-menu')">Назад</button>
-    <div style="flex:1"></div>
+    <div class="find-count" id="corr-entered-count">0<br>внесено</div>
   </div>
 </div>
 
@@ -3199,6 +3199,10 @@ function renderCorrectiveList() {
   });
   var cnt = document.getElementById('corr-list-count');
   if (cnt) cnt.innerHTML = violations.length + '<br>' + pluralNarushenie(violations.length);
+  // Right counter: violations with at least one measure entered
+  var enteredCount = violations.filter(function(r) { return getCorrectiveStatus(r) !== 'none'; }).length;
+  var cntR = document.getElementById('corr-entered-count');
+  if (cntR) cntR.innerHTML = enteredCount + '<br>внесено';
 }
 
 function openCorrFilter(col) {
@@ -3210,7 +3214,7 @@ function openCorrFilter(col) {
   function uniqSort(arr) {
     var seen = {}, out = [];
     arr.forEach(function(v) { if (v && !seen[v]) { seen[v]=1; out.push(v); } });
-    return out.sort(function(a,b){ return a.localeCompare(b,'ру'); });
+    return out.sort(function(a,b){ return a.localeCompare(b,'ru'); });
   }
   function sortDates(arr) {
     var seen = {}, out = [];
@@ -3459,7 +3463,7 @@ function createCorrMeasureEl(m, idx) {
     stCell.style.color = '';
   } else {
     stCell.textContent = 'Статус выполнения';
-    stCell.style.color = 'var(--text2)';
+    stCell.style.color = 'var(--text3)';
   }
   stCell.addEventListener('click', (function(i){ return function() { openStatusDrum(i); }; })(idx));
 
@@ -3696,7 +3700,7 @@ function openDetail(r, source) {
     row('Куратор от заказчика', r.curator) +
     row('Проверяемый барьер', r.barrier) +
     row('Барьер в ПК', r.barrierInPK) +
-    row('Работоспособность барьера', r.works, r.works === 'Нет' ? 'detail-val-red' : '') +
+    row('Работоспособность барьера', r.works === 'Нет' ? '<span style="color:var(--red);font-weight:700">Нет</span>' : (r.works || '—')) +
     row('Нарушение допустил', r.violator) +
     block('Описание нарушения', r.desc) +
     corrBlock +
