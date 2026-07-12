@@ -576,9 +576,9 @@ html, body {
 .corr-status-done    { color: var(--green); font-size: 11px; }
 
 /* Detail card corrective block — navy highlight (from corrective screen) */
+.detail-block-navy { background: rgba(27,58,107,0.06); border-radius: 10px; padding: 4px 0; }
 .detail-block-navy .detail-block-label { color: var(--navy); font-weight: 700; }
 .detail-block-navy .detail-block-val   { background: rgba(27,58,107,0.07); border-color: rgba(27,58,107,0.25); cursor: pointer; }
-.detail-block-navy .detail-block-val::after { content: ' ›'; color: var(--navy); }
 
 /* Navy drum overlay theme */
 #overlay-drum.navy-theme .overlay-box { background: #eaf0fb; }
@@ -598,7 +598,7 @@ html, body {
   border: 1px solid rgba(27,58,107,0.15);
 }
 .corr-info-line { color: #1a2035; }
-.corr-info-desc { color: var(--text2); font-style: italic; }
+.corr-info-desc { color: var(--text2); }
 .corr-section-hd {
   font-size: 14px; font-weight: 700; color: #1a2035;
   margin: 10px 0 6px; text-align: left;
@@ -607,7 +607,9 @@ html, body {
   padding: 8px 0 10px; border-bottom: 1px solid var(--border);
   transition: background 0.15s;
 }
-.corr-m.corr-m-selected { background: rgba(0,0,0,0.03); border-radius: 8px; padding: 8px 6px 10px; }
+.corr-m.corr-m-selected .corr-m-desc,
+.corr-m.corr-m-selected .corr-m-input,
+.corr-m.corr-m-selected .corr-m-cell { background: rgba(0,0,0,0.04); }
 .corr-m-header {
   display: flex; align-items: center; justify-content: flex-end;
   gap: 6px; margin-bottom: 6px;
@@ -637,15 +639,16 @@ html, body {
   box-sizing: border-box;
 }
 .corr-m-cell:active { background: rgba(27,58,107,0.06); }
+.corr-m:last-child { border-bottom: none; }
 .corr-action-row {
   display: flex; align-items: center; justify-content: center;
   gap: 8px; padding: 10px 0 4px;
 }
-.corr-action-hint { font-size: 11px; font-weight: 600; white-space: nowrap; }
+.corr-action-hint { font-size: 11px; font-weight: 600; white-space: pre-line; text-align: center; }
 .corr-hint-gray  { color: var(--text2); }
 .corr-hint-navy  { color: var(--navy); }
 .method-sq-btn.corr-plus { background: var(--navy); }
-.corr-valid-msg { text-align: center; font-size: 13px; font-weight: 700; min-height: 18px; padding: 4px 0 8px; }
+.corr-valid-msg { text-align: center; font-size: 13px; font-weight: 700; min-height: 18px; padding: 16px 0 8px; }
 .corr-footer {
   display: flex; gap: 12px; padding: 10px 14px;
   padding-bottom: max(10px, env(safe-area-inset-bottom));
@@ -1047,20 +1050,21 @@ html, body {
 
 <!-- ===== SCREEN: КОРРЕКТИРУЮЩИЕ МЕРОПРИЯТИЯ (редактирование) ===== -->
 <div class="screen" id="screen-corrective-edit">
-  <div class="settings-screen-title">Корректирующие мероприятия</div>
   <div class="corr-edit-scroll" id="corr-edit-scroll">
     <div class="corr-viol-info" id="corr-viol-info"></div>
     <div class="corr-section-hd">Корректирующие мероприятия</div>
     <div id="corr-measures-list"></div>
     <div class="corr-action-row">
-      <span class="corr-action-hint corr-hint-gray">Удалить выбранное</span>
+      <span class="corr-action-hint corr-hint-gray">Удалить
+выбранное</span>
       <button class="method-sq-btn minus" id="corr-btn-minus" onclick="deleteCorrMeasures()" disabled>
         <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
       <button class="method-sq-btn corr-plus" id="corr-btn-plus" onclick="addCorrMeasure()">
         <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
-      <span class="corr-action-hint corr-hint-navy">Добавить новое</span>
+      <span class="corr-action-hint corr-hint-navy">Добавить
+новое</span>
     </div>
     <div class="corr-valid-msg" id="corr-valid-msg"></div>
   </div>
@@ -2366,6 +2370,8 @@ function checkPin() {
     var pw2 = getPw();
     var orgPwC = (pw2.orgs && detailRecordForEdit) ? (pw2.orgs[detailRecordForEdit.org] || '') : '';
     if (pinValue === SUPERUSER_PIN || pinValue === pw2.admin || (orgPwC && pinValue === orgPwC)) {
+      _correctiveUnlocked = true;
+      _correctiveSavedText = (detailRecordForEdit && detailRecordForEdit.corrective) ? detailRecordForEdit.corrective : '';
       resetPin();
       var recToEdit = detailRecordForEdit;
       showScreen('screen-corrective-edit');
@@ -3121,6 +3127,8 @@ function renderPasswordsScreen() {
 
 var correctiveRecord    = null;
 var correctiveMeasures  = [];
+var _correctiveUnlocked = false;
+var _correctiveSavedText = '';
 var correctiveListFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '', status: '' };
 
 function openSokb() {
@@ -3299,6 +3307,14 @@ function openCorrFilter(col) {
 
 // ── Corrective PIN ─────────────────────────────────────────────
 function openCorrectivePIN() {
+  if (_correctiveUnlocked) {
+    // Session already unlocked — go directly to edit
+    var r = detailRecordForEdit;
+    _correctiveSavedText = r.corrective || '';
+    showScreen('screen-corrective-edit');
+    openCorrectiveEdit(r);
+    return;
+  }
   var pinEl = document.getElementById('screen-pin');
   pinEl.classList.remove('screen-pin--dark');
   pinEl.classList.add('screen-pin--navy');
@@ -3332,20 +3348,23 @@ function parseCorrective(text) {
 }
 
 function newEmptyMeasure(n) {
-  return { desc: '', responsible: '', deadline: formatDate(new Date()), status: 'НЕ НАЧАТО', selected: false };
+  return { desc: '', responsible: '', deadline: formatDate(new Date()), status: '', selected: false };
 }
 
 function openCorrectiveEdit(r) {
   correctiveRecord = r;
+  _correctiveSavedText = r.corrective || '';
   correctiveMeasures = parseCorrective(r.corrective);
   if (!correctiveMeasures.length) correctiveMeasures = [newEmptyMeasure(1)];
   var infoEl = document.getElementById('corr-viol-info');
   infoEl.innerHTML =
     '<div class="corr-info-line"><b>Проверка №' + esc(String(r.num||'?')) + ' ' + esc(String(r.year||'')) + '</b></div>' +
-    '<div class="corr-info-line">Дата: ' + esc(r.dateCheck||'') + ' | Метод: ' + esc(r.method||'') + ' | Орг.: ' + esc(r.org||'') + '</div>' +
-    '<div class="corr-info-line">Барьер: ' + esc(r.barrier||'') + ' | Нарушитель: ' + esc(r.violator||'') + '</div>' +
+    '<div class="corr-info-line">Дата: ' + esc(r.dateCheck||'') + ' | Метод: ' + esc(r.method||'') + '</div>' +
+    '<div class="corr-info-line">Организация: ' + esc(r.org||'') + ' | Барьер: ' + esc(r.barrier||'') + '</div>' +
     (r.desc ? '<div class="corr-info-line corr-info-desc">Описание: ' + esc(r.desc) + '</div>' : '');
   renderCorrMeasures();
+  var sc = document.getElementById('corr-edit-scroll');
+  if (sc) sc.scrollTop = 0;
 }
 
 function renderCorrMeasures() {
@@ -3365,11 +3384,13 @@ function createCorrMeasureEl(m, idx) {
   div.className = 'corr-m' + (m.selected ? ' corr-m-selected' : '');
   div.id = 'corr-m-' + idx;
 
+  // Header: [checkbox + Выбрать] LEFT  |  [Корректирующее мероприятие №N] RIGHT
   var hdr = document.createElement('div');
   hdr.className = 'corr-m-header';
-  var lbl = document.createElement('span');
-  lbl.className = 'corr-m-sel-lbl';
-  lbl.textContent = 'Выбрать';
+  hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;';
+
+  var leftSide = document.createElement('div');
+  leftSide.style.cssText = 'display:flex;align-items:center;gap:5px;';
   var cb = document.createElement('input');
   cb.type = 'checkbox';
   cb.className = 'method-circle-cb corr-m-cb';
@@ -3377,12 +3398,24 @@ function createCorrMeasureEl(m, idx) {
   cb.checked = !!m.selected;
   cb.addEventListener('change', (function(i){ return function() {
     correctiveMeasures[i].selected = this.checked;
-    document.getElementById('corr-m-' + i).classList.toggle('corr-m-selected', this.checked);
+    var mEl = document.getElementById('corr-m-' + i);
+    mEl.classList.toggle('corr-m-selected', this.checked);
     updateCorrMinusBtn();
   }; })(idx));
-  hdr.appendChild(lbl); hdr.appendChild(cb);
+  var lbl = document.createElement('span');
+  lbl.className = 'corr-m-sel-lbl';
+  lbl.textContent = 'Выбрать';
+  leftSide.appendChild(cb); leftSide.appendChild(lbl);
+
+  var titleSpan = document.createElement('span');
+  titleSpan.className = 'corr-m-sel-lbl';
+  titleSpan.style.fontWeight = '700';
+  titleSpan.textContent = 'Корректирующее мероприятие №' + n;
+
+  hdr.appendChild(leftSide); hdr.appendChild(titleSpan);
   div.appendChild(hdr);
 
+  // Description textarea (100% width)
   var ta = document.createElement('textarea');
   ta.className = 'corr-m-desc';
   ta.placeholder = 'Корректирующее мероприятие №' + n;
@@ -3394,11 +3427,10 @@ function createCorrMeasureEl(m, idx) {
   }; })(idx));
   div.appendChild(ta);
 
-  var twin = document.createElement('div');
-  twin.className = 'corr-m-twin';
-
+  // Ответственный — full width, own row
   var respInput = document.createElement('input');
-  respInput.className = 'corr-m-input corr-m-half';
+  respInput.className = 'corr-m-input';
+  respInput.style.cssText = 'width:100%;margin-top:6px;box-sizing:border-box;';
   respInput.type = 'text';
   respInput.placeholder = 'Ответственный';
   respInput.value = m.responsible || '';
@@ -3406,6 +3438,12 @@ function createCorrMeasureEl(m, idx) {
     correctiveMeasures[i].responsible = this.value;
     checkCorrFilled();
   }; })(idx));
+  div.appendChild(respInput);
+
+  // Срок (50%) + Статус (50%) — same row
+  var twin = document.createElement('div');
+  twin.className = 'corr-m-twin';
+  twin.style.marginTop = '6px';
 
   var dlCell = document.createElement('div');
   dlCell.className = 'corr-m-cell corr-m-half';
@@ -3413,19 +3451,20 @@ function createCorrMeasureEl(m, idx) {
   dlCell.textContent = 'Срок: ' + (m.deadline || formatDate(new Date()));
   dlCell.addEventListener('click', (function(i){ return function() { openDeadlineDrum(i); }; })(idx));
 
-  twin.appendChild(respInput);
-  twin.appendChild(dlCell);
-  div.appendChild(twin);
-
-  var stWrap = document.createElement('div');
-  stWrap.className = 'corr-m-twin';
   var stCell = document.createElement('div');
   stCell.className = 'corr-m-cell corr-m-half';
   stCell.id = 'corr-st-' + idx;
-  stCell.textContent = 'Статус: ' + (m.status || 'НЕ НАЧАТО');
+  if (m.status) {
+    stCell.textContent = 'Статус: ' + m.status;
+    stCell.style.color = '';
+  } else {
+    stCell.textContent = 'Статус выполнения';
+    stCell.style.color = 'var(--text2)';
+  }
   stCell.addEventListener('click', (function(i){ return function() { openStatusDrum(i); }; })(idx));
-  stWrap.appendChild(stCell);
-  div.appendChild(stWrap);
+
+  twin.appendChild(dlCell); twin.appendChild(stCell);
+  div.appendChild(twin);
 
   return div;
 }
@@ -3446,7 +3485,7 @@ function deleteCorrMeasures() {
     if (!m.selected) { newList.push(m); }
     else if (i === 0) {
       // First measure: clear instead of delete
-      newList.push({ desc: '', responsible: '', deadline: formatDate(new Date()), status: 'НЕ НАЧАТО', selected: false });
+      newList.push({ desc: '', responsible: '', deadline: formatDate(new Date()), status: '', selected: false });
     }
   });
   // Keep at least 1
@@ -3466,12 +3505,15 @@ function addCorrMeasure() {
 
 function openDeadlineDrum(idx) {
   var m = correctiveMeasures[idx];
+  var _MONTH_NAMES_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
   var parts = (m.deadline || formatDate(new Date())).split('.');
   var dd = parts[0] || '01';
-  var mm = parts[1] || '01';
+  var mmNum = (parts[1] || '01').replace(/^0/, '');
+  var mm = _MONTH_NAMES_RU[parseInt(mmNum,10) - 1] || _MONTH_NAMES_RU[0];
   var yy = parts[2] || String(new Date().getFullYear());
+  var MONTH_NAMES_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
   var days   = Array.from({length:31}, function(_,i){ return String(i+1).padStart(2,'0'); });
-  var months = Array.from({length:12}, function(_,i){ return String(i+1).padStart(2,'0'); });
+  var months = MONTH_NAMES_RU;
   var curY   = new Date().getFullYear();
   var years  = Array.from({length:6},  function(_,i){ return String(curY + i); });
   document.getElementById('overlay-drum').classList.add('navy-theme');
@@ -3480,7 +3522,10 @@ function openDeadlineDrum(idx) {
     { id: 'mm', items: months, value: mm, label: 'Месяц' },
     { id: 'yy', items: years,  value: yy, label: 'Год'   }
   ], function(d) {
-    var deadline = d['dd'].getValue() + '.' + d['mm'].getValue() + '.' + d['yy'].getValue();
+    var __MONTH_NAMES_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+    var __mmIdx = __MONTH_NAMES_RU.indexOf(d['mm'].getValue());
+    var __mmStr = __mmIdx >= 0 ? String(__mmIdx + 1).padStart(2,'0') : d['mm'].getValue();
+    var deadline = d['dd'].getValue() + '.' + __mmStr + '.' + d['yy'].getValue();
     correctiveMeasures[idx].deadline = deadline;
     var dlCell = document.getElementById('corr-dl-' + idx);
     if (dlCell) dlCell.textContent = 'Срок: ' + deadline;
@@ -3502,12 +3547,15 @@ function openStatusDrum(idx) {
   var statuses = ['НЕ НАЧАТО', 'ВЫПОЛНЯЕТСЯ', 'ВЫПОЛНЕНО'];
   document.getElementById('overlay-drum').classList.add('navy-theme');
   openDrumOverlay('Статус мероприятия', [
-    { id: 'status', items: statuses, value: m.status || 'НЕ НАЧАТО', fullWidth: true }
+    { id: 'status', items: statuses, value: m.status || statuses[0], minWidth: 200 }
   ], function(d) {
     var st = d['status'].getValue();
     correctiveMeasures[idx].status = st;
     var stCell = document.getElementById('corr-st-' + idx);
-    if (stCell) stCell.textContent = 'Статус: ' + st;
+    if (stCell) {
+      stCell.textContent = 'Статус: ' + st;
+      stCell.style.color = '';
+    }
     setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
     checkCorrFilled();
   });
@@ -3549,15 +3597,18 @@ function formatCorrText(measures) {
 }
 
 function cancelCorrEdit() {
-  showScreen('screen-detail');
+  if (correctiveRecord) {
+    correctiveRecord.corrective = _correctiveSavedText;
+  }
+  openDetail(detailRecordForEdit, detailSource);
 }
 
 function saveCorrMeasures() {
   var text = formatCorrText(correctiveMeasures);
   correctiveRecord.corrective = text;
-  // Update in appState.db (same reference)
+  _correctiveSavedText = text;
   saveState();
-  // Re-render detail
+  renderCorrectiveList();
   openDetail(correctiveRecord, 'corrective');
   // Persist to Excel
   var year = correctiveRecord.year || (correctiveRecord.dateCheck ? correctiveRecord.dateCheck.split('.')[2] : String(new Date().getFullYear()));
@@ -3632,7 +3683,7 @@ function openDetail(r, source) {
   var corrBlock = source === 'corrective'
     ? '<div class="detail-block detail-block-navy" onclick="openCorrectivePIN()">' +
         '<div class="detail-block-label">Корректирующие мероприятия</div>' +
-        '<div class="detail-block-val">' + esc(r.corrective || '—') + '</div>' +
+        '<div class="detail-block-val">' + esc(r.corrective || 'Внесите') + '</div>' +
       '</div>'
     : block('Корректирующие мероприятия', r.corrective);
   body.innerHTML =
