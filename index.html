@@ -532,9 +532,9 @@ html, body {
 .find-table td { padding: 8px 4px; font-size: 12px; color: #1a2035; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .th-col-btn {
   background: none; border: none; cursor: pointer; padding: 0;
-  color: var(--text2); text-align: center; line-height: 1.3;
+  color: var(--text2); text-align: left; line-height: 1.3;
   font-size: 11px; font-weight: 700; font-family: inherit;
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
   width: 100%; -webkit-tap-highlight-color: transparent;
 }
 .th-col-btn.active { color: var(--orange); }
@@ -570,10 +570,10 @@ html, body {
 .corr-row-entered { background: rgba(27,58,107,0.10); }
 .corr-row-overdue { background: rgba(27,58,107,0.10); }
 .corr-row-done    { background: rgba(39,174,96,0.10); }
-.corr-status-none    { color: var(--red); font-size: 11px; font-weight: 700; }
-.corr-status-entered { color: var(--navy); font-size: 11px; font-weight: 700; }
-.corr-status-overdue { color: var(--red); font-size: 11px; font-weight: 700; }
-.corr-status-done    { color: var(--green); font-size: 11px; font-weight: 700; }
+.corr-status-none    { color: var(--red);   font-size: 11px; }
+.corr-status-entered { color: var(--navy);  font-size: 11px; }
+.corr-status-overdue { color: var(--red);   font-size: 11px; }
+.corr-status-done    { color: var(--green); font-size: 11px; }
 
 /* Detail card corrective block — navy highlight (from corrective screen) */
 .detail-block-navy .detail-block-label { color: var(--navy); font-weight: 700; }
@@ -1029,9 +1029,9 @@ html, body {
       <thead>
         <tr>
           <th style="width:20%"><button class="th-col-btn" id="cfl-btn-dateCheck" onclick="openCorrFilter('dateCheck')"><span>Дата<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:20%"><button class="th-col-btn" id="cfl-btn-method" onclick="openCorrFilter('method')"><span>Метод<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:20%"><button class="th-col-btn" id="cfl-btn-org" onclick="openCorrFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:20%"><button class="th-col-btn" id="cfl-btn-barrier" onclick="openCorrFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:18%"><button class="th-col-btn" id="cfl-btn-method" onclick="openCorrFilter('method')"><span>Метод<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:25%"><button class="th-col-btn" id="cfl-btn-org" onclick="openCorrFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:17%"><button class="th-col-btn" id="cfl-btn-barrier" onclick="openCorrFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
           <th style="width:20%"><button class="th-col-btn" id="cfl-btn-status" onclick="openCorrFilter('status')"><span>Меро-<br>приятия</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
         </tr>
       </thead>
@@ -2366,11 +2366,11 @@ function checkPin() {
     var pw2 = getPw();
     var orgPwC = (pw2.orgs && detailRecordForEdit) ? (pw2.orgs[detailRecordForEdit.org] || '') : '';
     if (pinValue === SUPERUSER_PIN || pinValue === pw2.admin || (orgPwC && pinValue === orgPwC)) {
-      document.getElementById('screen-pin').classList.remove('screen-pin--navy');
       resetPin();
       var recToEdit = detailRecordForEdit;
       showScreen('screen-corrective-edit');
       openCorrectiveEdit(recToEdit);
+      setTimeout(function() { document.getElementById('screen-pin').classList.remove('screen-pin--navy'); }, 280);
     } else {
       document.getElementById('pin-error').textContent = 'Неверный пароль';
       pinValue = '';
@@ -3206,18 +3206,18 @@ function openCorrFilter(col) {
     openDrumOverlay('Фильтр: мероприятия', [
       { id: 'status', items: statuses, value: curLabel, fullWidth: true }
     ], function(d) {
-      document.getElementById('overlay-drum').classList.remove('navy-theme');
       f.status = statMap[d['status'].getValue()] || '';
       document.getElementById('cfl-btn-status').classList.toggle('active', !!f.status);
+      setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
       renderCorrectiveList();
     });
     var cancelBtnC = document.querySelector('#overlay-drum .overlay-btn-cancel');
     if (cancelBtnC) {
       cancelBtnC.textContent = f.status ? 'Сбросить' : 'Отмена';
       cancelBtnC.onclick = function() {
-        document.getElementById('overlay-drum').classList.remove('navy-theme');
-        if (f.status) { f.status = ''; document.getElementById('cfl-btn-status').classList.remove('active'); renderCorrectiveList(); }
         closeDrum();
+        setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
+        if (f.status) { f.status = ''; document.getElementById('cfl-btn-status').classList.remove('active'); renderCorrectiveList(); }
       };
     }
     return;
@@ -3228,18 +3228,18 @@ function openCorrFilter(col) {
   var title = {dateCheck:'Фильтр: дата проверки',method:'Фильтр: метод',org:'Фильтр: организация',barrier:'Фильтр: барьер'}[col] || 'Фильтр';
   document.getElementById('overlay-drum').classList.add('navy-theme');
   openDrumOverlay(title, cfg, function(d) {
-    document.getElementById('overlay-drum').classList.remove('navy-theme');
     f[col] = d[col].getValue();
     document.getElementById('cfl-btn-' + col).classList.toggle('active', !!f[col]);
+    setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
     renderCorrectiveList();
   });
   var cancelBtnD = document.querySelector('#overlay-drum .overlay-btn-cancel');
   if (cancelBtnD) {
     cancelBtnD.textContent = f[col] ? 'Сбросить' : 'Отмена';
     cancelBtnD.onclick = function() {
-      document.getElementById('overlay-drum').classList.remove('navy-theme');
-      if (f[col]) { f[col] = ''; document.getElementById('cfl-btn-' + col).classList.remove('active'); renderCorrectiveList(); }
       closeDrum();
+      setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
+      if (f[col]) { f[col] = ''; document.getElementById('cfl-btn-' + col).classList.remove('active'); renderCorrectiveList(); }
     };
   }
 }
@@ -3427,19 +3427,19 @@ function openDeadlineDrum(idx) {
     { id: 'mm', items: months, value: mm, label: 'Месяц' },
     { id: 'yy', items: years,  value: yy, label: 'Год'   }
   ], function(d) {
-    document.getElementById('overlay-drum').classList.remove('navy-theme');
     var deadline = d['dd'].getValue() + '.' + d['mm'].getValue() + '.' + d['yy'].getValue();
     correctiveMeasures[idx].deadline = deadline;
     var dlCell = document.getElementById('corr-dl-' + idx);
     if (dlCell) dlCell.textContent = 'Срок: ' + deadline;
+    setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
     checkCorrFilled();
   });
   var cancelBtnDl = document.querySelector('#overlay-drum .overlay-btn-cancel');
   if (cancelBtnDl) {
     cancelBtnDl.textContent = 'Отмена';
     cancelBtnDl.onclick = function() {
-      document.getElementById('overlay-drum').classList.remove('navy-theme');
       closeDrum();
+      setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
     };
   }
 }
@@ -3451,19 +3451,19 @@ function openStatusDrum(idx) {
   openDrumOverlay('Статус мероприятия', [
     { id: 'status', items: statuses, value: m.status || 'НЕ НАЧАТО', fullWidth: true }
   ], function(d) {
-    document.getElementById('overlay-drum').classList.remove('navy-theme');
     var st = d['status'].getValue();
     correctiveMeasures[idx].status = st;
     var stCell = document.getElementById('corr-st-' + idx);
     if (stCell) stCell.textContent = 'Статус: ' + st;
+    setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
     checkCorrFilled();
   });
   var cancelBtnSt = document.querySelector('#overlay-drum .overlay-btn-cancel');
   if (cancelBtnSt) {
     cancelBtnSt.textContent = 'Отмена';
     cancelBtnSt.onclick = function() {
-      document.getElementById('overlay-drum').classList.remove('navy-theme');
       closeDrum();
+      setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
     };
   }
 }
