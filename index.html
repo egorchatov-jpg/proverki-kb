@@ -221,6 +221,7 @@ html, body {
   align-items: center; justify-content: center;
   padding: 24px 20px; gap: 0;
 }
+.pin-role { font-size: 18px; font-weight: 700; color: var(--red); text-align: center; margin-bottom: 10px; }
 .pin-title { font-size: 18px; font-weight: 700; margin-bottom: 28px; color: #1a2035; text-align: center; }
 .pin-dots { display: flex; gap: 16px; margin-bottom: 32px; }
 .pin-dot {
@@ -264,10 +265,14 @@ html, body {
 .screen-pin--dark .pin-key.del { background: var(--gray-btn); }
 .screen-pin--dark .pin-key.empty { background: transparent !important; box-shadow: none !important; }
 
-/* Navy variant for corrective measures PIN */
-.screen-pin--navy .pin-dot  { border-color: var(--navy); }
-.screen-pin--navy .pin-dot.filled { background: var(--navy); }
-.screen-pin--navy .pin-key  { background: var(--navy); }
+/* Navy variant for corrective measures PIN — same color as nav-btn-meropr */
+.screen-pin--navy .pin-dot  { border-color: var(--navy); border-width: 2px; }
+.screen-pin--navy .pin-dot.filled { background: var(--navy); border-color: var(--navy); }
+.screen-pin--navy .pin-key  {
+  background: var(--navy);
+  border-radius: var(--btn-radius);
+  box-shadow: var(--btn-shadow);
+}
 .screen-pin--navy .pin-key.del { background: var(--gray-btn); }
 .screen-pin--navy .pin-key.empty { background: transparent !important; box-shadow: none !important; }
 
@@ -574,6 +579,10 @@ html, body {
 .corr-status-entered { color: var(--navy);  font-size: 11px; }
 .corr-status-overdue { color: var(--red);   font-size: 11px; }
 .corr-status-done    { color: var(--green); font-size: 11px; }
+#screen-sokb-list .th-col-btn.active { color: var(--navy); }
+.sokb-status-process { color: var(--navy);  font-size: 11px; }
+.sokb-status-success { color: var(--green); font-size: 11px; }
+.sokb-status-fail    { color: var(--red);   font-size: 11px; font-weight: 700; }
 
 /* Detail card corrective block — navy highlight (from corrective screen) */
 .detail-block-navy .detail-block-label { color: var(--navy); font-weight: 700; }
@@ -631,7 +640,10 @@ html, body {
   color: #1a2035; background: #fff; box-sizing: border-box;
 }
 .corr-m-input:focus { outline: none; border-color: var(--navy); }
-.corr-m-input::placeholder { color: #aaa; font-weight: 400; }
+.corr-m-desc::placeholder,
+.corr-m-input::placeholder { color: #aaa; font-size: 13px; font-weight: 400; }
+.corr-m-ph,
+.corr-m-cell.corr-m-ph { color: #aaa; font-size: 13px; font-weight: 400; font-family: inherit; }
 .corr-m-cell {
   border: 1.5px solid var(--border); border-radius: 10px;
   padding: 10px 12px; font-size: 13px; color: #1a2035; background: #fff;
@@ -754,7 +766,7 @@ html, body {
 #screen-barriers-years,
 #screen-barriers-list,
 #screen-methods, #screen-orgs,
-#screen-meropr-menu, #screen-corrective-list, #screen-corrective-edit { background: var(--bg); }
+#screen-meropr-menu, #screen-corrective-list, #screen-corrective-edit, #screen-sokb-list, #screen-sokb-edit { background: var(--bg); }
 
 /* Shared title at top of each settings sub-screen */
 .settings-screen-title {
@@ -1049,6 +1061,28 @@ html, body {
   </div>
 </div>
 
+<div class="screen" id="screen-sokb-list">
+  <div class="find-list-wrap">
+    <table class="find-table">
+      <thead>
+        <tr>
+          <th style="width:20%"><button class="th-col-btn" id="sfl-btn-dateCheck" onclick="openSokbFilter('dateCheck')"><span>Дата<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:18%"><button class="th-col-btn" id="sfl-btn-method" onclick="openSokbFilter('method')"><span>Метод<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:25%"><button class="th-col-btn" id="sfl-btn-org" onclick="openSokbFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:17%"><button class="th-col-btn" id="sfl-btn-barrier" onclick="openSokbFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:20%"><button class="th-col-btn" id="sfl-btn-status" onclick="openSokbFilter('status')"><span>Оспа-<br>ривание</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+        </tr>
+      </thead>
+      <tbody id="sokb-list-tbody"></tbody>
+    </table>
+  </div>
+  <div class="find-bottom">
+    <div class="find-count" id="sokb-list-count">0<br>нарушений</div>
+    <button class="find-bottom-btn find-btn-cancel" onclick="showScreen('screen-meropr-menu')">Назад</button>
+    <div class="find-count" id="sokb-entered-count">0<br>оспариваний</div>
+  </div>
+</div>
+
 <!-- ===== SCREEN: КОРРЕКТИРУЮЩИЕ МЕРОПРИЯТИЯ (редактирование) ===== -->
 <div class="screen" id="screen-corrective-edit">
   <div class="corr-edit-scroll" id="corr-edit-scroll">
@@ -1075,9 +1109,36 @@ html, body {
   </div>
 </div>
 
+<!-- ===== SCREEN: ОСПАРИВАНИЕ В СОКБ (редактирование) ===== -->
+<div class="screen" id="screen-sokb-edit">
+  <div class="corr-edit-scroll" id="sokb-edit-scroll">
+    <div class="corr-viol-info" id="sokb-viol-info"></div>
+    <div class="corr-section-hd">Оспаривание в СОКБ</div>
+    <div id="sokb-attempts-list"></div>
+    <div class="corr-action-row">
+      <span class="corr-action-hint corr-hint-gray">Удалить
+выбранное</span>
+      <button class="method-sq-btn minus" id="sokb-btn-minus" onclick="deleteSokbAttempts()" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <button class="method-sq-btn corr-plus" id="sokb-btn-plus" onclick="addSokbAttempt()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <span class="corr-action-hint corr-hint-navy">Добавить
+новое</span>
+    </div>
+    <div class="corr-valid-msg" id="sokb-valid-msg"></div>
+  </div>
+  <div class="corr-footer">
+    <button class="corr-btn-cancel" onclick="cancelSokbEdit()">Отмена</button>
+    <button class="corr-btn-save" id="sokb-btn-save" onclick="saveSokbAttempts()" disabled>Готово</button>
+  </div>
+</div>
+
 <!-- ===== PIN ===== -->
 <div class="screen" id="screen-pin">
   <div class="pin-content">
+    <div class="pin-role" id="pin-role"></div>
     <div class="pin-title">Введите пароль</div>
     <div class="pin-dots" id="pin-dots">
       <div class="pin-dot" id="d0"></div>
@@ -1516,7 +1577,7 @@ var SYNC_QUEUE_KEY   = 'pkb-sync-queue';
 var UPDATE_QUEUE_KEY = 'pkb-update-queue';
 var SERVER_SHA_KEY   = 'pkb-server-shas';
 var DATA_VERSION_KEY = 'pkb-data-version';
-var CURRENT_DATA_VERSION = 'v5-contest-col';
+var CURRENT_DATA_VERSION = 'v6-sokb-section';
 var VAPID_KEY_STORE = 'pkb-vapid-key';
 var swRegistration   = null;
 
@@ -1570,7 +1631,7 @@ function removeFromSyncQueue(id) {
 }
 
 // --- Offline retry queue for record UPDATES (corrective, SOKB, etc.) ---
-var UPDATE_FIELD_KEYS = ['corrective', 'contestMeasures'];
+var UPDATE_FIELD_KEYS = ['corrective', 'contestMeasures', 'works'];
 
 function getUpdateQueue() {
   try { return JSON.parse(localStorage.getItem(UPDATE_QUEUE_KEY) || '[]'); } catch(e) { return []; }
@@ -1926,6 +1987,8 @@ function loadFromServer(onDone) {
       if (fs && fs.classList.contains('active')) applyFindFilters();
       var cs = document.getElementById('screen-corrective-list');
       if (cs && cs.classList.contains('active')) renderCorrectiveList();
+      var ss = document.getElementById('screen-sokb-list');
+      if (ss && ss.classList.contains('active')) renderSokbList();
       retryAllQueues();
     }
     finish(true);
@@ -1941,7 +2004,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-meropr-menu', 'screen-corrective-edit'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -2144,10 +2207,11 @@ var drums = {};
 // Narrow detail card on Windows desktop
 if (/Windows/.test(navigator.userAgent)) document.documentElement.classList.add('is-win');
 
-var detailSource = 'find'; // 'find' | 'lobby'
+var detailSource = 'find'; // 'find' | 'lobby' | 'corrective' | 'sokb'
 function closeDetail() {
   if (detailSource === 'lobby') showScreen('screen-lobby');
   else if (detailSource === 'corrective') showScreen('screen-corrective-list');
+  else if (detailSource === 'sokb') showScreen('screen-sokb-list');
   else showScreen('screen-find');
 }
 
@@ -2333,6 +2397,7 @@ function openSettings() {
   var pinEl2 = document.getElementById('screen-pin');
   pinEl2.classList.add('screen-pin--dark');
   pinEl2.classList.remove('screen-pin--navy');
+  setPinRole('Доступ администратора');
   resetPin();
   showScreen('screen-pin');
 }
@@ -2343,6 +2408,7 @@ function openPin() {
   var pinEl3 = document.getElementById('screen-pin');
   pinEl3.classList.remove('screen-pin--dark');
   pinEl3.classList.remove('screen-pin--navy');
+  setPinRole('Доступ проверяющего');
   resetPin();
   showScreen('screen-pin');
 }
@@ -2567,6 +2633,11 @@ function ensureOrgPasswords() {
   });
 }
 
+function setPinRole(text) {
+  var el = document.getElementById('pin-role');
+  if (el) el.textContent = text || '';
+}
+
 function resetPin() {
   pinValue = '';
   updatePinDots();
@@ -2575,8 +2646,10 @@ function resetPin() {
 
 function pinGoBack() {
   if (pinMode === 'admin-update') { pinMode = 'settings'; showScreen('screen-passwords'); return; }
-  if (pinMode === 'corrective') {
-    document.getElementById('screen-pin').classList.remove('screen-pin--navy');
+  if (pinMode === 'corrective' || pinMode === 'sokb') {
+    var pe2 = document.getElementById('screen-pin');
+    pe2.classList.remove('screen-pin--navy');
+    pe2.classList.remove('screen-pin--dark');
     showScreen('screen-detail'); return;
   }
   showScreen(pinMode === 'settings' ? 'screen-lobby' : 'screen-proverki-menu');
@@ -2604,6 +2677,29 @@ function updatePinDots() {
 
 function checkPin() {
   var pw = getPw();
+
+  // ---- sokb mode: admin/superuser PIN only ----
+  if (pinMode === 'sokb') {
+    var pwS = getPw();
+    if (pinValue === SUPERUSER_PIN || pinValue === pwS.admin) {
+      _sokbUnlocked = true;
+      _sokbSavedText = (detailRecordForEdit && detailRecordForEdit.contestMeasures) ? detailRecordForEdit.contestMeasures : '';
+      resetPin();
+      var recS = detailRecordForEdit;
+      showScreen('screen-sokb-edit');
+      openSokbEdit(recS);
+      setTimeout(function() {
+        var pe = document.getElementById('screen-pin');
+        pe.classList.remove('screen-pin--navy');
+        pe.classList.remove('screen-pin--dark');
+      }, 280);
+    } else {
+      document.getElementById('pin-error').textContent = 'Неверный пароль';
+      pinValue = '';
+      updatePinDots();
+    }
+    return;
+  }
 
   // ---- corrective mode: org/admin/superuser PIN ----
   if (pinMode === 'corrective') {
@@ -3331,6 +3427,7 @@ function renderPasswordsScreen() {
     // Open dark PIN screen in admin-update mode
     pinMode = 'admin-update';
     document.getElementById('screen-pin').classList.add('screen-pin--dark');
+    setPinRole('Доступ администратора');
     resetPin();
     showScreen('screen-pin');
   }));
@@ -3370,8 +3467,544 @@ var _correctiveUnlocked = false;
 var _correctiveSavedText = '';
 var correctiveListFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '', status: '' };
 
+// ===== ОСПАРИВАНИЕ В СОКБ =====
+
+var sokbRecord         = null;
+var sokbAttempts       = [];
+var _sokbUnlocked      = false;
+var _sokbSavedText     = '';
+var sokbListFilters    = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '', status: '' };
+
+function isSokbListRecord(r) {
+  return r.works === 'Нет' || !!(r.contestMeasures || '').trim();
+}
+
 function openSokb() {
-  alert('Раздел «Оспаривание в СОКБ» — в разработке');
+  sokbListFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '', status: '' };
+  ['dateCheck','method','org','barrier','status'].forEach(function(k) {
+    var btn = document.getElementById('sfl-btn-' + k);
+    if (btn) btn.classList.remove('active');
+  });
+  renderSokbList();
+  showScreen('screen-sokb-list');
+}
+
+function parseContestMeasures(text) {
+  if (!text || !text.trim()) return [];
+  if (/Срок рассмотрения:/i.test(text) || /Статус оспаривания:/i.test(text)) {
+    var attempts = [];
+    var parts = text.split(/(?=^\d+\.\s)/m).filter(function(p) { return p.trim(); });
+    parts.forEach(function(part) {
+      var lines = part.trim().split('\n');
+      if (!lines.length) return;
+      var head = lines[0].match(/^(\d+)\.\s*(.+?)\.?\s*$/);
+      if (!head) return;
+      var desc = head[2].replace(/\.$/, '').trim();
+      var dl = 'нет даты', st = '';
+      lines.forEach(function(line) {
+        var lm = line.match(/Срок рассмотрения:\s*(.+?)\.?\s*$/i);
+        if (lm) {
+          dl = lm[1].trim().replace(/\s*\.$/, '');
+          if (!dl) dl = 'нет даты';
+        }
+        var sm = line.match(/Статус оспаривания:\s*(.+?)\.?\s*$/i);
+        if (sm) st = sm[1].trim().replace(/\.$/, '').toUpperCase();
+      });
+      if (desc || st) attempts.push({ desc: desc, deadline: dl, status: st, selected: false });
+    });
+    if (attempts.length) return attempts;
+  }
+  var attemptsOld = [];
+  var re = /(\d+)\.\s*([\s\S]+?)\s*-\s*(нет даты|\d{2}\.\d{2}\.\d{4})\s*-\s*([А-ЯЁа-яё\s]+?)(?:\s*[;\.])/g;
+  var match;
+  while ((match = re.exec(text + '.')) !== null) {
+    attemptsOld.push({
+      desc: match[2].trim(),
+      deadline: match[3].trim(),
+      status: match[4].trim().toUpperCase(),
+      selected: false
+    });
+  }
+  return attemptsOld;
+}
+
+function getSokbStatus(r) {
+  var c = (r.contestMeasures || '').trim();
+  if (!c) return 'none';
+  var attempts = parseContestMeasures(c);
+  if (!attempts.length) return 'none';
+  var last = attempts[attempts.length - 1];
+  var st = last.status;
+  if (st === 'В ПРОЦЕССЕ') return 'process';
+  if (st === 'УСПЕШНО') return 'success';
+  if (st === 'БЕЗУСПЕШНО') return 'fail';
+  return 'none';
+}
+
+function sokbStatusLabel(key) {
+  return { none: '', process: 'В процессе', success: 'Успешно', fail: 'Безуспешно' }[key] || '';
+}
+
+function sokbRowClass(key) {
+  if (key === 'process') return 'corr-row-entered';
+  if (key === 'success') return 'corr-row-done';
+  return 'corr-row-none';
+}
+
+function sokbStatusClass(key) {
+  if (key === 'process') return 'sokb-status-process';
+  if (key === 'success') return 'sokb-status-success';
+  if (key === 'fail') return 'sokb-status-fail';
+  return '';
+}
+
+function renderSokbList() {
+  var violations = (appState.db || []).filter(isSokbListRecord);
+  var f = sokbListFilters;
+  if (f.dateFrom || f.dateTo) {
+    var cfrom = f.dateFrom ? dateNumFromStr(f.dateFrom) : 0;
+    var cto   = f.dateTo   ? dateNumFromStr(f.dateTo)   : 99999999;
+    violations = violations.filter(function(r) { var n = dateNumFromStr(r.dateCheck); return n >= cfrom && n <= cto; });
+  }
+  if (f.method)  violations = violations.filter(function(r) { return r.method  === f.method; });
+  if (f.org)     violations = violations.filter(function(r) { return r.org     === f.org; });
+  if (f.barrier) violations = violations.filter(function(r) { return r.barrier === f.barrier; });
+  if (f.status)  violations = violations.filter(function(r) { return getSokbStatus(r) === f.status; });
+  violations = sortByDateCheckAsc(violations);
+  var tbody = document.getElementById('sokb-list-tbody');
+  tbody.innerHTML = '';
+  violations.forEach(function(r) {
+    var st = getSokbStatus(r);
+    var tr = document.createElement('tr');
+    tr.className = sokbRowClass(st);
+    tr.innerHTML =
+      '<td>' + esc(r.dateCheck||'') + '</td>' +
+      '<td>' + esc(r.method||'') + '</td>' +
+      '<td>' + esc(r.org||'') + '</td>' +
+      '<td>' + esc(r.barrier||'') + '</td>' +
+      '<td class="' + sokbStatusClass(st) + '">' + esc(sokbStatusLabel(st)) + '</td>';
+    tr.onclick = (function(rec) { return function() { openDetail(rec, 'sokb'); }; })(r);
+    tbody.appendChild(tr);
+  });
+  var cnt = document.getElementById('sokb-list-count');
+  if (cnt) cnt.innerHTML = violations.length + '<br>' + pluralNarushenie(violations.length);
+  var enteredCount = violations.filter(function(r) { return (r.contestMeasures || '').trim(); }).length;
+  var cntR = document.getElementById('sokb-entered-count');
+  if (cntR) cntR.innerHTML = enteredCount + '<br>оспариваний';
+  scrollCheckListToEnd('screen-sokb-list');
+}
+
+function openSokbFilter(col) {
+  var all = (appState.db || []).filter(isSokbListRecord);
+  var f = sokbListFilters;
+  var statMap = {'В процессе':'process','Успешно':'success','Безуспешно':'fail'};
+  var revMap = {process:'В процессе',success:'Успешно',fail:'Безуспешно'};
+
+  function uniqSort(arr) {
+    var seen = {}, out = [];
+    arr.forEach(function(v) { if (v && !seen[v]) { seen[v]=1; out.push(v); } });
+    return out.sort(function(a,b){ return a.localeCompare(b,'ru'); });
+  }
+  function sortDates(arr) {
+    var seen = {}, out = [];
+    arr.forEach(function(v) { if (v && !seen[v]) { seen[v]=1; out.push(v); } });
+    return out.sort(function(a,b){ return dateNumFromStr(a) - dateNumFromStr(b); });
+  }
+  function navyDrum(title, cfg, onApply) {
+    document.getElementById('overlay-drum').classList.add('navy-theme');
+    openDrumOverlay(title, cfg, function(d) {
+      setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
+      onApply(d);
+    });
+  }
+  function navyCancelBtn(hasFilter, onReset) {
+    var btn = document.querySelector('#overlay-drum .overlay-btn-cancel');
+    if (!btn) return;
+    btn.textContent = hasFilter ? 'Сбросить' : 'Отмена';
+    btn.onclick = function() {
+      closeDrum();
+      setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
+      if (hasFilter) onReset();
+    };
+  }
+
+  if (col === 'dateCheck') {
+    var dates = sortDates(all.map(function(r) { return r.dateCheck; }));
+    if (!dates.length) return;
+    var defFrom = f.dateFrom || dates[0];
+    var defTo   = f.dateTo   || dates[dates.length - 1];
+    navyDrum('Фильтр: дата проверки', [
+      { id: 'dateFrom', items: dates, value: defFrom, label: 'с',  minWidth: 165 },
+      { id: 'dateTo',   items: dates, value: defTo,   label: 'по', minWidth: 165 }
+    ], function(d) {
+      f.dateFrom = d['dateFrom'].getValue();
+      f.dateTo   = d['dateTo'].getValue();
+      document.getElementById('sfl-btn-dateCheck').classList.toggle('active', !!(f.dateFrom || f.dateTo));
+      renderSokbList();
+    });
+    navyCancelBtn(!!(f.dateFrom || f.dateTo), function() {
+      f.dateFrom = ''; f.dateTo = '';
+      document.getElementById('sfl-btn-dateCheck').classList.remove('active');
+      renderSokbList();
+    });
+    return;
+  }
+
+  if (col === 'status') {
+    var allStatLabels = ['В процессе','Успешно','Безуспешно'];
+    var presentStats = allStatLabels.filter(function(lbl) {
+      var key = statMap[lbl];
+      return all.some(function(r) { return getSokbStatus(r) === key; });
+    });
+    if (!presentStats.length) return;
+    var curLabel = f.status ? (revMap[f.status] || presentStats[0]) : presentStats[0];
+    if (presentStats.indexOf(curLabel) < 0) curLabel = presentStats[0];
+    navyDrum('Фильтр: оспаривание', [
+      { id: 'status', items: presentStats, value: curLabel, fullWidth: true }
+    ], function(d) {
+      f.status = statMap[d['status'].getValue()] || '';
+      document.getElementById('sfl-btn-status').classList.toggle('active', !!f.status);
+      renderSokbList();
+    });
+    navyCancelBtn(!!f.status, function() {
+      f.status = '';
+      document.getElementById('sfl-btn-status').classList.remove('active');
+      renderSokbList();
+    });
+    return;
+  }
+
+  var items = uniqSort(all.map(function(r) { return r[col]; }));
+  if (!items.length) return;
+  var cfg = [{ id: col, items: items, value: f[col] || items[0],
+    fullWidth: col === 'org' || col === 'barrier',
+    widthFactor: col === 'org' ? 0.8 : 1,
+    leftAlign: col === 'org' }];
+  var titles = { method: 'Фильтр: метод', org: 'Фильтр: организация', barrier: 'Фильтр: барьер' };
+  navyDrum(titles[col] || 'Фильтр', cfg, function(d) {
+    f[col] = d[col].getValue();
+    document.getElementById('sfl-btn-' + col).classList.toggle('active', !!f[col]);
+    renderSokbList();
+  });
+  navyCancelBtn(!!f[col], function() {
+    f[col] = '';
+    document.getElementById('sfl-btn-' + col).classList.remove('active');
+    renderSokbList();
+  });
+}
+
+function openSokbPIN() {
+  if (_sokbUnlocked) {
+    var r = detailRecordForEdit;
+    _sokbSavedText = r.contestMeasures || '';
+    showScreen('screen-sokb-edit');
+    openSokbEdit(r);
+    return;
+  }
+  var pinEl = document.getElementById('screen-pin');
+  pinEl.classList.remove('screen-pin--navy');
+  pinEl.classList.add('screen-pin--dark');
+  pinMode = 'sokb';
+  setPinRole('Доступ администратора');
+  resetPin();
+  showScreen('screen-pin');
+}
+
+function newEmptySokbAttempt() {
+  return { desc: '', deadline: 'нет даты', status: '', selected: false };
+}
+
+function openSokbEdit(r) {
+  sokbRecord = r;
+  _sokbSavedText = r.contestMeasures || '';
+  sokbAttempts = parseContestMeasures(r.contestMeasures);
+  if (!sokbAttempts.length) sokbAttempts = [newEmptySokbAttempt()];
+  var infoEl = document.getElementById('sokb-viol-info');
+  infoEl.innerHTML =
+    '<div class="corr-info-line"><b>Проверка №' + esc(String(r.num||'?')) + ' ' + esc(String(r.year||'')) + '</b></div>' +
+    '<div class="corr-info-line">Дата: ' + esc(r.dateCheck||'') + ' | Метод: ' + esc(r.method||'') + '</div>' +
+    '<div class="corr-info-line">Организация: ' + esc(r.org||'') + ' | Барьер: ' + esc(r.barrier||'') + '</div>' +
+    (r.desc ? '<div class="corr-info-line corr-info-desc">Описание: ' + esc(r.desc) + '</div>' : '');
+  renderSokbAttempts();
+  var sc = document.getElementById('sokb-edit-scroll');
+  if (sc) sc.scrollTop = 0;
+}
+
+function renderSokbAttempts() {
+  var container = document.getElementById('sokb-attempts-list');
+  container.innerHTML = '';
+  sokbAttempts.forEach(function(m, idx) {
+    container.appendChild(createSokbAttemptEl(m, idx));
+  });
+  updateSokbMinusBtn();
+  updateSokbPlusBtn();
+  checkSokbFilled();
+}
+
+function createSokbAttemptEl(m, idx) {
+  var n = idx + 1;
+  var div = document.createElement('div');
+  div.className = 'corr-m' + (m.selected ? ' corr-m-selected' : '');
+  div.id = 'sokb-m-' + idx;
+
+  var hdr = document.createElement('div');
+  hdr.className = 'corr-m-header';
+  hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;';
+
+  var leftSide = document.createElement('div');
+  leftSide.style.cssText = 'display:flex;align-items:center;gap:5px;';
+  var cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.className = 'method-circle-cb corr-m-cb';
+  cb.dataset.idx = idx;
+  cb.checked = !!m.selected;
+  cb.addEventListener('change', (function(i){ return function() {
+    sokbAttempts[i].selected = this.checked;
+    var mEl = document.getElementById('sokb-m-' + i);
+    mEl.classList.toggle('corr-m-selected', this.checked);
+    updateSokbMinusBtn();
+  }; })(idx));
+  var lbl = document.createElement('span');
+  lbl.className = 'corr-m-sel-lbl';
+  lbl.textContent = 'Выбрать';
+  leftSide.appendChild(cb); leftSide.appendChild(lbl);
+
+  var titleSpan = document.createElement('span');
+  titleSpan.className = 'corr-m-sel-lbl';
+  titleSpan.style.fontWeight = '700';
+  titleSpan.textContent = 'Оспаривание - попытка №' + n;
+
+  hdr.appendChild(leftSide); hdr.appendChild(titleSpan);
+  div.appendChild(hdr);
+
+  var ta = document.createElement('textarea');
+  ta.className = 'corr-m-desc';
+  ta.placeholder = 'Обоснование оспаривания';
+  ta.rows = 3;
+  ta.value = m.desc || '';
+  ta.addEventListener('input', (function(i){ return function() {
+    sokbAttempts[i].desc = this.value;
+    checkSokbFilled();
+  }; })(idx));
+  div.appendChild(ta);
+
+  var twin = document.createElement('div');
+  twin.className = 'corr-m-twin';
+  twin.style.marginTop = '6px';
+
+  var dlCell = document.createElement('div');
+  dlCell.className = 'corr-m-cell corr-m-half';
+  dlCell.id = 'sokb-dl-' + idx;
+  dlCell.textContent = 'Рассмотрение: ' + (m.deadline || 'нет даты');
+  dlCell.addEventListener('click', (function(i){ return function() { openSokbDeadlineDrum(i); }; })(idx));
+
+  var stCell = document.createElement('div');
+  stCell.className = 'corr-m-cell corr-m-half';
+  stCell.id = 'sokb-st-' + idx;
+  if (m.status) {
+    stCell.textContent = 'Статус: ' + m.status;
+    stCell.style.color = '';
+  } else {
+    stCell.textContent = 'Статус оспаривания';
+    stCell.classList.add('corr-m-ph');
+  }
+  stCell.addEventListener('click', (function(i){ return function() { openSokbStatusDrum(i); }; })(idx));
+
+  twin.appendChild(dlCell); twin.appendChild(stCell);
+  div.appendChild(twin);
+
+  return div;
+}
+
+function updateSokbMinusBtn() {
+  var anyChecked = sokbAttempts.some(function(m) { return m.selected; });
+  var btn = document.getElementById('sokb-btn-minus');
+  if (btn) btn.disabled = !anyChecked;
+}
+function updateSokbPlusBtn() {
+  var btn = document.getElementById('sokb-btn-plus');
+  if (btn) btn.disabled = sokbAttempts.length >= 20;
+}
+
+function deleteSokbAttempts() {
+  var newList = [];
+  sokbAttempts.forEach(function(m, i) {
+    if (!m.selected) { newList.push(m); }
+    else if (i === 0) {
+      newList.push(newEmptySokbAttempt());
+    }
+  });
+  if (!newList.length) newList = [newEmptySokbAttempt()];
+  sokbAttempts = newList;
+  renderSokbAttempts();
+}
+
+function addSokbAttempt() {
+  if (sokbAttempts.length >= 20) return;
+  sokbAttempts.push(newEmptySokbAttempt());
+  renderSokbAttempts();
+  var sc = document.getElementById('sokb-edit-scroll');
+  if (sc) setTimeout(function(){ sc.scrollTop = sc.scrollHeight; }, 50);
+}
+
+function openSokbDeadlineDrum(idx) {
+  var m = sokbAttempts[idx];
+  var MONTH_NAMES_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  var dl = m.deadline || 'нет даты';
+  var dd, mm, yy;
+  if (dl === 'нет даты') {
+    var now = new Date();
+    dd = String(now.getDate()).padStart(2,'0');
+    mm = MONTH_NAMES_RU[now.getMonth()];
+    yy = String(now.getFullYear());
+  } else {
+    var parts = dl.split('.');
+    dd = parts[0] || '01';
+    var mmNum = (parts[1] || '01').replace(/^0/, '');
+    mm = MONTH_NAMES_RU[parseInt(mmNum,10) - 1] || MONTH_NAMES_RU[0];
+    yy = parts[2] || String(new Date().getFullYear());
+  }
+  var days   = Array.from({length:31}, function(_,i){ return String(i+1).padStart(2,'0'); });
+  var months = MONTH_NAMES_RU;
+  var curY   = new Date().getFullYear();
+  var years  = Array.from({length:6},  function(_,i){ return String(curY + i); });
+  document.getElementById('overlay-drum').classList.add('navy-theme');
+  openDrumOverlay('Срок рассмотрения', [
+    { id: 'dd', items: days,   value: dd, label: 'День'  },
+    { id: 'mm', items: months, value: mm, label: 'Месяц' },
+    { id: 'yy', items: years,  value: yy, label: 'Год'   }
+  ], function(d) {
+    var __MONTH_NAMES_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+    var __mmIdx = __MONTH_NAMES_RU.indexOf(d['mm'].getValue());
+    var __mmStr = __mmIdx >= 0 ? String(__mmIdx + 1).padStart(2,'0') : d['mm'].getValue();
+    var deadline = d['dd'].getValue() + '.' + __mmStr + '.' + d['yy'].getValue();
+    sokbAttempts[idx].deadline = deadline;
+    var dlCell = document.getElementById('sokb-dl-' + idx);
+    if (dlCell) dlCell.textContent = 'Рассмотрение: ' + deadline;
+    setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
+    checkSokbFilled();
+  });
+  var cancelBtnDl = document.querySelector('#overlay-drum .overlay-btn-cancel');
+  if (cancelBtnDl) {
+    cancelBtnDl.textContent = 'Сбросить';
+    cancelBtnDl.onclick = function() {
+      sokbAttempts[idx].deadline = 'нет даты';
+      var dlCellR = document.getElementById('sokb-dl-' + idx);
+      if (dlCellR) dlCellR.textContent = 'Рассмотрение: нет даты';
+      closeDrum();
+      setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
+      checkSokbFilled();
+    };
+  }
+}
+
+function openSokbStatusDrum(idx) {
+  var m = sokbAttempts[idx];
+  var statuses = ['В ПРОЦЕССЕ', 'УСПЕШНО', 'БЕЗУСПЕШНО'];
+  document.getElementById('overlay-drum').classList.add('navy-theme');
+  openDrumOverlay('Статус оспаривания', [
+    { id: 'status', items: statuses, value: m.status || statuses[0], minWidth: 200 }
+  ], function(d) {
+    var st = d['status'].getValue();
+    sokbAttempts[idx].status = st;
+    var stCell = document.getElementById('sokb-st-' + idx);
+    if (stCell) {
+      stCell.textContent = 'Статус: ' + st;
+      stCell.classList.remove('corr-m-ph');
+      stCell.style.color = '';
+      stCell.style.fontWeight = '';
+    }
+    setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
+    checkSokbFilled();
+  });
+  var cancelBtnSt = document.querySelector('#overlay-drum .overlay-btn-cancel');
+  if (cancelBtnSt) {
+    cancelBtnSt.textContent = 'Отмена';
+    cancelBtnSt.onclick = function() {
+      closeDrum();
+      setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
+    };
+  }
+}
+
+function checkSokbFilled() {
+  var allFilled = sokbAttempts.every(function(m) {
+    return m.desc && m.desc.trim() && m.deadline && m.status;
+  });
+  var msgEl = document.getElementById('sokb-valid-msg');
+  var saveBtn = document.getElementById('sokb-btn-save');
+  if (msgEl) {
+    if (allFilled) {
+      msgEl.textContent = 'Заполнены все поля';
+      msgEl.style.color = 'var(--green)';
+    } else {
+      msgEl.textContent = 'Заполнены не все поля';
+      msgEl.style.color = 'var(--red)';
+    }
+  }
+  if (saveBtn) saveBtn.disabled = !allFilled;
+}
+
+function worksFromSokbAttempts(attempts) {
+  if (!attempts || !attempts.length) return 'Нет';
+  var last = attempts[attempts.length - 1];
+  return last.status === 'УСПЕШНО' ? 'Да' : 'Нет';
+}
+
+function formatSokbText(attempts) {
+  return attempts.map(function(m, i) {
+    var n = i + 1;
+    var desc = (m.desc || '').trim();
+    var dl = m.deadline || 'нет даты';
+    var dlLine = dl === 'нет даты'
+      ? 'Срок рассмотрения: нет даты.'
+      : 'Срок рассмотрения: ' + dl + ' .';
+    return n + '. ' + desc + '.\n' + dlLine + '\n' + 'Статус оспаривания: ' + m.status + '.';
+  }).join('\n\n');
+}
+
+function cancelSokbEdit() {
+  if (sokbRecord) {
+    sokbRecord.contestMeasures = _sokbSavedText;
+  }
+  openDetail(detailRecordForEdit, detailSource);
+}
+
+function saveSokbAttempts() {
+  var text = formatSokbText(sokbAttempts);
+  var newWorks = worksFromSokbAttempts(sokbAttempts);
+  sokbRecord.contestMeasures = text;
+  sokbRecord.works = newWorks;
+  _sokbSavedText = text;
+  var year = sokbRecord.year || (sokbRecord.dateCheck ? sokbRecord.dateCheck.split('.')[2] : String(new Date().getFullYear()));
+  saveRecordFieldUpdate(sokbRecord.dateEntry, year, { contestMeasures: text, works: newWorks });
+  renderSokbList();
+  renderCorrectiveList();
+  renderLobby();
+  openDetail(sokbRecord, 'sokb');
+}
+
+function isCorrectiveListRecord(r) {
+  return r.works === 'Нет' || !!(r.corrective || '').trim();
+}
+
+function isMeasureDone(status) {
+  return (status || '').trim().toUpperCase() === 'ВЫПОЛНЕНО';
+}
+
+function isSokbSuccessful(r) {
+  return getSokbStatus(r) === 'success';
+}
+
+function getCorrectiveRowClass(r) {
+  if (isSokbSuccessful(r)) return 'corr-row-done';
+  return 'corr-row-' + getCorrectiveStatus(r);
+}
+
+function getCorrectiveStatusCellClass(r) {
+  var st = getCorrectiveStatus(r);
+  if (isSokbSuccessful(r) && st !== 'done') return 'corr-status-done';
+  return 'corr-status-' + st;
 }
 
 // ── Corrective list ────────────────────────────────────────────
@@ -3397,17 +4030,18 @@ function getCorrectiveStatus(r) {
     measures.push({ date: d, status: st });
   }
   if (!measures.length) return 'entered';
-  var allDone = measures.every(function(m) { return m.status === 'ВЫПОЛНЕНО'; });
+  var allDone = measures.every(function(m) { return isMeasureDone(m.status); });
   if (allDone) return 'done';
+  if (isSokbSuccessful(r)) return 'entered';
   var anyOverdue = measures.some(function(m) {
-    return m.status !== 'ВЫПОЛНЕНО' && m.date < today;
+    return !isMeasureDone(m.status) && m.date < today;
   });
   if (anyOverdue) return 'overdue';
   return 'entered';
 }
 
 function renderCorrectiveList() {
-  var violations = (appState.db || []).filter(function(r) { return r.works === 'Нет'; });
+  var violations = (appState.db || []).filter(isCorrectiveListRecord);
   var f = correctiveListFilters;
   if (f.dateFrom || f.dateTo) {
     var cfrom = f.dateFrom ? dateNumFromStr(f.dateFrom) : 0;
@@ -3427,13 +4061,13 @@ function renderCorrectiveList() {
   violations.forEach(function(r) {
     var st = getCorrectiveStatus(r);
     var tr = document.createElement('tr');
-    tr.className = 'corr-row-' + st;
+    tr.className = getCorrectiveRowClass(r);
     tr.innerHTML =
       '<td>' + esc(r.dateCheck||'') + '</td>' +
       '<td>' + esc(r.method||'') + '</td>' +
       '<td>' + esc(r.org||'') + '</td>' +
       '<td>' + esc(r.barrier||'') + '</td>' +
-      '<td class="corr-status-' + st + '">' + (statusLabel[st]||'') + '</td>';
+      '<td class="' + getCorrectiveStatusCellClass(r) + '">' + (statusLabel[st]||'') + '</td>';
     tr.onclick = (function(rec) { return function() { openDetail(rec, 'corrective'); }; })(r);
     tbody.appendChild(tr);
   });
@@ -3447,7 +4081,7 @@ function renderCorrectiveList() {
 }
 
 function openCorrFilter(col) {
-  var all = (appState.db || []).filter(function(r) { return r.works === 'Нет'; });
+  var all = (appState.db || []).filter(isCorrectiveListRecord);
   var f = correctiveListFilters;
   var statMap = {'Не внесено':'none','Внесено':'entered','Просрочено':'overdue','Выполнено':'done'};
   var revMap = {none:'Не внесено',entered:'Внесено',overdue:'Просрочено',done:'Выполнено'};
@@ -3564,6 +4198,7 @@ function openCorrectivePIN() {
   pinEl.classList.remove('screen-pin--dark');
   pinEl.classList.add('screen-pin--navy');
   pinMode = 'corrective';
+  setPinRole('Доступ проверяемой организации');
   resetPin();
   showScreen('screen-pin');
 }
@@ -3693,7 +4328,12 @@ function createCorrMeasureEl(m, idx) {
   var dlCell = document.createElement('div');
   dlCell.className = 'corr-m-cell corr-m-half';
   dlCell.id = 'corr-dl-' + idx;
-  dlCell.textContent = 'Выполнить до: ' + (m.deadline || formatDate(new Date()));
+  if (m.deadline) {
+    dlCell.textContent = 'Выполнить до: ' + m.deadline;
+  } else {
+    dlCell.textContent = 'Срок выполнения';
+    dlCell.classList.add('corr-m-ph');
+  }
   dlCell.addEventListener('click', (function(i){ return function() { openDeadlineDrum(i); }; })(idx));
 
   var stCell = document.createElement('div');
@@ -3704,8 +4344,7 @@ function createCorrMeasureEl(m, idx) {
     stCell.style.color = '';
   } else {
     stCell.textContent = 'Статус выполнения';
-    stCell.style.color = '#aaa';
-    stCell.style.fontWeight = '400';
+    stCell.classList.add('corr-m-ph');
   }
   stCell.addEventListener('click', (function(i){ return function() { openStatusDrum(i); }; })(idx));
 
@@ -3731,7 +4370,7 @@ function deleteCorrMeasures() {
     if (!m.selected) { newList.push(m); }
     else if (i === 0) {
       // First measure: clear instead of delete
-      newList.push({ desc: '', responsible: '', deadline: formatDate(new Date()), status: '', selected: false });
+      newList.push({ desc: '', responsible: '', deadline: '', status: '', selected: false });
     }
   });
   // Keep at least 1
@@ -3774,7 +4413,10 @@ function openDeadlineDrum(idx) {
     var deadline = d['dd'].getValue() + '.' + __mmStr + '.' + d['yy'].getValue();
     correctiveMeasures[idx].deadline = deadline;
     var dlCell = document.getElementById('corr-dl-' + idx);
-    if (dlCell) dlCell.textContent = 'Выполнить до: ' + deadline;
+    if (dlCell) {
+      dlCell.textContent = 'Выполнить до: ' + deadline;
+      dlCell.classList.remove('corr-m-ph');
+    }
     setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
     checkCorrFilled();
   });
@@ -3800,7 +4442,8 @@ function openStatusDrum(idx) {
     var stCell = document.getElementById('corr-st-' + idx);
     if (stCell) {
       stCell.textContent = 'Статус: ' + st;
-      stCell.style.color = '#1a2035';
+      stCell.classList.remove('corr-m-ph');
+      stCell.style.color = '';
       stCell.style.fontWeight = '';
     }
     setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
@@ -3816,22 +4459,35 @@ function openStatusDrum(idx) {
   }
 }
 
+function isCorrMeasureEmpty(m) {
+  return !(m.desc && m.desc.trim()) && !(m.responsible && m.responsible.trim()) && !(m.status && m.status.trim());
+}
+
+function getNonEmptyCorrMeasures(measures) {
+  return measures.filter(function(m) { return !isCorrMeasureEmpty(m); });
+}
+
 function checkCorrFilled() {
   var allFilled = correctiveMeasures.every(function(m) {
     return m.desc && m.desc.trim() && m.responsible && m.responsible.trim() && m.deadline && m.status;
   });
+  var allEmpty = correctiveMeasures.every(isCorrMeasureEmpty);
+  var canSave = allFilled || allEmpty;
   var msgEl = document.getElementById('corr-valid-msg');
   var saveBtn = document.getElementById('corr-btn-save');
   if (msgEl) {
     if (allFilled) {
       msgEl.textContent = 'Заполнены все поля';
       msgEl.style.color = 'var(--green)';
+    } else if (allEmpty) {
+      msgEl.textContent = 'Мероприятия удалены';
+      msgEl.style.color = 'var(--green)';
     } else {
       msgEl.textContent = 'Заполнены не все поля';
       msgEl.style.color = 'var(--red)';
     }
   }
-  if (saveBtn) saveBtn.disabled = !allFilled;
+  if (saveBtn) saveBtn.disabled = !canSave;
 }
 
 function formatCorrText(measures) {
@@ -3851,7 +4507,8 @@ function cancelCorrEdit() {
 }
 
 function saveCorrMeasures() {
-  var text = formatCorrText(correctiveMeasures);
+  var nonEmpty = getNonEmptyCorrMeasures(correctiveMeasures);
+  var text = nonEmpty.length ? formatCorrText(nonEmpty) : '';
   correctiveRecord.corrective = text;
   _correctiveSavedText = text;
   var year = correctiveRecord.year || (correctiveRecord.dateCheck ? correctiveRecord.dateCheck.split('.')[2] : String(new Date().getFullYear()));
@@ -3923,12 +4580,25 @@ function openDetail(r, source) {
     return '<div class="detail-block"><div class="detail-block-label">' + label + '</div>' +
            '<div class="detail-block-val">' + (val || '—') + '</div></div>';
   }
-  var corrBlock = source === 'corrective'
-    ? '<div class="detail-block detail-block-navy" onclick="openCorrectivePIN()">' +
-        '<div class="detail-block-label">Корректирующие мероприятия</div>' +
-        '<div class="detail-block-val">' + esc(r.corrective || 'Внесите') + '</div>' +
-      '</div>'
-    : block('Корректирующие мероприятия', r.corrective);
+  var showExtra = source !== 'lobby';
+  var corrBlock = '';
+  if (showExtra) {
+    corrBlock = source === 'corrective'
+      ? '<div class="detail-block detail-block-navy" onclick="openCorrectivePIN()">' +
+          '<div class="detail-block-label">Корректирующие мероприятия</div>' +
+          '<div class="detail-block-val">' + esc(r.corrective || 'Внесите') + '</div>' +
+        '</div>'
+      : block('Корректирующие мероприятия', r.corrective);
+  }
+  var contestBlock = '';
+  if (showExtra) {
+    contestBlock = source === 'sokb'
+      ? '<div class="detail-block detail-block-navy" onclick="openSokbPIN()">' +
+          '<div class="detail-block-label">Оспаривание в СОКБ</div>' +
+          '<div class="detail-block-val">' + esc(r.contestMeasures || 'Внесите') + '</div>' +
+        '</div>'
+      : block('Оспаривание в СОКБ', r.contestMeasures);
+  }
   body.innerHTML =
     row('Дата проверки', r.dateCheck) +
     row('Дата внесения проверки', r.dateEntry) +
@@ -3943,7 +4613,7 @@ function openDetail(r, source) {
     row('Нарушение допустил', r.violator) +
     block('Описание нарушения', r.desc) +
     corrBlock +
-    block('Оспаривание в СОКБ', r.contestMeasures);
+    contestBlock;
   document.getElementById('detail-scroll').scrollTop = 0;
   showScreen('screen-detail');
 }
