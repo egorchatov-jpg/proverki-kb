@@ -476,8 +476,8 @@ html, body {
 .violator-ctrl-btn.add { background: var(--orange); }
 .violator-ctrl-btn:active:not(:disabled) { opacity: 0.8; }
 .violator-ctrl-btn svg { width: 24px; height: 24px; }
-/* Светло-красная заливка ячейки "Работоспособность барьера" = Нет */
-.field-cell-red { background: rgba(192,57,43,0.15); }
+/* "Нет" в ячейке "Работоспособность барьера" — красный жирный текст */
+.field-val-works-no { color: var(--red); font-weight: 700; }
 
 /* success overlay */
 .success-overlay {
@@ -1581,6 +1581,10 @@ function addToUpdateQueue(item) {
       Object.assign(q[idx].fields, item.fields);
       q[idx].year = item.year;
       q[idx].updatedAt = item.updatedAt || Date.now();
+      if (item.dateCheck) q[idx].dateCheck = item.dateCheck;
+      if (item.method)    q[idx].method    = item.method;
+      if (item.org)       q[idx].org       = item.org;
+      if (item.barrier)   q[idx].barrier   = item.barrier;
     } else {
       q.push(item);
     }
@@ -1602,36 +1606,59 @@ function updateSyncStatusFromQueues() {
 }
 
 function syncUpdateToServer(item) {
-  syncStatus = 'syncing';
-  updateSyncIndicator();
-  var ctrl = new AbortController();
-  var timer = setTimeout(function() { ctrl.abort(); }, 14000);
-  fetch('/api/update', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ dateEntry: item.dateEntry, year: item.year, fields: item.fields }),
-    signal: ctrl.signal
-  })
-  .then(function(r) { clearTimeout(timer); return r.json(); })
-  .then(function(d) {
-    if (d.success) {
-      removeFromUpdateQueue(item.dateEntry);
-      updateSyncStatusFromQueues();
-      console.log('[update-sync] сохранено на сервере:', item.dateEntry);
-    } else {
-      syncStatus = 'error';
+  return new Promise(function(resolve) {
+    syncStatus = 'syncing';
+    updateSyncIndicator();
+    var ctrl = new AbortController();
+    var timer = setTimeout(function() { ctrl.abort(); }, 14000);
+    fetch('/api/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dateEntry: item.dateEntry,
+        year: item.year,
+        fields: item.fields,
+        dateCheck: item.dateCheck || '',
+        method: item.method || '',
+        org: item.org || '',
+        barrier: item.barrier || ''
+      }),
+      signal: ctrl.signal
+    })
+    .then(function(r) { clearTimeout(timer); return r.json(); })
+    .then(function(d) {
+      if (d.success) {
+        removeFromUpdateQueue(item.dateEntry);
+        var shas = getServerShas();
+        delete shas['sha' + item.year];
+        saveServerShas(shas);
+        updateSyncStatusFromQueues();
+        console.log('[update-sync] сохранено на сервере:', item.dateEntry);
+        resolve(true);
+      } else {
+        syncStatus = 'error';
+        addToUpdateQueue(item);
+        console.warn('[update-sync] ошибка сервера:', d.error);
+        resolve(false);
+      }
+      updateSyncIndicator();
+    })
+    .catch(function(e) {
+      clearTimeout(timer);
+      syncStatus = 'offline';
       addToUpdateQueue(item);
-      console.warn('[update-sync] ошибка сервера:', d.error);
-    }
-    updateSyncIndicator();
-  })
-  .catch(function(e) {
-    clearTimeout(timer);
-    syncStatus = 'offline';
-    addToUpdateQueue(item);
-    console.warn('[update-sync] нет соединения, в очередь:', item.dateEntry);
-    updateSyncIndicator();
+      console.warn('[update-sync] нет соединения, в очередь:', item.dateEntry);
+      updateSyncIndicator();
+      resolve(false);
+    });
   });
+}
+
+function flushUpdateQueue(onDone) {
+  var q = getUpdateQueue();
+  if (!q.length) { if (onDone) onDone(); return; }
+  var promises = q.map(function(item) { return syncUpdateToServer(item); });
+  Promise.all(promises).then(function() { if (onDone) onDone(); });
 }
 
 function retryUpdateQueue() {
@@ -1662,7 +1689,11 @@ function seedUpdateQueueFromLocalDb(serverRecords) {
     });
     if (!Object.keys(fields).length) return;
     var year = local.year || (local.dateCheck ? local.dateCheck.split('.')[2] : String(new Date().getFullYear()));
-    addToUpdateQueue({ dateEntry: local.dateEntry, year: year, fields: fields, updatedAt: Date.now() });
+    addToUpdateQueue({
+      dateEntry: local.dateEntry, year: year, fields: fields, updatedAt: Date.now(),
+      dateCheck: local.dateCheck || '', method: local.method || '',
+      org: local.org || '', barrier: local.barrier || ''
+    });
   });
 }
 
@@ -1671,9 +1702,17 @@ function applyPendingUpdates(records) {
   var queue = getUpdateQueue();
   if (!queue.length) return records;
   var byEntry = {};
-  records.forEach(function(r) { if (r.dateEntry) byEntry[r.dateEntry] = r; });
+  var byFp = {};
+  records.forEach(function(r) {
+    if (r.dateEntry) byEntry[r.dateEntry] = r;
+    if (r.dateCheck) byFp[[r.dateCheck, r.method, r.org, r.barrier].join('|')] = r;
+  });
   queue.forEach(function(item) {
     var rec = byEntry[item.dateEntry];
+    if (!rec && item.dateCheck) {
+      var fp = [item.dateCheck, item.method || '', item.org || '', item.barrier || ''].join('|');
+      rec = byFp[fp];
+    }
     if (!rec) return;
     var allSynced = true;
     Object.keys(item.fields).forEach(function(k) {
@@ -1695,7 +1734,13 @@ function saveRecordFieldUpdate(dateEntry, year, fields) {
     Object.keys(fields).forEach(function(k) { rec[k] = fields[k]; });
   }
   saveState();
-  var item = { dateEntry: dateEntry, year: year, fields: fields, updatedAt: Date.now() };
+  var item = {
+    dateEntry: dateEntry, year: year, fields: fields, updatedAt: Date.now(),
+    dateCheck: rec ? rec.dateCheck : '',
+    method: rec ? rec.method : '',
+    org: rec ? rec.org : '',
+    barrier: rec ? rec.barrier : ''
+  };
   addToUpdateQueue(item);
   syncUpdateToServer(item);
 }
@@ -1908,9 +1953,12 @@ function hidePullIndicator(animate) {
 function triggerManualSync() {
   setPullIndicator('syncing', 'Синхронизация...');
   animatePullIndicator(0, true);
-  loadFromServer(function(ok) {
-    setPullIndicator('done', ok ? 'Обновлено' : 'Офлайн: данные из кэша');
-    setTimeout(function() { hidePullIndicator(true); }, 1400);
+  retrySyncQueue();
+  flushUpdateQueue(function() {
+    loadFromServer(function(ok) {
+      setPullIndicator('done', ok ? 'Обновлено' : 'Офлайн: данные из кэша');
+      setTimeout(function() { hidePullIndicator(true); }, 1400);
+    });
   });
 }
 
@@ -2678,8 +2726,7 @@ function resetCard() {
     var el = document.getElementById('val-' + k);
     if (el) { el.textContent = k === 'method' || k === 'org' || k === 'barrier' || k === 'works' ? 'Выбрать' : '—'; }
   });
-  var cw = document.getElementById('cell-works');
-  if (cw) cw.classList.remove('field-cell-red');
+  setWorksCellDisplay('Выбрать');
   setDimmed('inspector', true);
   setDimmed('desc', true);
   setDimmed('violator', true);
@@ -4068,15 +4115,25 @@ function openDrumBarrier() {
   });
 }
 
+function setWorksCellDisplay(value) {
+  var el = document.getElementById('val-works');
+  var cw = document.getElementById('cell-works');
+  if (cw) cw.classList.remove('field-cell-red');
+  if (!el) return;
+  if (value === 'Нет') {
+    el.innerHTML = '<span class="field-val-works-no">Нет</span>';
+  } else {
+    el.textContent = value || 'Выбрать';
+  }
+}
+
 function openDrumWorks() {
   openDrumOverlay('Выберите работоспособен ли барьер', [
     { id: 'works', items: ['Да','Нет'], value: cardData.works || 'Да', minWidth: 200 }
   ], function(d) {
     cardData.works = d['works'].getValue();
-    document.getElementById('val-works').textContent = cardData.works;
+    setWorksCellDisplay(cardData.works);
     var broken = cardData.works === 'Нет';
-    var cw = document.getElementById('cell-works');
-    if (cw) cw.classList.toggle('field-cell-red', broken);
     setDimmed('desc', !broken);
     setDimmed('violator', !broken);
     if (!broken) {
