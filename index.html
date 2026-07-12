@@ -592,9 +592,9 @@ html, body {
   padding: 0 14px 12px;
 }
 .corr-viol-info {
-  background: rgba(27,58,107,0.06); border-radius: 12px;
+  background: rgba(192,57,43,0.22); border-radius: 12px;
   padding: 10px 14px; margin-bottom: 12px; font-size: 13px; line-height: 1.5;
-  border: 1px solid rgba(27,58,107,0.15);
+  border: none;
 }
 .corr-info-line { color: #1a2035; }
 .corr-info-desc { color: #1a2035; }
@@ -631,6 +631,7 @@ html, body {
   color: #1a2035; background: #fff; box-sizing: border-box;
 }
 .corr-m-input:focus { outline: none; border-color: var(--navy); }
+.corr-m-input::placeholder { color: #aaa; font-weight: 400; }
 .corr-m-cell {
   border: 1.5px solid var(--border); border-radius: 10px;
   padding: 10px 12px; font-size: 13px; color: #1a2035; background: #fff;
@@ -3463,7 +3464,8 @@ function createCorrMeasureEl(m, idx) {
     stCell.style.color = '';
   } else {
     stCell.textContent = 'Статус выполнения';
-    stCell.style.color = 'var(--text3)';
+    stCell.style.color = '#aaa';
+    stCell.style.fontWeight = '400';
   }
   stCell.addEventListener('click', (function(i){ return function() { openStatusDrum(i); }; })(idx));
 
@@ -3558,7 +3560,8 @@ function openStatusDrum(idx) {
     var stCell = document.getElementById('corr-st-' + idx);
     if (stCell) {
       stCell.textContent = 'Статус: ' + st;
-      stCell.style.color = '';
+      stCell.style.color = '#1a2035';
+      stCell.style.fontWeight = '';
     }
     setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
     checkCorrFilled();
