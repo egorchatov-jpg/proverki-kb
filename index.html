@@ -3271,7 +3271,7 @@ function parseCorrective(text) {
   while ((match = re.exec(text + '.')) !== null) {
     var desc = match[2].trim();
     var resp = '';
-    var mResp = desc.match(/,?s*отв.:s*(.+)$/);
+    var mResp = desc.match(new RegExp(',?\\s*отв\\.:\\s*(.+)'));
     if (mResp) { resp = mResp[1].trim(); desc = desc.replace(mResp[0], '').trim(); }
     measures.push({ desc: desc, responsible: resp, deadline: match[3], status: match[4].trim().toUpperCase(), selected: false });
   }
