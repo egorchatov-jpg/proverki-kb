@@ -1703,7 +1703,25 @@ function loadFromServer(onDone) {
     }
 
     if (d && Array.isArray(d.records)) {
+      // Preserve locally saved corrective (and contest) fields before overwriting with server data.
+      // /api/update may not have flushed to Excel yet when the next sync arrives.
+      var _localCorrMap = {};
+      var _localContestMap = {};
+      (appState.db || []).forEach(function(r) {
+        if (r.dateEntry) {
+          if (r.corrective)       _localCorrMap[r.dateEntry]    = r.corrective;
+          if (r.contestMeasures)  _localContestMap[r.dateEntry] = { m: r.contestMeasures, s: r.contestStatus };
+        }
+      });
       appState.db = mergeWithQueue(d.records);
+      appState.db.forEach(function(r) {
+        if (!r.dateEntry) return;
+        if (!r.corrective      && _localCorrMap[r.dateEntry])    r.corrective      = _localCorrMap[r.dateEntry];
+        if (!r.contestMeasures && _localContestMap[r.dateEntry]) {
+          r.contestMeasures = _localContestMap[r.dateEntry].m;
+          r.contestStatus   = _localContestMap[r.dateEntry].s;
+        }
+      });
       renumberDb();
       saveState();
       renderLobby();
