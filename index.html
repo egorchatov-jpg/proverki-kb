@@ -202,6 +202,7 @@ html, body {
 .menu-btn:active { opacity: 0.8; transform: scale(0.97); }
 .menu-btn-gray { background: var(--gray-btn); }
 .menu-btn-orange { background: var(--orange); }
+.menu-btn-navy { background: var(--navy); }
 .menu-btn-cancel {
   background: var(--gray-btn);
   border-radius: 30px;
@@ -256,13 +257,19 @@ html, body {
 }
 .pin-back-btn:active { opacity: 0.8; }
 
-/* Dark variant for settings PIN — only colour changes */
+/* Dark variant for settings PIN */
 .screen-pin--dark .pin-dot  { border-color: #222; }
 .screen-pin--dark .pin-dot.filled { background: #222; }
 .screen-pin--dark .pin-key  { background: #222; }
 .screen-pin--dark .pin-key.del { background: var(--gray-btn); }
-/* Empty spacer stays invisible in dark mode */
 .screen-pin--dark .pin-key.empty { background: transparent !important; box-shadow: none !important; }
+
+/* Navy variant for corrective measures PIN */
+.screen-pin--navy .pin-dot  { border-color: var(--navy); }
+.screen-pin--navy .pin-dot.filled { background: var(--navy); }
+.screen-pin--navy .pin-key  { background: var(--navy); }
+.screen-pin--navy .pin-key.del { background: var(--gray-btn); }
+.screen-pin--navy .pin-key.empty { background: transparent !important; box-shadow: none !important; }
 
 /* ===== SCREEN: КАРТОЧКА ПРОВЕРКИ ===== */
 #screen-card { background: var(--bg); }
@@ -525,13 +532,15 @@ html, body {
 .find-table td { padding: 8px 4px; font-size: 12px; color: #1a2035; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .th-col-btn {
   background: none; border: none; cursor: pointer; padding: 0;
-  color: var(--text2); text-align: left; line-height: 1.3;
+  color: var(--text2); text-align: center; line-height: 1.3;
   font-size: 11px; font-weight: 700; font-family: inherit;
-  display: inline; -webkit-tap-highlight-color: transparent;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  width: 100%; -webkit-tap-highlight-color: transparent;
 }
 .th-col-btn.active { color: var(--orange); }
 .th-col-btn.active .th-fi path { fill: currentColor; }
-.th-fi { vertical-align: middle; margin-left: 2px; }
+.th-fi { flex-shrink: 0; display: block; }
+#screen-corrective-list .th-col-btn.active { color: var(--navy); }
 
 .find-bottom {
   display: flex; align-items: center; gap: 8px;
@@ -555,6 +564,107 @@ html, body {
 }
 .find-bottom-btn:active { opacity: 0.8; }
 .find-btn-cancel { background: var(--gray-btn-dark); }
+
+/* ===== CORRECTIVE LIST row colours ===== */
+.corr-row-none    { background: rgba(192,57,43,0.10); }
+.corr-row-entered { background: rgba(27,58,107,0.10); }
+.corr-row-overdue { background: rgba(27,58,107,0.10); }
+.corr-row-done    { background: rgba(39,174,96,0.10); }
+.corr-status-none    { color: var(--red); font-size: 11px; font-weight: 700; }
+.corr-status-entered { color: var(--navy); font-size: 11px; font-weight: 700; }
+.corr-status-overdue { color: var(--red); font-size: 11px; font-weight: 700; }
+.corr-status-done    { color: var(--green); font-size: 11px; font-weight: 700; }
+
+/* Detail card corrective block — navy highlight (from corrective screen) */
+.detail-block-navy .detail-block-label { color: var(--navy); font-weight: 700; }
+.detail-block-navy .detail-block-val   { background: rgba(27,58,107,0.07); border-color: rgba(27,58,107,0.25); cursor: pointer; }
+.detail-block-navy .detail-block-val::after { content: ' ›'; color: var(--navy); }
+
+/* Navy drum overlay theme */
+#overlay-drum.navy-theme .overlay-box { background: #eaf0fb; }
+#overlay-drum.navy-theme .drum-wrap::before { background: linear-gradient(to bottom, #eaf0fb, transparent); }
+#overlay-drum.navy-theme .drum-wrap::after  { background: linear-gradient(to top,   #eaf0fb, transparent); }
+#overlay-drum.navy-theme .drum-group::before { background: rgba(27,58,107,0.10); border-color: var(--navy); }
+#overlay-drum.navy-theme .overlay-btn-apply { background: var(--navy); }
+
+/* ===== CORRECTIVE EDIT SCREEN ===== */
+.corr-edit-scroll {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 0 14px 12px;
+}
+.corr-viol-info {
+  background: rgba(27,58,107,0.06); border-radius: 12px;
+  padding: 10px 14px; margin-bottom: 12px; font-size: 13px; line-height: 1.5;
+  border: 1px solid rgba(27,58,107,0.15);
+}
+.corr-info-line { color: #1a2035; }
+.corr-info-desc { color: var(--text2); font-style: italic; }
+.corr-section-hd {
+  font-size: 14px; font-weight: 700; color: #1a2035;
+  margin: 10px 0 6px; text-align: left;
+}
+.corr-m {
+  padding: 8px 0 10px; border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+.corr-m.corr-m-selected { background: rgba(0,0,0,0.03); border-radius: 8px; padding: 8px 6px 10px; }
+.corr-m-header {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 6px; margin-bottom: 6px;
+}
+.corr-m-sel-lbl { font-size: 12px; font-weight: 600; color: var(--text2); }
+.corr-m-desc {
+  width: 100%; min-height: 58px; border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 10px 12px; font-size: 14px;
+  font-family: inherit; color: #1a2035; background: #fff;
+  resize: none; box-sizing: border-box;
+}
+.corr-m-desc:focus { outline: none; border-color: var(--navy); }
+.corr-m-twin {
+  display: flex; gap: 8px; margin-top: 6px;
+}
+.corr-m-half { flex: 1; min-width: 0; }
+.corr-m-input {
+  width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 10px 12px; font-size: 13px; font-family: inherit;
+  color: #1a2035; background: #fff; box-sizing: border-box;
+}
+.corr-m-input:focus { outline: none; border-color: var(--navy); }
+.corr-m-cell {
+  border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 10px 12px; font-size: 13px; color: #1a2035; background: #fff;
+  cursor: pointer; display: flex; align-items: center; min-height: 42px;
+  box-sizing: border-box;
+}
+.corr-m-cell:active { background: rgba(27,58,107,0.06); }
+.corr-action-row {
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 10px 0 4px;
+}
+.corr-action-hint { font-size: 11px; font-weight: 600; white-space: nowrap; }
+.corr-hint-gray  { color: var(--text2); }
+.corr-hint-navy  { color: var(--navy); }
+.method-sq-btn.corr-plus { background: var(--navy); }
+.corr-valid-msg { text-align: center; font-size: 13px; font-weight: 700; min-height: 18px; padding: 4px 0 8px; }
+.corr-footer {
+  display: flex; gap: 12px; padding: 10px 14px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  background: var(--bg); flex-shrink: 0;
+}
+.corr-btn-cancel {
+  flex: 1; height: 53px; border: none; cursor: pointer;
+  border-radius: var(--btn-radius); background: var(--gray-btn-dark);
+  color: #fff; font-size: 15px; font-weight: 700;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+}
+.corr-btn-save {
+  flex: 1; height: 53px; border: none; cursor: pointer;
+  border-radius: var(--btn-radius); background: var(--navy);
+  color: #fff; font-size: 15px; font-weight: 700;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+}
+.corr-btn-save:disabled { opacity: 0.35; cursor: default; }
+.corr-btn-cancel:active, .corr-btn-save:not(:disabled):active { opacity: 0.8; }
 
 /* ===== ДЕТАЛЬНАЯ КАРТОЧКА ===== */
 #screen-detail { background: var(--bg); }
@@ -639,7 +749,8 @@ html, body {
 #screen-export,
 #screen-barriers-years,
 #screen-barriers-list,
-#screen-methods, #screen-orgs { background: var(--bg); }
+#screen-methods, #screen-orgs,
+#screen-meropr-menu, #screen-corrective-list, #screen-corrective-edit { background: var(--bg); }
 
 /* Shared title at top of each settings sub-screen */
 .settings-screen-title {
@@ -900,6 +1011,65 @@ html, body {
   </div>
 </div>
 
+<!-- ===== SCREEN: МЕРОПРИЯТИЯ MENU ===== -->
+<div class="screen" id="screen-meropr-menu">
+  <div class="proverki-menu-content">
+    <div class="proverki-menu-row">
+      <button class="menu-btn menu-btn-gray" onclick="openSokb()">Оспаривание<br>в СОКБ</button>
+      <button class="menu-btn menu-btn-navy" onclick="openCorrectiveList()">Корректирующие<br>мероприятия</button>
+    </div>
+    <button class="menu-btn-cancel" onclick="goLobby()">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: КОРРЕКТИРУЮЩИЕ МЕРОПРИЯТИЯ (список) ===== -->
+<div class="screen" id="screen-corrective-list">
+  <div class="find-list-wrap">
+    <table class="find-table">
+      <thead>
+        <tr>
+          <th style="width:20%"><button class="th-col-btn" id="cfl-btn-dateCheck" onclick="openCorrFilter('dateCheck')"><span>Дата<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:20%"><button class="th-col-btn" id="cfl-btn-method" onclick="openCorrFilter('method')"><span>Метод<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:20%"><button class="th-col-btn" id="cfl-btn-org" onclick="openCorrFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:20%"><button class="th-col-btn" id="cfl-btn-barrier" onclick="openCorrFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:20%"><button class="th-col-btn" id="cfl-btn-status" onclick="openCorrFilter('status')"><span>Меро-<br>приятия</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+        </tr>
+      </thead>
+      <tbody id="corr-list-tbody"></tbody>
+    </table>
+  </div>
+  <div class="find-bottom">
+    <div class="find-count" id="corr-list-count">0<br>нарушений</div>
+    <button class="find-bottom-btn find-btn-cancel" onclick="showScreen('screen-meropr-menu')">Назад</button>
+    <div style="flex:1"></div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: КОРРЕКТИРУЮЩИЕ МЕРОПРИЯТИЯ (редактирование) ===== -->
+<div class="screen" id="screen-corrective-edit">
+  <div class="settings-screen-title">Корректирующие мероприятия</div>
+  <div class="corr-edit-scroll" id="corr-edit-scroll">
+    <div class="corr-viol-info" id="corr-viol-info"></div>
+    <div class="corr-section-hd">Корректирующие мероприятия</div>
+    <div id="corr-measures-list"></div>
+    <div class="corr-action-row">
+      <span class="corr-action-hint corr-hint-gray">Удалить выбранное</span>
+      <button class="method-sq-btn minus" id="corr-btn-minus" onclick="deleteCorrMeasures()" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <button class="method-sq-btn corr-plus" id="corr-btn-plus" onclick="addCorrMeasure()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <span class="corr-action-hint corr-hint-navy">Добавить новое</span>
+    </div>
+    <div class="corr-valid-msg" id="corr-valid-msg"></div>
+  </div>
+  <div class="corr-footer">
+    <button class="corr-btn-cancel" onclick="cancelCorrEdit()">Отмена</button>
+    <button class="corr-btn-save" id="corr-btn-save" onclick="saveCorrMeasures()" disabled>Готово</button>
+  </div>
+</div>
+
 <!-- ===== PIN ===== -->
 <div class="screen" id="screen-pin">
   <div class="pin-content">
@@ -1020,10 +1190,10 @@ html, body {
     <table class="find-table">
       <thead>
         <tr>
-          <th style="width:22%"><button class="th-col-btn" id="filter-btn-dateCheck" onclick="openFindFilter('dateCheck')">Дата<br>проверки<svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:22%"><button class="th-col-btn" id="filter-btn-method" onclick="openFindFilter('method')">Метод<br>проверки<svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:34%"><button class="th-col-btn" id="filter-btn-org" onclick="openFindFilter('org')">Проверка<br>организации<svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:22%"><button class="th-col-btn" id="filter-btn-barrier" onclick="openFindFilter('barrier')">Проверка<br>барьера<svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:22%"><button class="th-col-btn" id="filter-btn-dateCheck" onclick="openFindFilter('dateCheck')"><span>Дата<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:22%"><button class="th-col-btn" id="filter-btn-method" onclick="openFindFilter('method')"><span>Метод<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:34%"><button class="th-col-btn" id="filter-btn-org" onclick="openFindFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:22%"><button class="th-col-btn" id="filter-btn-barrier" onclick="openFindFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
         </tr>
       </thead>
       <tbody id="find-tbody"></tbody>
@@ -1549,7 +1719,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-meropr-menu', 'screen-corrective-list', 'screen-corrective-edit'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -1750,7 +1920,11 @@ var drums = {};
 if (/Windows/.test(navigator.userAgent)) document.documentElement.classList.add('is-win');
 
 var detailSource = 'find'; // 'find' | 'lobby'
-function closeDetail() { showScreen(detailSource === 'lobby' ? 'screen-lobby' : 'screen-find'); }
+function closeDetail() {
+  if (detailSource === 'lobby') showScreen('screen-lobby');
+  else if (detailSource === 'corrective') showScreen('screen-corrective-list');
+  else showScreen('screen-find');
+}
 
 // Fix overlay height for virtual keyboard on Android only.
 // iOS already positions fixed elements relative to visual viewport — no fix needed there.
@@ -1917,7 +2091,7 @@ function goLobby() {
 }
 
 function openProverki()  { showScreen('screen-proverki-menu'); }
-function openMeropr()    { /* TODO */ alert('Раздел «Мероприятия» — в разработке'); }
+function openMeropr() { showScreen('screen-meropr-menu'); }
 function openStat()      { /* TODO */ alert('Раздел «Статистика» — в разработке'); }
 function openSettings() {
   if (_settingsUnlocked) {
@@ -1925,7 +2099,9 @@ function openSettings() {
     return;
   }
   pinMode = 'settings';
-  document.getElementById('screen-pin').classList.add('screen-pin--dark');
+  var pinEl2 = document.getElementById('screen-pin');
+  pinEl2.classList.add('screen-pin--dark');
+  pinEl2.classList.remove('screen-pin--navy');
   resetPin();
   showScreen('screen-pin');
 }
@@ -1933,7 +2109,9 @@ function openSettings() {
 function openPin() {
   if (appState.pinUnlocked) { openCard(); return; }
   pinMode = 'card';
-  document.getElementById('screen-pin').classList.remove('screen-pin--dark');
+  var pinEl3 = document.getElementById('screen-pin');
+  pinEl3.classList.remove('screen-pin--dark');
+  pinEl3.classList.remove('screen-pin--navy');
   resetPin();
   showScreen('screen-pin');
 }
@@ -2153,6 +2331,10 @@ function resetPin() {
 
 function pinGoBack() {
   if (pinMode === 'admin-update') { pinMode = 'settings'; showScreen('screen-passwords'); return; }
+  if (pinMode === 'corrective') {
+    document.getElementById('screen-pin').classList.remove('screen-pin--navy');
+    showScreen('screen-detail'); return;
+  }
   showScreen(pinMode === 'settings' ? 'screen-lobby' : 'screen-proverki-menu');
 }
 
@@ -2178,6 +2360,24 @@ function updatePinDots() {
 
 function checkPin() {
   var pw = getPw();
+
+  // ---- corrective mode: org/admin/superuser PIN ----
+  if (pinMode === 'corrective') {
+    var pw2 = getPw();
+    var orgPwC = (pw2.orgs && detailRecordForEdit) ? (pw2.orgs[detailRecordForEdit.org] || '') : '';
+    if (pinValue === SUPERUSER_PIN || pinValue === pw2.admin || (orgPwC && pinValue === orgPwC)) {
+      document.getElementById('screen-pin').classList.remove('screen-pin--navy');
+      resetPin();
+      var recToEdit = detailRecordForEdit;
+      showScreen('screen-corrective-edit');
+      openCorrectiveEdit(recToEdit);
+    } else {
+      document.getElementById('pin-error').textContent = 'Неверный пароль';
+      pinValue = '';
+      updatePinDots();
+    }
+    return;
+  }
 
   // ---- admin-update mode: require superuser PIN to update admin password ----
   if (pinMode === 'admin-update') {
@@ -2917,6 +3117,404 @@ function renderPasswordsScreen() {
   });
 }
 
+// ===== КОРРЕКТИРУЮЩИЕ МЕРОПРИЯТИЯ =====
+
+var correctiveRecord    = null;
+var correctiveMeasures  = [];
+var correctiveListFilters = { dateCheck: '', method: '', org: '', barrier: '', status: '' };
+
+function openSokb() {
+  alert('Раздел «Оспаривание в СОКБ» — в разработке');
+}
+
+// ── Corrective list ────────────────────────────────────────────
+function openCorrectiveList() {
+  correctiveListFilters = { dateCheck: '', method: '', org: '', barrier: '', status: '' };
+  ['dateCheck','method','org','barrier','status'].forEach(function(k) {
+    var btn = document.getElementById('cfl-btn-' + k);
+    if (btn) btn.classList.remove('active');
+  });
+  renderCorrectiveList();
+  showScreen('screen-corrective-list');
+}
+
+function getCorrectiveStatus(r) {
+  var c = (r.corrective || '').trim();
+  if (!c) return 'none';
+  var today = new Date(); today.setHours(0,0,0,0);
+  var re = /Срок:\s*(\d{2})\.(\d{2})\.(\d{4})\s*[—\-]\s*([А-ЯЁа-яё\s]+?)(?:[;\.\n]|$)/gm;
+  var match, measures = [];
+  while ((match = re.exec(c)) !== null) {
+    var d = new Date(+match[3], +match[2]-1, +match[1]);
+    var st = match[4].trim().toUpperCase();
+    measures.push({ date: d, status: st });
+  }
+  if (!measures.length) return 'entered';
+  var allDone = measures.every(function(m) { return m.status === 'ВЫПОЛНЕНО'; });
+  if (allDone) return 'done';
+  var anyOverdue = measures.some(function(m) {
+    return m.status !== 'ВЫПОЛНЕНО' && m.date < today;
+  });
+  if (anyOverdue) return 'overdue';
+  return 'entered';
+}
+
+function renderCorrectiveList() {
+  var violations = (appState.db || []).filter(function(r) { return r.works === 'Нет'; });
+  var f = correctiveListFilters;
+  if (f.dateCheck) violations = violations.filter(function(r) { return r.dateCheck === f.dateCheck; });
+  if (f.method)    violations = violations.filter(function(r) { return r.method    === f.method; });
+  if (f.org)       violations = violations.filter(function(r) { return r.org       === f.org; });
+  if (f.barrier)   violations = violations.filter(function(r) { return r.barrier   === f.barrier; });
+  if (f.status) {
+    violations = violations.filter(function(r) { return getCorrectiveStatus(r) === f.status; });
+  }
+  var tbody = document.getElementById('corr-list-tbody');
+  tbody.innerHTML = '';
+  var statusLabel = { none: 'Не внесено', entered: 'Внесено', overdue: 'Просрочено', done: 'Выполнено' };
+  violations.forEach(function(r) {
+    var st = getCorrectiveStatus(r);
+    var tr = document.createElement('tr');
+    tr.className = 'corr-row-' + st;
+    tr.innerHTML =
+      '<td>' + esc(r.dateCheck||'') + '</td>' +
+      '<td>' + esc(r.method||'') + '</td>' +
+      '<td>' + esc(r.org||'') + '</td>' +
+      '<td>' + esc(r.barrier||'') + '</td>' +
+      '<td class="corr-status-' + st + '">' + (statusLabel[st]||'') + '</td>';
+    tr.onclick = (function(rec) { return function() { openDetail(rec, 'corrective'); }; })(r);
+    tbody.appendChild(tr);
+  });
+  var cnt = document.getElementById('corr-list-count');
+  if (cnt) cnt.innerHTML = violations.length + '<br>' + pluralNarushenie(violations.length);
+}
+
+function openCorrFilter(col) {
+  var all = (appState.db || []).filter(function(r) { return r.works === 'Нет'; });
+  function uniq(arr) {
+    var seen = {}, out = [];
+    arr.forEach(function(v) { if (v && !seen[v]) { seen[v]=1; out.push(v); } });
+    return out;
+  }
+  var f = correctiveListFilters;
+  if (col === 'status') {
+    var statuses = ['Не внесено','Внесено','Просрочено','Выполнено'];
+    var statMap = {'Не внесено':'none','Внесено':'entered','Просрочено':'overdue','Выполнено':'done'};
+    var revMap = {none:'Не внесено',entered:'Внесено',overdue:'Просрочено',done:'Выполнено'};
+    var curLabel = f.status ? (revMap[f.status]||statuses[0]) : statuses[0];
+    document.getElementById('overlay-drum').classList.add('navy-theme');
+    openDrumOverlay('Фильтр: мероприятия', [
+      { id: 'status', items: statuses, value: curLabel, fullWidth: true }
+    ], function(d) {
+      document.getElementById('overlay-drum').classList.remove('navy-theme');
+      f.status = statMap[d['status'].getValue()] || '';
+      document.getElementById('cfl-btn-status').classList.toggle('active', !!f.status);
+      renderCorrectiveList();
+    });
+    var cancelBtnC = document.querySelector('#overlay-drum .overlay-btn-cancel');
+    if (cancelBtnC) {
+      cancelBtnC.textContent = f.status ? 'Сбросить' : 'Отмена';
+      cancelBtnC.onclick = function() {
+        document.getElementById('overlay-drum').classList.remove('navy-theme');
+        if (f.status) { f.status = ''; document.getElementById('cfl-btn-status').classList.remove('active'); renderCorrectiveList(); }
+        closeDrum();
+      };
+    }
+    return;
+  }
+  var items = uniq(all.map(function(r) { return r[col]; })).sort(function(a,b){ return a.localeCompare(b,'ru'); });
+  if (!items.length) return;
+  var cfg = [{ id: col, items: items, value: f[col] || items[0], fullWidth: col==='org' || col==='barrier', widthFactor: (col==='org'?0.8:1), leftAlign: col==='org' }];
+  var title = {dateCheck:'Фильтр: дата проверки',method:'Фильтр: метод',org:'Фильтр: организация',barrier:'Фильтр: барьер'}[col] || 'Фильтр';
+  document.getElementById('overlay-drum').classList.add('navy-theme');
+  openDrumOverlay(title, cfg, function(d) {
+    document.getElementById('overlay-drum').classList.remove('navy-theme');
+    f[col] = d[col].getValue();
+    document.getElementById('cfl-btn-' + col).classList.toggle('active', !!f[col]);
+    renderCorrectiveList();
+  });
+  var cancelBtnD = document.querySelector('#overlay-drum .overlay-btn-cancel');
+  if (cancelBtnD) {
+    cancelBtnD.textContent = f[col] ? 'Сбросить' : 'Отмена';
+    cancelBtnD.onclick = function() {
+      document.getElementById('overlay-drum').classList.remove('navy-theme');
+      if (f[col]) { f[col] = ''; document.getElementById('cfl-btn-' + col).classList.remove('active'); renderCorrectiveList(); }
+      closeDrum();
+    };
+  }
+}
+
+// ── Corrective PIN ─────────────────────────────────────────────
+function openCorrectivePIN() {
+  var pinEl = document.getElementById('screen-pin');
+  pinEl.classList.remove('screen-pin--dark');
+  pinEl.classList.add('screen-pin--navy');
+  pinMode = 'corrective';
+  resetPin();
+  showScreen('screen-pin');
+}
+
+// ── Corrective edit ────────────────────────────────────────────
+function formatDate(d) {
+  var dd = String(d.getDate()).padStart(2,'0');
+  var mm = String(d.getMonth()+1).padStart(2,'0');
+  return dd + '.' + mm + '.' + d.getFullYear();
+}
+
+function parseCorrective(text) {
+  if (!text || !text.trim()) return [];
+  var measures = [];
+  // Format: "N. Description, отв.: Name — Срок: DD.MM.YYYY — STATUS;"
+  // or:     "N. Description — Срок: DD.MM.YYYY — STATUS;"
+  var re = /(\d+)\.\s*([\s\S]+?)\s*[\-—]\s*Срок:\s*(\d{2}\.\d{2}\.\d{4})\s*[\-—]\s*([А-ЯЁа-яё\s]+?)(?:\s*[;\.])/g;
+  var match;
+  while ((match = re.exec(text + '.')) !== null) {
+    var desc = match[2].trim();
+    var resp = '';
+    var mResp = desc.match(/,?s*отв.:s*(.+)$/);
+    if (mResp) { resp = mResp[1].trim(); desc = desc.replace(mResp[0], '').trim(); }
+    measures.push({ desc: desc, responsible: resp, deadline: match[3], status: match[4].trim().toUpperCase(), selected: false });
+  }
+  return measures;
+}
+
+function newEmptyMeasure(n) {
+  return { desc: '', responsible: '', deadline: formatDate(new Date()), status: 'НЕ НАЧАТО', selected: false };
+}
+
+function openCorrectiveEdit(r) {
+  correctiveRecord = r;
+  correctiveMeasures = parseCorrective(r.corrective);
+  if (!correctiveMeasures.length) correctiveMeasures = [newEmptyMeasure(1)];
+  var infoEl = document.getElementById('corr-viol-info');
+  infoEl.innerHTML =
+    '<div class="corr-info-line"><b>Проверка №' + esc(String(r.num||'?')) + ' ' + esc(String(r.year||'')) + '</b></div>' +
+    '<div class="corr-info-line">Дата: ' + esc(r.dateCheck||'') + ' | Метод: ' + esc(r.method||'') + ' | Орг.: ' + esc(r.org||'') + '</div>' +
+    '<div class="corr-info-line">Барьер: ' + esc(r.barrier||'') + ' | Нарушитель: ' + esc(r.violator||'') + '</div>' +
+    (r.desc ? '<div class="corr-info-line corr-info-desc">Описание: ' + esc(r.desc) + '</div>' : '');
+  renderCorrMeasures();
+}
+
+function renderCorrMeasures() {
+  var container = document.getElementById('corr-measures-list');
+  container.innerHTML = '';
+  correctiveMeasures.forEach(function(m, idx) {
+    container.appendChild(createCorrMeasureEl(m, idx));
+  });
+  updateCorrMinusBtn();
+  updateCorrPlusBtn();
+  checkCorrFilled();
+}
+
+function createCorrMeasureEl(m, idx) {
+  var n = idx + 1;
+  var div = document.createElement('div');
+  div.className = 'corr-m' + (m.selected ? ' corr-m-selected' : '');
+  div.id = 'corr-m-' + idx;
+
+  var hdr = document.createElement('div');
+  hdr.className = 'corr-m-header';
+  var lbl = document.createElement('span');
+  lbl.className = 'corr-m-sel-lbl';
+  lbl.textContent = 'Выбрать';
+  var cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.className = 'method-circle-cb corr-m-cb';
+  cb.dataset.idx = idx;
+  cb.checked = !!m.selected;
+  cb.addEventListener('change', (function(i){ return function() {
+    correctiveMeasures[i].selected = this.checked;
+    document.getElementById('corr-m-' + i).classList.toggle('corr-m-selected', this.checked);
+    updateCorrMinusBtn();
+  }; })(idx));
+  hdr.appendChild(lbl); hdr.appendChild(cb);
+  div.appendChild(hdr);
+
+  var ta = document.createElement('textarea');
+  ta.className = 'corr-m-desc';
+  ta.placeholder = 'Корректирующее мероприятие №' + n;
+  ta.rows = 3;
+  ta.value = m.desc || '';
+  ta.addEventListener('input', (function(i){ return function() {
+    correctiveMeasures[i].desc = this.value;
+    checkCorrFilled();
+  }; })(idx));
+  div.appendChild(ta);
+
+  var twin = document.createElement('div');
+  twin.className = 'corr-m-twin';
+
+  var respInput = document.createElement('input');
+  respInput.className = 'corr-m-input corr-m-half';
+  respInput.type = 'text';
+  respInput.placeholder = 'Ответственный';
+  respInput.value = m.responsible || '';
+  respInput.addEventListener('input', (function(i){ return function() {
+    correctiveMeasures[i].responsible = this.value;
+    checkCorrFilled();
+  }; })(idx));
+
+  var dlCell = document.createElement('div');
+  dlCell.className = 'corr-m-cell corr-m-half';
+  dlCell.id = 'corr-dl-' + idx;
+  dlCell.textContent = 'Срок: ' + (m.deadline || formatDate(new Date()));
+  dlCell.addEventListener('click', (function(i){ return function() { openDeadlineDrum(i); }; })(idx));
+
+  twin.appendChild(respInput);
+  twin.appendChild(dlCell);
+  div.appendChild(twin);
+
+  var stWrap = document.createElement('div');
+  stWrap.className = 'corr-m-twin';
+  var stCell = document.createElement('div');
+  stCell.className = 'corr-m-cell corr-m-half';
+  stCell.id = 'corr-st-' + idx;
+  stCell.textContent = 'Статус: ' + (m.status || 'НЕ НАЧАТО');
+  stCell.addEventListener('click', (function(i){ return function() { openStatusDrum(i); }; })(idx));
+  stWrap.appendChild(stCell);
+  div.appendChild(stWrap);
+
+  return div;
+}
+
+function updateCorrMinusBtn() {
+  var anyChecked = correctiveMeasures.some(function(m) { return m.selected; });
+  var btn = document.getElementById('corr-btn-minus');
+  if (btn) btn.disabled = !anyChecked;
+}
+function updateCorrPlusBtn() {
+  var btn = document.getElementById('corr-btn-plus');
+  if (btn) btn.disabled = correctiveMeasures.length >= 20;
+}
+
+function deleteCorrMeasures() {
+  var newList = [];
+  correctiveMeasures.forEach(function(m, i) {
+    if (!m.selected) { newList.push(m); }
+    else if (i === 0) {
+      // First measure: clear instead of delete
+      newList.push({ desc: '', responsible: '', deadline: formatDate(new Date()), status: 'НЕ НАЧАТО', selected: false });
+    }
+  });
+  // Keep at least 1
+  if (!newList.length) newList = [newEmptyMeasure(1)];
+  correctiveMeasures = newList;
+  renderCorrMeasures();
+}
+
+function addCorrMeasure() {
+  if (correctiveMeasures.length >= 20) return;
+  correctiveMeasures.push(newEmptyMeasure(correctiveMeasures.length + 1));
+  renderCorrMeasures();
+  // Scroll to bottom
+  var sc = document.getElementById('corr-edit-scroll');
+  if (sc) setTimeout(function(){ sc.scrollTop = sc.scrollHeight; }, 50);
+}
+
+function openDeadlineDrum(idx) {
+  var m = correctiveMeasures[idx];
+  var parts = (m.deadline || formatDate(new Date())).split('.');
+  var dd = parts[0] || '01';
+  var mm = parts[1] || '01';
+  var yy = parts[2] || String(new Date().getFullYear());
+  var days   = Array.from({length:31}, function(_,i){ return String(i+1).padStart(2,'0'); });
+  var months = Array.from({length:12}, function(_,i){ return String(i+1).padStart(2,'0'); });
+  var curY   = new Date().getFullYear();
+  var years  = Array.from({length:6},  function(_,i){ return String(curY + i); });
+  document.getElementById('overlay-drum').classList.add('navy-theme');
+  openDrumOverlay('Срок выполнения', [
+    { id: 'dd', items: days,   value: dd, label: 'День'  },
+    { id: 'mm', items: months, value: mm, label: 'Месяц' },
+    { id: 'yy', items: years,  value: yy, label: 'Год'   }
+  ], function(d) {
+    document.getElementById('overlay-drum').classList.remove('navy-theme');
+    var deadline = d['dd'].getValue() + '.' + d['mm'].getValue() + '.' + d['yy'].getValue();
+    correctiveMeasures[idx].deadline = deadline;
+    var dlCell = document.getElementById('corr-dl-' + idx);
+    if (dlCell) dlCell.textContent = 'Срок: ' + deadline;
+    checkCorrFilled();
+  });
+  var cancelBtnDl = document.querySelector('#overlay-drum .overlay-btn-cancel');
+  if (cancelBtnDl) {
+    cancelBtnDl.textContent = 'Отмена';
+    cancelBtnDl.onclick = function() {
+      document.getElementById('overlay-drum').classList.remove('navy-theme');
+      closeDrum();
+    };
+  }
+}
+
+function openStatusDrum(idx) {
+  var m = correctiveMeasures[idx];
+  var statuses = ['НЕ НАЧАТО', 'ВЫПОЛНЯЕТСЯ', 'ВЫПОЛНЕНО'];
+  document.getElementById('overlay-drum').classList.add('navy-theme');
+  openDrumOverlay('Статус мероприятия', [
+    { id: 'status', items: statuses, value: m.status || 'НЕ НАЧАТО', fullWidth: true }
+  ], function(d) {
+    document.getElementById('overlay-drum').classList.remove('navy-theme');
+    var st = d['status'].getValue();
+    correctiveMeasures[idx].status = st;
+    var stCell = document.getElementById('corr-st-' + idx);
+    if (stCell) stCell.textContent = 'Статус: ' + st;
+    checkCorrFilled();
+  });
+  var cancelBtnSt = document.querySelector('#overlay-drum .overlay-btn-cancel');
+  if (cancelBtnSt) {
+    cancelBtnSt.textContent = 'Отмена';
+    cancelBtnSt.onclick = function() {
+      document.getElementById('overlay-drum').classList.remove('navy-theme');
+      closeDrum();
+    };
+  }
+}
+
+function checkCorrFilled() {
+  var allFilled = correctiveMeasures.every(function(m) {
+    return m.desc && m.desc.trim() && m.responsible && m.responsible.trim() && m.deadline && m.status;
+  });
+  var msgEl = document.getElementById('corr-valid-msg');
+  var saveBtn = document.getElementById('corr-btn-save');
+  if (msgEl) {
+    if (allFilled) {
+      msgEl.textContent = 'Заполнены все поля';
+      msgEl.style.color = 'var(--green)';
+    } else {
+      msgEl.textContent = 'Заполнены не все поля';
+      msgEl.style.color = 'var(--red)';
+    }
+  }
+  if (saveBtn) saveBtn.disabled = !allFilled;
+}
+
+function formatCorrText(measures) {
+  return measures.map(function(m, i) {
+    var n = i + 1;
+    var resp = (m.responsible && m.responsible.trim()) ? (', отв.: ' + m.responsible.trim()) : '';
+    var sep = n < measures.length ? ';' : '.';
+    return n + '. ' + (m.desc || '').trim() + resp + ' — Срок: ' + m.deadline + ' — ' + m.status + sep;
+  }).join('\n');
+}
+
+function cancelCorrEdit() {
+  showScreen('screen-detail');
+}
+
+function saveCorrMeasures() {
+  var text = formatCorrText(correctiveMeasures);
+  correctiveRecord.corrective = text;
+  // Update in appState.db (same reference)
+  saveState();
+  // Re-render detail
+  openDetail(correctiveRecord, 'corrective');
+  // Persist to Excel
+  var year = correctiveRecord.year || (correctiveRecord.dateCheck ? correctiveRecord.dateCheck.split('.')[2] : String(new Date().getFullYear()));
+  fetch('/api/update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dateEntry: correctiveRecord.dateEntry, year: year, fields: { corrective: text } })
+  }).catch(function(e) { console.warn('[corrective] save failed:', e.message); });
+}
+
 function successExit() {
   document.getElementById('success-overlay').classList.remove('active');
   goLobby();
@@ -2963,8 +3561,11 @@ function renderFindList(records) {
 }
 
 // ===== DETAIL =====
+var detailRecordForEdit = null;
+
 function openDetail(r, source) {
   detailSource = source || 'find';
+  detailRecordForEdit = r;
   document.getElementById('detail-title').textContent = 'Проверка №' + (r.num || '?') + ' ' + (r.year || '');
   var body = document.getElementById('detail-body');
   function row(label, val, cls) {
@@ -2975,6 +3576,12 @@ function openDetail(r, source) {
     return '<div class="detail-block"><div class="detail-block-label">' + label + '</div>' +
            '<div class="detail-block-val">' + (val || '—') + '</div></div>';
   }
+  var corrBlock = source === 'corrective'
+    ? '<div class="detail-block detail-block-navy" onclick="openCorrectivePIN()">' +
+        '<div class="detail-block-label">Корректирующие мероприятия</div>' +
+        '<div class="detail-block-val">' + esc(r.corrective || '—') + '</div>' +
+      '</div>'
+    : block('Корректирующие мероприятия', r.corrective);
   body.innerHTML =
     row('Дата проверки', r.dateCheck) +
     row('Дата внесения проверки', r.dateEntry) +
@@ -2988,7 +3595,7 @@ function openDetail(r, source) {
     row('Работоспособность барьера', r.works, r.works === 'Нет' ? 'detail-val-red' : '') +
     row('Нарушение допустил', r.violator) +
     block('Описание нарушения', r.desc) +
-    block('Корректирующие мероприятия', r.corrective) +
+    corrBlock +
     block('Обоснование для оспаривания в СОКБ', r.contestMeasures) +
     row('Статус оспаривания в СОКБ', r.contestStatus);
   document.getElementById('detail-scroll').scrollTop = 0;
