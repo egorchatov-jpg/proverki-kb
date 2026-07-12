@@ -97,7 +97,28 @@ function buildColIdx(header) {
     const i = header.findIndex(h => String(h || '').trim() === c.h);
     if (i >= 0) idx[c.k] = i;
   });
-  // Legacy files may still have removed column — corrective header always wins
+  // Fuzzy match for corrective column (typo "Корректирущие" etc.)
+  if (idx.corrective === undefined) {
+    const ci = header.findIndex(h => {
+      const lower = String(h || '').toLowerCase();
+      return lower.includes('корректиру') && lower.includes('мероприят') && !lower.includes('выполнение');
+    });
+    if (ci >= 0) idx.corrective = ci;
+  }
+  if (idx.contestMeasures === undefined) {
+    const ci = header.findIndex(h => {
+      const lower = String(h || '').toLowerCase();
+      return lower.includes('обоснование') && lower.includes('сокб');
+    });
+    if (ci >= 0) idx.contestMeasures = ci;
+  }
+  if (idx.contestStatus === undefined) {
+    const ci = header.findIndex(h => {
+      const lower = String(h || '').toLowerCase();
+      return lower.includes('статус') && lower.includes('сокб');
+    });
+    if (ci >= 0) idx.contestStatus = ci;
+  }
   return idx;
 }
 

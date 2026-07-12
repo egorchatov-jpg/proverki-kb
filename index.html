@@ -1515,6 +1515,8 @@ var VAPID_PUBLIC_KEY = 'BMf-a1sd8WQK4qNSZm1TCy4WxlzSj0YsbG3cBfmcGn6K1gVLqUWyK96h
 var SYNC_QUEUE_KEY   = 'pkb-sync-queue';
 var UPDATE_QUEUE_KEY = 'pkb-update-queue';
 var SERVER_SHA_KEY   = 'pkb-server-shas';
+var DATA_VERSION_KEY = 'pkb-data-version';
+var CURRENT_DATA_VERSION = 'v3-corrective-read';
 var VAPID_KEY_STORE = 'pkb-vapid-key';
 var swRegistration   = null;
 
@@ -1673,19 +1675,47 @@ function retryAllQueues() {
   retryUpdateQueue();
 }
 
+// Remove queue items whose fields are already saved in Excel
+function purgeSyncedUpdates(records) {
+  var byEntry = {};
+  var byFp = {};
+  records.forEach(function(r) {
+    if (r.dateEntry) byEntry[r.dateEntry] = r;
+    if (r.dateCheck) byFp[[r.dateCheck, r.method, r.org, r.barrier].join('|')] = r;
+  });
+  getUpdateQueue().forEach(function(item) {
+    var rec = byEntry[item.dateEntry];
+    if (!rec && item.dateCheck) {
+      rec = byFp[[item.dateCheck, item.method || '', item.org || '', item.barrier || ''].join('|')];
+    }
+    if (!rec) return;
+    var allOnServer = Object.keys(item.fields).every(function(k) {
+      return (rec[k] || '').trim() === (item.fields[k] || '').trim() && (rec[k] || '').trim() !== '';
+    });
+    if (allOnServer) removeFromUpdateQueue(item.dateEntry);
+  });
+}
+
 // Seed update queue from local DB when local fields differ from server (migration + safety net)
 function seedUpdateQueueFromLocalDb(serverRecords) {
   var serverByEntry = {};
-  serverRecords.forEach(function(r) { if (r.dateEntry) serverByEntry[r.dateEntry] = r; });
+  var serverByFp = {};
+  serverRecords.forEach(function(r) {
+    if (r.dateEntry) serverByEntry[r.dateEntry] = r;
+    if (r.dateCheck) serverByFp[[r.dateCheck, r.method, r.org, r.barrier].join('|')] = r;
+  });
   (appState.db || []).forEach(function(local) {
-    if (!local.dateEntry) return;
+    if (!local.dateEntry && !local.dateCheck) return;
     var server = serverByEntry[local.dateEntry];
+    if (!server && local.dateCheck) {
+      server = serverByFp[[local.dateCheck, local.method, local.org, local.barrier].join('|')];
+    }
     if (!server) return;
     var fields = {};
     UPDATE_FIELD_KEYS.forEach(function(k) {
       var lv = (local[k] || '').trim();
       var sv = (server[k] || '').trim();
-      if (lv && lv !== sv) fields[k] = local[k];
+      if (lv && !sv) fields[k] = local[k]; // only push when server field is empty
     });
     if (!Object.keys(fields).length) return;
     var year = local.year || (local.dateCheck ? local.dateCheck.split('.')[2] : String(new Date().getFullYear()));
@@ -1719,6 +1749,7 @@ function applyPendingUpdates(records) {
       var serverVal = (rec[k] || '').trim();
       var queuedVal = (item.fields[k] || '').trim();
       if (serverVal === queuedVal) return;
+      if (serverVal) return; // Excel already has data — server is source of truth
       allSynced = false;
       if (queuedVal) rec[k] = item.fields[k];
     });
@@ -1887,6 +1918,7 @@ function loadFromServer(onDone) {
       seedUpdateQueueFromLocalDb(d.records);
       appState.db = mergeWithQueue(d.records);
       appState.db = applyPendingUpdates(appState.db);
+      purgeSyncedUpdates(appState.db);
       renumberDb();
       saveState();
       renderLobby();
@@ -2182,6 +2214,12 @@ function _showPushPromptOrFinish() {
 
 // ===== INIT =====
 window.addEventListener('DOMContentLoaded', function() {
+  try {
+    if (localStorage.getItem(DATA_VERSION_KEY) !== CURRENT_DATA_VERSION) {
+      localStorage.removeItem(SERVER_SHA_KEY);
+      localStorage.setItem(DATA_VERSION_KEY, CURRENT_DATA_VERSION);
+    }
+  } catch(e) {}
   loadState();
   renderLobby();
   initDateDrum();
