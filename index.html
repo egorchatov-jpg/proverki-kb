@@ -1709,6 +1709,8 @@ function loadFromServer(onDone) {
       renderLobby();
       var fs = document.getElementById('screen-find');
       if (fs && fs.classList.contains('active')) applyFindFilters();
+      var cs = document.getElementById('screen-corrective-list');
+      if (cs && cs.classList.contains('active')) renderCorrectiveList();
       retrySyncQueue();
     }
     finish(true);
@@ -1724,7 +1726,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-meropr-menu', 'screen-corrective-list', 'screen-corrective-edit'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-meropr-menu', 'screen-corrective-edit'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
