@@ -2527,7 +2527,7 @@ function openFindFilter(col) {
     barrier: {
       title: 'Фильтр: проверяемый барьер',
       items: sortAlpha(unique(all.map(function(r) { return r.barrier; }))),
-      drumCfg: function(items) { return [{ id: 'barrier', items: items, value: findFilters.barrier || items[0], fullWidth: true }]; }
+      drumCfg: function(items) { return [{ id: 'barrier', items: items, value: findFilters.barrier || items[0], minWidth: 200 }]; }
     }
   };
 
@@ -3660,7 +3660,7 @@ function openSokbFilter(col) {
     var curLabel = f.status ? (revMap[f.status] || presentStats[0]) : presentStats[0];
     if (presentStats.indexOf(curLabel) < 0) curLabel = presentStats[0];
     navyDrum('Фильтр: оспаривание', [
-      { id: 'status', items: presentStats, value: curLabel, fullWidth: true }
+      { id: 'status', items: presentStats, value: curLabel, minWidth: 200 }
     ], function(d) {
       f.status = statMap[d['status'].getValue()] || '';
       document.getElementById('sfl-btn-status').classList.toggle('active', !!f.status);
@@ -3676,11 +3676,13 @@ function openSokbFilter(col) {
 
   var items = uniqSort(all.map(function(r) { return r[col]; }));
   if (!items.length) return;
-  var cfg = [{ id: col, items: items, value: f[col] || items[0],
-    fullWidth: col === 'org' || col === 'barrier',
-    widthFactor: col === 'org' ? 0.8 : 1,
-    leftAlign: col === 'org' }];
-  var titles = { method: 'Фильтр: метод', org: 'Фильтр: организация', barrier: 'Фильтр: барьер' };
+  var cfg;
+  if (col === 'org') {
+    cfg = [{ id: col, items: items, value: f[col] || items[0], fullWidth: true, widthFactor: 0.8, leftAlign: true }];
+  } else {
+    cfg = [{ id: col, items: items, value: f[col] || items[0], minWidth: 200 }];
+  }
+  var titles = { method: 'Фильтр: метод проверки', org: 'Фильтр: организация', barrier: 'Фильтр: проверяемый барьер' };
   navyDrum(titles[col] || 'Фильтр', cfg, function(d) {
     f[col] = d[col].getValue();
     document.getElementById('sfl-btn-' + col).classList.toggle('active', !!f[col]);
@@ -4148,7 +4150,7 @@ function openCorrFilter(col) {
     var curLabel = f.status ? (revMap[f.status] || presentStats[0]) : presentStats[0];
     if (presentStats.indexOf(curLabel) < 0) curLabel = presentStats[0];
     navyDrum('Фильтр: мероприятия', [
-      { id: 'status', items: presentStats, value: curLabel, fullWidth: true }
+      { id: 'status', items: presentStats, value: curLabel, minWidth: 200 }
     ], function(d) {
       f.status = statMap[d['status'].getValue()] || '';
       document.getElementById('cfl-btn-status').classList.toggle('active', !!f.status);
@@ -4165,13 +4167,15 @@ function openCorrFilter(col) {
   // ── OTHER COLUMNS — only present values ───────────────────────
   var items = uniqSort(all.map(function(r) { return r[col]; }));
   if (!items.length) return;
-  var cfg = [{ id: col, items: items, value: f[col] || items[0],
-    fullWidth: col === 'org' || col === 'barrier',
-    widthFactor: col === 'org' ? 0.8 : 1,
-    leftAlign: col === 'org' }];
-  var titles = { method: 'Фильтр: метод',
+  var cfg;
+  if (col === 'org') {
+    cfg = [{ id: col, items: items, value: f[col] || items[0], fullWidth: true, widthFactor: 0.8, leftAlign: true }];
+  } else {
+    cfg = [{ id: col, items: items, value: f[col] || items[0], minWidth: 200 }];
+  }
+  var titles = { method: 'Фильтр: метод проверки',
                  org:    'Фильтр: организация',
-                 barrier:'Фильтр: барьер' };
+                 barrier:'Фильтр: проверяемый барьер' };
   navyDrum(titles[col] || 'Фильтр', cfg, function(d) {
     f[col] = d[col].getValue();
     document.getElementById('cfl-btn-' + col).classList.toggle('active', !!f[col]);
