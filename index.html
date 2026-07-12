@@ -3121,7 +3121,7 @@ function renderPasswordsScreen() {
 
 var correctiveRecord    = null;
 var correctiveMeasures  = [];
-var correctiveListFilters = { dateCheck: '', method: '', org: '', barrier: '', status: '' };
+var correctiveListFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '', status: '' };
 
 function openSokb() {
   alert('Раздел «Оспаривание в СОКБ» — в разработке');
@@ -3129,7 +3129,7 @@ function openSokb() {
 
 // ── Corrective list ────────────────────────────────────────────
 function openCorrectiveList() {
-  correctiveListFilters = { dateCheck: '', method: '', org: '', barrier: '', status: '' };
+  correctiveListFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '', status: '' };
   ['dateCheck','method','org','barrier','status'].forEach(function(k) {
     var btn = document.getElementById('cfl-btn-' + k);
     if (btn) btn.classList.remove('active');
@@ -3162,7 +3162,11 @@ function getCorrectiveStatus(r) {
 function renderCorrectiveList() {
   var violations = (appState.db || []).filter(function(r) { return r.works === 'Нет'; });
   var f = correctiveListFilters;
-  if (f.dateCheck) violations = violations.filter(function(r) { return r.dateCheck === f.dateCheck; });
+  if (f.dateFrom || f.dateTo) {
+    var cfrom = f.dateFrom ? dateNumFromStr(f.dateFrom) : 0;
+    var cto   = f.dateTo   ? dateNumFromStr(f.dateTo)   : 99999999;
+    violations = violations.filter(function(r) { var n = dateNumFromStr(r.dateCheck); return n >= cfrom && n <= cto; });
+  }
   if (f.method)    violations = violations.filter(function(r) { return r.method    === f.method; });
   if (f.org)       violations = violations.filter(function(r) { return r.org       === f.org; });
   if (f.barrier)   violations = violations.filter(function(r) { return r.barrier   === f.barrier; });
@@ -3191,57 +3195,106 @@ function renderCorrectiveList() {
 
 function openCorrFilter(col) {
   var all = (appState.db || []).filter(function(r) { return r.works === 'Нет'; });
-  function uniq(arr) {
+  var f = correctiveListFilters;
+  var statMap = {'Не внесено':'none','Внесено':'entered','Просрочено':'overdue','Выполнено':'done'};
+  var revMap = {none:'Не внесено',entered:'Внесено',overdue:'Просрочено',done:'Выполнено'};
+
+  function uniqSort(arr) {
     var seen = {}, out = [];
     arr.forEach(function(v) { if (v && !seen[v]) { seen[v]=1; out.push(v); } });
-    return out;
+    return out.sort(function(a,b){ return a.localeCompare(b,'ру'); });
   }
-  var f = correctiveListFilters;
-  if (col === 'status') {
-    var statuses = ['Не внесено','Внесено','Просрочено','Выполнено'];
-    var statMap = {'Не внесено':'none','Внесено':'entered','Просрочено':'overdue','Выполнено':'done'};
-    var revMap = {none:'Не внесено',entered:'Внесено',overdue:'Просрочено',done:'Выполнено'};
-    var curLabel = f.status ? (revMap[f.status]||statuses[0]) : statuses[0];
+  function sortDates(arr) {
+    var seen = {}, out = [];
+    arr.forEach(function(v) { if (v && !seen[v]) { seen[v]=1; out.push(v); } });
+    return out.sort(function(a,b){ return dateNumFromStr(a) - dateNumFromStr(b); });
+  }
+  function navyDrum(title, cfg, onApply) {
     document.getElementById('overlay-drum').classList.add('navy-theme');
-    openDrumOverlay('Фильтр: мероприятия', [
-      { id: 'status', items: statuses, value: curLabel, fullWidth: true }
+    openDrumOverlay(title, cfg, function(d) {
+      setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
+      onApply(d);
+    });
+  }
+  function navyCancelBtn(hasFilter, onReset) {
+    var btn = document.querySelector('#overlay-drum .overlay-btn-cancel');
+    if (!btn) return;
+    btn.textContent = hasFilter ? 'Сбросить' : 'Отмена';
+    btn.onclick = function() {
+      closeDrum();
+      setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
+      if (hasFilter) onReset();
+    };
+  }
+
+  // ── DATE RANGE (с / по) ────────────────────────────────────────
+  if (col === 'dateCheck') {
+    var dates = sortDates(all.map(function(r) { return r.dateCheck; }));
+    if (!dates.length) return;
+    var defFrom = f.dateFrom || dates[0];
+    var defTo   = f.dateTo   || dates[dates.length - 1];
+    navyDrum('Фильтр: дата проверки', [
+      { id: 'dateFrom', items: dates, value: defFrom, label: 'с',  minWidth: 165 },
+      { id: 'dateTo',   items: dates, value: defTo,   label: 'по', minWidth: 165 }
+    ], function(d) {
+      f.dateFrom = d['dateFrom'].getValue();
+      f.dateTo   = d['dateTo'].getValue();
+      document.getElementById('cfl-btn-dateCheck').classList.toggle('active', !!(f.dateFrom || f.dateTo));
+      renderCorrectiveList();
+    });
+    navyCancelBtn(!!(f.dateFrom || f.dateTo), function() {
+      f.dateFrom = ''; f.dateTo = '';
+      document.getElementById('cfl-btn-dateCheck').classList.remove('active');
+      renderCorrectiveList();
+    });
+    return;
+  }
+
+  // ── STATUS — only present statuses ────────────────────────────
+  if (col === 'status') {
+    var allStatLabels = ['Не внесено','Внесено','Просрочено','Выполнено'];
+    var presentStats = allStatLabels.filter(function(lbl) {
+      var key = statMap[lbl];
+      return all.some(function(r) { return getCorrectiveStatus(r) === key; });
+    });
+    if (!presentStats.length) return;
+    var curLabel = f.status ? (revMap[f.status] || presentStats[0]) : presentStats[0];
+    if (presentStats.indexOf(curLabel) < 0) curLabel = presentStats[0];
+    navyDrum('Фильтр: мероприятия', [
+      { id: 'status', items: presentStats, value: curLabel, fullWidth: true }
     ], function(d) {
       f.status = statMap[d['status'].getValue()] || '';
       document.getElementById('cfl-btn-status').classList.toggle('active', !!f.status);
-      setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
       renderCorrectiveList();
     });
-    var cancelBtnC = document.querySelector('#overlay-drum .overlay-btn-cancel');
-    if (cancelBtnC) {
-      cancelBtnC.textContent = f.status ? 'Сбросить' : 'Отмена';
-      cancelBtnC.onclick = function() {
-        closeDrum();
-        setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
-        if (f.status) { f.status = ''; document.getElementById('cfl-btn-status').classList.remove('active'); renderCorrectiveList(); }
-      };
-    }
+    navyCancelBtn(!!f.status, function() {
+      f.status = '';
+      document.getElementById('cfl-btn-status').classList.remove('active');
+      renderCorrectiveList();
+    });
     return;
   }
-  var items = uniq(all.map(function(r) { return r[col]; })).sort(function(a,b){ return a.localeCompare(b,'ru'); });
+
+  // ── OTHER COLUMNS — only present values ───────────────────────
+  var items = uniqSort(all.map(function(r) { return r[col]; }));
   if (!items.length) return;
-  var cfg = [{ id: col, items: items, value: f[col] || items[0], fullWidth: col==='org' || col==='barrier', widthFactor: (col==='org'?0.8:1), leftAlign: col==='org' }];
-  var title = {dateCheck:'Фильтр: дата проверки',method:'Фильтр: метод',org:'Фильтр: организация',barrier:'Фильтр: барьер'}[col] || 'Фильтр';
-  document.getElementById('overlay-drum').classList.add('navy-theme');
-  openDrumOverlay(title, cfg, function(d) {
+  var cfg = [{ id: col, items: items, value: f[col] || items[0],
+    fullWidth: col === 'org' || col === 'barrier',
+    widthFactor: col === 'org' ? 0.8 : 1,
+    leftAlign: col === 'org' }];
+  var titles = { method: 'Фильтр: метод',
+                 org:    'Фильтр: организация',
+                 barrier:'Фильтр: барьер' };
+  navyDrum(titles[col] || 'Фильтр', cfg, function(d) {
     f[col] = d[col].getValue();
     document.getElementById('cfl-btn-' + col).classList.toggle('active', !!f[col]);
-    setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
     renderCorrectiveList();
   });
-  var cancelBtnD = document.querySelector('#overlay-drum .overlay-btn-cancel');
-  if (cancelBtnD) {
-    cancelBtnD.textContent = f[col] ? 'Сбросить' : 'Отмена';
-    cancelBtnD.onclick = function() {
-      closeDrum();
-      setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
-      if (f[col]) { f[col] = ''; document.getElementById('cfl-btn-' + col).classList.remove('active'); renderCorrectiveList(); }
-    };
-  }
+  navyCancelBtn(!!f[col], function() {
+    f[col] = '';
+    document.getElementById('cfl-btn-' + col).classList.remove('active');
+    renderCorrectiveList();
+  });
 }
 
 // ── Corrective PIN ─────────────────────────────────────────────
