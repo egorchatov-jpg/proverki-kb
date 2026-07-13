@@ -4224,7 +4224,7 @@ function formatDate(d) {
 
 function parseCorrective(text) {
   if (!text || !text.trim()) return [];
-  if (/Выполнить до:/i.test(text) || /^\s*Статус:/im.test(text)) {
+  if (/Выполнить до:/i.test(text) || /^\s*Статус:/im.test(text) || /Ответственный:/i.test(text)) {
     var measuresNew = [];
     var parts = text.split(/(?=^\d+\.\s)/m).filter(function(p) { return p.trim(); });
     parts.forEach(function(part) {
@@ -4233,14 +4233,16 @@ function parseCorrective(text) {
       var head = lines[0].match(/^(\d+)\.\s*(.+?)\.?\s*$/);
       if (!head) return;
       var desc = head[2].replace(/\.$/, '').trim();
-      var dl = '', st = '';
+      var dl = '', st = '', resp = '';
       lines.forEach(function(line) {
+        var rm = line.match(/Ответственный:\s*(.+?)\.?\s*$/i);
+        if (rm) resp = rm[1].trim().replace(/\s*\.$/, '');
         var lm = line.match(/Выполнить до:\s*(.+?)\.?\s*$/i);
         if (lm) dl = lm[1].trim().replace(/\s*\.$/, '');
         var sm = line.match(/Статус:\s*(.+?)\.?\s*$/i);
         if (sm) st = sm[1].trim().replace(/\.$/, '').toUpperCase();
       });
-      if (desc || st || dl) measuresNew.push({ desc: desc, responsible: '', deadline: dl, status: st, selected: false });
+      if (desc || st || dl || resp) measuresNew.push({ desc: desc, responsible: resp, deadline: dl, status: st, selected: false });
     });
     if (measuresNew.length) return measuresNew;
   }
@@ -4524,7 +4526,9 @@ function formatCorrText(measures) {
   return measures.map(function(m, i) {
     var n = i + 1;
     var desc = (m.desc || '').trim();
+    var resp = (m.responsible || '').trim();
     return n + '. ' + desc + '.\n' +
+      'Ответственный: ' + resp + '.\n' +
       'Выполнить до: ' + m.deadline + '.\n' +
       'Статус: ' + m.status + '.';
   }).join('\n\n');
