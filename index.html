@@ -575,17 +575,19 @@ html, body {
 .corr-row-entered { background: rgba(27,58,107,0.18); }
 .corr-row-overdue { background: rgba(27,58,107,0.18); }
 .corr-row-done    { background: rgba(39,174,96,0.10); }
+.corr-row-ok     { background: transparent; }
 .corr-status-none    { color: var(--red);   font-size: 11px; }
 .corr-status-entered { color: var(--navy);  font-size: 11px; }
-.corr-status-overdue { color: var(--red);   font-size: 11px; }
+.corr-status-overdue { color: var(--red); font-size: 11px; font-weight: 700; }
 .corr-status-done    { color: var(--green); font-size: 11px; }
+.corr-status-na      { color: var(--text2); font-size: 11px; }
 #screen-sokb-list .th-col-btn.active { color: var(--navy); }
 .sokb-status-process { color: var(--navy);  font-size: 11px; }
 .sokb-status-success { color: var(--green); font-size: 11px; }
 .sokb-status-fail    { color: var(--red);   font-size: 11px; font-weight: 700; }
 
 /* Detail card corrective block — navy highlight (from corrective screen) */
-.detail-block-navy .detail-block-label { color: var(--navy); font-weight: 700; }
+.detail-block-navy .detail-block-label { color: var(--text2); font-weight: 500; }
 .detail-block-navy .detail-block-val   { border: 2px solid var(--navy); cursor: pointer; background: #fff; }
 
 /* Navy drum overlay theme */
@@ -700,6 +702,12 @@ html, body {
   background: #fff; border-radius: 10px; padding: 6px 10px;
   border: 1px solid var(--border); min-height: 36px;
   white-space: pre-wrap; word-break: break-word;
+}
+.detail-val.detail-val-editable {
+  border: 2px solid var(--orange); cursor: pointer; background: #fff;
+}
+.detail-block-val.detail-block-val-editable {
+  border: 2px solid var(--orange); cursor: pointer; background: #fff;
 }
 .detail-val-red { background: rgba(192,57,43,0.15); }
 .detail-val-works-no { color: var(--red); font-weight: 700; }
@@ -1246,7 +1254,7 @@ html, body {
     <div class="card-validation error" id="card-validation">Заполнены не все поля</div>
   </div>
   <div class="card-bottom">
-    <button class="card-btn card-btn-cancel" onclick="goLobby()">Отмена</button>
+    <button class="card-btn card-btn-cancel" onclick="cancelCard()">Отмена</button>
     <button class="card-btn card-btn-submit" id="btn-submit" disabled onclick="submitCard()">Готово</button>
   </div>
 </div>
@@ -2212,6 +2220,7 @@ var appState = {
 };
 
 var cardData = {};
+var cardEditRecord = null;
 var currentDrumCallback = null;
 var currentTextCallback = null;
 var currentTextKey = null;
@@ -2611,7 +2620,7 @@ function renderLobby() {
 
 // ===== PIN =====
 var pinValue = '';
-var pinMode = 'card'; // 'card' | 'settings' | 'admin-update'
+var pinMode = 'card'; // 'card' | 'settings' | 'admin-update' | 'corrective' | 'sokb' | 'record-edit'
 
 /* ---- Superuser PIN — hardcoded, never stored in localStorage or server ---- */
 var SUPERUSER_PIN = '2003';
@@ -2658,13 +2667,20 @@ function resetPin() {
   document.getElementById('pin-error').textContent = '';
 }
 
+function clearPinThemeDelayed() {
+  setTimeout(function() {
+    var pe = document.getElementById('screen-pin');
+    pe.classList.remove('screen-pin--navy');
+    pe.classList.remove('screen-pin--dark');
+  }, 280);
+}
+
 function pinGoBack() {
   if (pinMode === 'admin-update') { pinMode = 'settings'; showScreen('screen-passwords'); return; }
-  if (pinMode === 'corrective' || pinMode === 'sokb') {
-    var pe2 = document.getElementById('screen-pin');
-    pe2.classList.remove('screen-pin--navy');
-    pe2.classList.remove('screen-pin--dark');
-    showScreen('screen-detail'); return;
+  if (pinMode === 'corrective' || pinMode === 'sokb' || pinMode === 'record-edit') {
+    showScreen('screen-detail');
+    clearPinThemeDelayed();
+    return;
   }
   showScreen(pinMode === 'settings' ? 'screen-lobby' : 'screen-proverki-menu');
 }
@@ -2691,6 +2707,20 @@ function updatePinDots() {
 
 function checkPin() {
   var pw = getPw();
+
+  // ---- record-edit mode: admin/superuser PIN only ----
+  if (pinMode === 'record-edit') {
+    if (pinValue === SUPERUSER_PIN || pinValue === pw.admin) {
+      resetPin();
+      openCardForEdit(detailRecordForEdit);
+      clearPinThemeDelayed();
+    } else {
+      document.getElementById('pin-error').textContent = 'Неверный пароль';
+      pinValue = '';
+      updatePinDots();
+    }
+    return;
+  }
 
   // ---- sokb mode: admin/superuser PIN only ----
   if (pinMode === 'sokb') {
@@ -2877,12 +2907,90 @@ function setTodayDate() {
 }
 
 function openCard() {
+  cardEditRecord = null;
   resetCard();
   showScreen('screen-card');
 }
 
+function openRecordEditPIN() {
+  pinMode = 'record-edit';
+  var pinEl = document.getElementById('screen-pin');
+  pinEl.classList.remove('screen-pin--navy');
+  pinEl.classList.add('screen-pin--dark');
+  setPinRole('Доступ администратора');
+  resetPin();
+  showScreen('screen-pin');
+}
+
+function calcBarrierInPK(barrier, year) {
+  var _bCfg = (appState.barriersConfig || {})[year];
+  if (_bCfg) {
+    var _bEntry = _bCfg.filter(function(b){ return b.name === barrier; })[0];
+    return (_bEntry && _bEntry.inPK) ? 'Да' : 'Нет';
+  }
+  var _pkLegacy = (appState.barriersPK || {})[year] || [];
+  return _pkLegacy.indexOf(barrier) >= 0 ? 'Да' : 'Нет';
+}
+
+function setCardVal(key, text, placeholder) {
+  var el = document.getElementById('val-' + key);
+  if (!el) return;
+  el.textContent = text;
+  if (placeholder) el.classList.add('placeholder'); else el.classList.remove('placeholder');
+}
+
+function openCardForEdit(r) {
+  if (!r) return;
+  cardEditRecord = r;
+  cardData = {
+    dateCheck: r.dateCheck || '',
+    method: r.method || '',
+    inspector: r.inspector || '',
+    org: r.org || '',
+    obj: r.obj || '',
+    curator: r.curator || '',
+    barrier: r.barrier || '',
+    works: r.works || '',
+    desc: r.desc || '',
+    violator: r.violator || ''
+  };
+  setCardVal('date', r.dateCheck || '—', !r.dateCheck);
+  setCardVal('method', r.method || 'Выбрать', !r.method);
+  setCardVal('inspector', r.inspector || '—', !r.inspector);
+  setCardVal('org', r.org || 'Выбрать', !r.org);
+  setCardVal('obj', r.obj || '—', !r.obj);
+  setCardVal('curator', r.curator || '—', !r.curator);
+  setCardVal('barrier', r.barrier || 'Выбрать', !r.barrier);
+  setWorksCellDisplay(r.works || 'Выбрать');
+  setCardVal('desc', r.desc || '—', !r.desc);
+  setCardVal('violator', r.violator || '—', !r.violator);
+  var isLocked = (r.method === 'ОСИР' || r.method === 'ЦРПО');
+  setDimmed('inspector', !r.method || r.method === 'Самопроверка' || isLocked);
+  setDimmed('desc', r.works !== 'Нет');
+  setDimmed('violator', r.works !== 'Нет');
+  var titleEl = document.querySelector('#screen-card .card-title');
+  if (titleEl) titleEl.textContent = 'Измените результат проведенной проверки';
+  updateValidation();
+  showScreen('screen-card');
+}
+
+function cancelCard() {
+  var titleEl = document.querySelector('#screen-card .card-title');
+  if (titleEl) titleEl.textContent = 'Внесите результат проведенной проверки';
+  if (cardEditRecord) {
+    var rec = cardEditRecord;
+    var src = detailSource;
+    cardEditRecord = null;
+    openDetail(rec, src);
+    return;
+  }
+  goLobby();
+}
+
 function resetCard() {
   cardData = {};
+  var titleEl = document.querySelector('#screen-card .card-title');
+  if (titleEl) titleEl.textContent = 'Внесите результат проведенной проверки';
   setTodayDate();
   ['method','inspector','org','obj','curator','barrier','works','desc','violator'].forEach(function(k) {
     var el = document.getElementById('val-' + k);
@@ -2919,7 +3027,39 @@ function updateValidation() {
   }
 }
 
+function submitCardEdit() {
+  var r = cardEditRecord;
+  if (!r) return;
+  var year = r.year || (r.dateCheck ? r.dateCheck.split('.')[2] : String(new Date().getFullYear()));
+  var checkYear = cardData.dateCheck ? cardData.dateCheck.split('.')[2] : year;
+  var fields = {
+    dateCheck: cardData.dateCheck,
+    method: cardData.method,
+    inspector: cardData.inspector || '',
+    org: cardData.org,
+    obj: cardData.obj,
+    curator: cardData.curator,
+    barrier: cardData.barrier,
+    works: cardData.works,
+    violator: cardData.violator || '',
+    desc: cardData.desc || '',
+    barrierInPK: calcBarrierInPK(cardData.barrier, checkYear)
+  };
+  if (checkYear !== year) r.year = checkYear;
+  saveRecordFieldUpdate(r.dateEntry, year, fields);
+  saveAutocomplete('inspector', cardData.inspector);
+  saveAutocomplete('curator', cardData.curator);
+  cardEditRecord = null;
+  var titleEl = document.querySelector('#screen-card .card-title');
+  if (titleEl) titleEl.textContent = 'Внесите результат проведенной проверки';
+  applyFindFilters();
+  renderCorrectiveList();
+  renderLobby();
+  openDetail(r, detailSource || 'find');
+}
+
 function submitCard() {
+  if (cardEditRecord) { submitCardEdit(); return; }
   cardData.id = Date.now();
   cardData.dateEntry = dateTimeStr();
   // auto-number within year
@@ -4147,7 +4287,7 @@ function saveSokbAttempts() {
 }
 
 function isCorrectiveListRecord(r) {
-  return isOsirNonWorking(r);
+  return !!(r && r.dateCheck && String(r.dateCheck).trim() && r.works === 'Нет');
 }
 
 function isMeasureDone(status) {
@@ -4159,11 +4299,13 @@ function isSokbSuccessful(r) {
 }
 
 function getCorrectiveRowClass(r) {
+  if (r.works !== 'Нет') return 'corr-row-ok';
   if (isSokbSuccessful(r)) return 'corr-row-done';
   return 'corr-row-' + getCorrectiveStatus(r);
 }
 
 function getCorrectiveStatusCellClass(r) {
+  if (r.works !== 'Нет') return 'corr-status-na';
   var st = getCorrectiveStatus(r);
   if (st === 'overdue') return 'corr-status-overdue';
   if (isSokbSuccessful(r) && st !== 'done') return 'corr-status-done';
@@ -4182,6 +4324,7 @@ function openCorrectiveList() {
 }
 
 function getCorrectiveStatus(r) {
+  if (r.works !== 'Нет') return 'na';
   var c = (r.corrective || '').trim();
   if (!c) return 'none';
   var today = new Date(); today.setHours(0,0,0,0);
@@ -4211,11 +4354,11 @@ function getCorrectiveStatus(r) {
   if (!measures.length) return 'entered';
   var allDone = measures.every(function(m) { return isMeasureDone(m.status); });
   if (allDone) return 'done';
-  if (isSokbSuccessful(r)) return 'entered';
   var anyOverdue = measures.some(function(m) {
     return !isMeasureDone(m.status) && m.date < today;
   });
   if (anyOverdue) return 'overdue';
+  if (isSokbSuccessful(r)) return 'entered';
   return 'entered';
 }
 
@@ -4236,7 +4379,7 @@ function renderCorrectiveList() {
   violations = sortByDateCheckAsc(violations);
   var tbody = document.getElementById('corr-list-tbody');
   tbody.innerHTML = '';
-  var statusLabel = { none: 'Не внесено', entered: 'Внесено', overdue: 'Просрочено', done: 'Выполнено' };
+  var statusLabel = { none: 'Не внесено', entered: 'Внесено', overdue: 'Просрочено', done: 'Выполнено', na: '' };
   violations.forEach(function(r) {
     var st = getCorrectiveStatus(r);
     var tr = document.createElement('tr');
@@ -4253,7 +4396,7 @@ function renderCorrectiveList() {
   var cnt = document.getElementById('corr-list-count');
   if (cnt) cnt.innerHTML = violations.length + '<br>' + pluralNarushenie(violations.length);
   // Right counter: violations with at least one measure entered
-  var enteredCount = violations.filter(function(r) { return getCorrectiveStatus(r) !== 'none'; }).length;
+  var enteredCount = violations.filter(function(r) { return r.works === 'Нет' && getCorrectiveStatus(r) !== 'none'; }).length;
   var cntR = document.getElementById('corr-entered-count');
   if (cntR) cntR.innerHTML = enteredCount + '<br>внесено';
   scrollCheckListToEnd('screen-corrective-list');
@@ -4427,7 +4570,7 @@ function parseCorrective(text) {
 }
 
 function newEmptyMeasure(n) {
-  return { desc: '', responsible: '', deadline: formatDate(new Date()), status: '', selected: false };
+  return { desc: '', responsible: '', deadline: '', status: '', selected: false };
 }
 
 function openCorrectiveEdit(r) {
@@ -4781,46 +4924,54 @@ function openDetail(r, source) {
   detailRecordForEdit = r;
   document.getElementById('detail-title').textContent = 'Проверка №' + (r.num || '?') + ' ' + (r.year || '');
   var body = document.getElementById('detail-body');
-  function row(label, val, cls) {
-    return '<div class="detail-row"><div class="detail-label">' + label + '</div>' +
-           '<div class="detail-val' + (cls ? ' ' + cls : '') + '">' + (val || '—') + '</div></div>';
+  var isFind = source === 'find';
+  var isNonWorking = r.works === 'Нет';
+  var showViolBlock = isNonWorking;
+  var showContest = isNonWorking && r.method === 'ОСИР';
+  function row(label, val, cls, editable) {
+    var vCls = 'detail-val' + (cls ? ' ' + cls : '') + (editable ? ' detail-val-editable' : '');
+    var onclick = editable ? ' onclick="openRecordEditPIN()"' : '';
+    return '<div class="detail-row"' + onclick + '><div class="detail-label">' + label + '</div>' +
+           '<div class="' + vCls + '">' + (val || '—') + '</div></div>';
   }
-  function block(label, val) {
-    return '<div class="detail-block"><div class="detail-block-label">' + label + '</div>' +
-           '<div class="detail-block-val">' + (val || '—') + '</div></div>';
+  function block(label, val, editable) {
+    var vCls = 'detail-block-val' + (editable ? ' detail-block-val-editable' : '');
+    var onclick = editable ? ' onclick="openRecordEditPIN()"' : '';
+    return '<div class="detail-block"' + onclick + '><div class="detail-block-label">' + label + '</div>' +
+           '<div class="' + vCls + '">' + (val || '—') + '</div></div>';
   }
-  var showExtra = source !== 'lobby';
+  var worksVal = r.works === 'Нет' ? '<span style="color:var(--red);font-weight:700">Нет</span>' : (r.works || '—');
   var corrBlock = '';
-  if (showExtra) {
+  if (showViolBlock && source !== 'lobby') {
     corrBlock = source === 'corrective'
       ? '<div class="detail-block detail-block-navy" onclick="openCorrectivePIN()">' +
           '<div class="detail-block-label">Корректирующие мероприятия</div>' +
           '<div class="detail-block-val">' + esc(r.corrective || 'Внесите') + '</div>' +
         '</div>'
-      : block('Корректирующие мероприятия', r.corrective);
+      : block('Корректирующие мероприятия', r.corrective, false);
   }
   var contestBlock = '';
-  if (showExtra) {
+  if (showContest && source !== 'lobby') {
     contestBlock = source === 'sokb'
       ? '<div class="detail-block detail-block-navy" onclick="openSokbPIN()">' +
           '<div class="detail-block-label">Оспаривание в СОКБ</div>' +
           '<div class="detail-block-val">' + esc(r.contestMeasures || 'Внесите') + '</div>' +
         '</div>'
-      : block('Оспаривание в СОКБ', r.contestMeasures);
+      : block('Оспаривание в СОКБ', r.contestMeasures, false);
   }
   body.innerHTML =
-    row('Дата проверки', r.dateCheck) +
-    row('Дата внесения проверки', r.dateEntry) +
-    row('Метод проверки', r.method) +
-    row('Проверку выполнил', r.inspector) +
-    row('Проверяемая организация', r.org) +
-    row('Проверяемый объект', r.obj) +
-    row('Куратор от заказчика', r.curator) +
-    row('Проверяемый барьер', r.barrier) +
-    row('Барьер в ПК', r.barrierInPK) +
-    row('Работоспособность барьера', r.works === 'Нет' ? '<span style="color:var(--red);font-weight:700">Нет</span>' : (r.works || '—')) +
-    row('Нарушение допустил', r.violator) +
-    block('Описание нарушения', r.desc) +
+    row('Дата проверки', r.dateCheck, '', isFind) +
+    row('Дата внесения проверки', r.dateEntry, '', isFind) +
+    row('Метод проверки', r.method, '', isFind) +
+    row('Проверку выполнил', r.inspector, '', isFind) +
+    row('Проверяемая организация', r.org, '', isFind) +
+    row('Проверяемый объект', r.obj, '', isFind) +
+    row('Куратор от заказчика', r.curator, '', isFind) +
+    row('Проверяемый барьер', r.barrier, '', isFind) +
+    row('Барьер в ПК', r.barrierInPK, '', isFind) +
+    row('Работоспособность барьера', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', isFind) +
+    (showViolBlock ? row('Нарушение допустил', r.violator, '', isFind) : '') +
+    (showViolBlock ? block('Описание нарушения', r.desc, isFind) : '') +
     corrBlock +
     contestBlock;
   document.getElementById('detail-scroll').scrollTop = 0;
