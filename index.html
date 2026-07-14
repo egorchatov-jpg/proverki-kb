@@ -865,12 +865,11 @@ html, body {
 /* Barriers table ? identical layout to methods table */
 .barriers-table-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; }
 .barriers-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.barriers-th-passport,
-.barriers-td-passport {
-  width: 16.14%;
-  max-width: 16.14%;
-  box-sizing: border-box;
-}
+.barriers-col-passport { width: 30%; }
+.barriers-col-select  { width: 15%; }
+.barriers-col-name    { width: 20%; }
+.barriers-col-pk      { width: 15%; }
+.barriers-col-show    { width: 20%; }
 .barriers-th-passport { text-align: left; padding-left: 8px; white-space: normal; line-height: 1.3; }
 .barriers-td-passport {
   font-size: 12px; color: #1a2035; font-weight: 500;
@@ -1431,13 +1430,20 @@ html, body {
   <div class="settings-screen-title" id="barriers-list-title">Барьеры ПК</div>
   <div class="barriers-table-wrap">
     <table class="barriers-table">
+      <colgroup>
+        <col class="barriers-col-passport">
+        <col class="barriers-col-select">
+        <col class="barriers-col-name">
+        <col class="barriers-col-pk">
+        <col class="barriers-col-show">
+      </colgroup>
       <thead>
         <tr>
           <th class="methods-th barriers-th-passport">Паспорт</th>
-          <th class="methods-th" style="width:44px;">Выбрать</th>
+          <th class="methods-th">Выбрать</th>
           <th class="methods-th methods-th-name">Барьеры</th>
-          <th class="methods-th" style="width:68px;">Барьеры ПК</th>
-          <th class="methods-th" style="width:74px;">Показывать</th>
+          <th class="methods-th">в ПК</th>
+          <th class="methods-th">Показывать</th>
         </tr>
       </thead>
       <tbody id="barriers-tbody"></tbody>
