@@ -857,12 +857,13 @@ html, body {
 /* Barriers table ? identical layout to methods table */
 .barriers-table-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; }
 .barriers-table { width: 100%; border-collapse: collapse; }
-.barriers-th-passport { text-align: left; padding-left: 8px; width: 30%; white-space: normal; line-height: 1.3; }
+.barriers-th-passport { text-align: left; padding-left: 8px; width: 15%; white-space: normal; line-height: 1.3; }
 .barriers-td-passport {
-  font-size: 14px; color: #1a2035; font-weight: 500;
+  font-size: 11px; color: #1a2035; font-weight: 500;
   padding: 11px 4px 11px 8px; vertical-align: top;
   border-bottom: 1px solid var(--border);
 }
+.barriers-table .methods-td-name { font-size: 11px; }
 .methods-th {
   font-size: 11px; font-weight: 700; color: var(--text2); text-align: center;
   padding: 8px 4px; border-bottom: 2px solid var(--border);
@@ -1045,10 +1046,11 @@ html, body {
     <table class="find-table">
       <thead>
         <tr>
-          <th style="width:22%"><button class="th-col-btn" id="cfl-btn-dateCheck" onclick="openCorrFilter('dateCheck')"><span>Дата<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:34%"><button class="th-col-btn" id="cfl-btn-org" onclick="openCorrFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:22%"><button class="th-col-btn" id="cfl-btn-barrier" onclick="openCorrFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:22%"><button class="th-col-btn" id="cfl-btn-status" onclick="openCorrFilter('status')"><span>Меро-<br>приятия</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:20%"><button class="th-col-btn" id="cfl-btn-dateCheck" onclick="openCorrFilter('dateCheck')"><span>Дата<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:18%"><button class="th-col-btn" id="cfl-btn-method" onclick="openCorrFilter('method')"><span>Метод<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:25%"><button class="th-col-btn" id="cfl-btn-org" onclick="openCorrFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:17%"><button class="th-col-btn" id="cfl-btn-barrier" onclick="openCorrFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th style="width:20%"><button class="th-col-btn" id="cfl-btn-status" onclick="openCorrFilter('status')"><span>Меро-<br>приятия</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
         </tr>
       </thead>
       <tbody id="corr-list-tbody"></tbody>
@@ -1443,7 +1445,7 @@ html, body {
     </button>
   </div>
   <div class="settings-footer">
-    <button class="screen-back-btn" onclick="backFromBarriersList()">Назад</button>
+    <button class="screen-back-btn" onclick="backFromBarriersList()">Готово</button>
   </div>
 </div>
 
@@ -2164,7 +2166,7 @@ var BARRIERS_PASSPORT_GROUPS = [
   { passport: 'Происшествия, обусловленные  присутствием взрывоопасных, токсичных и инертных газовоздушных сред', barriers: ['ГАЗ.01', 'ГАЗ.02', 'ГАЗ.03', 'ГАЗ.04', 'ГАЗ.05', 'ГАЗ.06', 'ГАЗ.07', 'ГАЗ.11', 'ГАЗ.12', 'ГАЗ.13'] },
   { passport: 'Газонефтеводопроявление', barriers: ['ГНВП.01', 'ГНВП.02', 'ГНВП.03', 'ГНВП.04', 'ГНВП.07', 'ГНВП.08', 'ГНВП.09', 'ГНВП.10', 'ГНВП.11', 'ГНВП.12'] },
   { passport: 'Происшествия при перемещении/ подъеме грузов', barriers: ['ГРУЗ.01', 'ГРУЗ.02', 'ГРУЗ.05', 'ГРУЗ.07', 'ГРУЗ.08'] },
-  { passport: 'Дорожно-транспортные происшествия', barriers: ['ДТП.01', 'ДТП.03', 'ДТП.04', 'ДТП.05 - в', 'ДТП.06', 'ДТП.07', 'ДТП.08'] },
+  { passport: 'Дорожно-транспортные происшествия', barriers: ['ДТП.01', 'ДТП.03', 'ДТП.04', 'ДТП.05-в', 'ДТП.06', 'ДТП.07', 'ДТП.08'] },
   { passport: 'Происшествия при проведении земляных работ', barriers: ['ЗЕМЛ.01', 'ЗЕМЛ.03', 'ЗЕМЛ.04', 'ЗЕМЛ.05', 'ЗЕМЛ.07'] },
   { passport: 'Происшествия со здоровьем человека', barriers: ['ОЗ.03', 'ОЗ.04', 'ОЗ.05', 'ОЗ.06', 'ОЗ.07', 'ОЗ.09', 'ОЗ.10'] },
   { passport: 'Пожары/ взрывы, не связанные с разгерметизацией технологического оборудования', barriers: ['ПОЖ.01', 'ПОЖ.03', 'ПОЖ.04'] },
@@ -2176,7 +2178,7 @@ var BARRIERS_PASSPORT_GROUPS = [
 ];
 
 var DEFAULT_BARRIERS_LIST = [
-  'ВЗР.02', 'ВЗР.03', 'ВЗР.08', 'ВЗР.13', 'ВЗР.18', 'ПАЗ.01', 'ПАЗ.02', 'ПАЗ.03', 'ЧС.01', 'ГАЗ.01', 'ГАЗ.02', 'ГАЗ.03', 'ГАЗ.04', 'ГАЗ.05', 'ГАЗ.06', 'ГАЗ.07', 'ГАЗ.11', 'ГАЗ.12', 'ГАЗ.13', 'ГНВП.01', 'ГНВП.02', 'ГНВП.03', 'ГНВП.04', 'ГНВП.07', 'ГНВП.08', 'ГНВП.09', 'ГНВП.10', 'ГНВП.11', 'ГНВП.12', 'ГРУЗ.01', 'ГРУЗ.02', 'ГРУЗ.05', 'ГРУЗ.07', 'ГРУЗ.08', 'ДТП.01', 'ДТП.03', 'ДТП.04', 'ДТП.05 - в', 'ДТП.06', 'ДТП.07', 'ДТП.08', 'ЗЕМЛ.01', 'ЗЕМЛ.03', 'ЗЕМЛ.04', 'ЗЕМЛ.05', 'ЗЕМЛ.07', 'ОЗ.03', 'ОЗ.04', 'ОЗ.05', 'ОЗ.06', 'ОЗ.07', 'ОЗ.09', 'ОЗ.10', 'ПОЖ.01', 'ПОЖ.03', 'ПОЖ.04', 'РВ.01', 'РВ.04', 'РВ.11', 'РВ.12', 'РВ.13', 'РВ.05', 'РВ.06', 'РВ.07', 'РВ.08', 'СБУ.01', 'СБУ.02', 'СБУ.03', 'СБУ.04', 'ЭЛБ.01', 'ЭЛБ.02', 'ЭЛБ.03', 'ЭЛБ.04', 'ЭЛБ.05', 'ЭЛБ.06', 'ЭЛБ.07', 'ЭЛБ.11', 'ЭЛБ.12', 'ЭЛБ.13', 'ЭЛБ.14', 'ЭЛБ.15', 'ЭЛБ.16', 'ЦКР.01', 'ЦКР.02'
+  'ВЗР.02', 'ВЗР.03', 'ВЗР.08', 'ВЗР.13', 'ВЗР.18', 'ПАЗ.01', 'ПАЗ.02', 'ПАЗ.03', 'ЧС.01', 'ГАЗ.01', 'ГАЗ.02', 'ГАЗ.03', 'ГАЗ.04', 'ГАЗ.05', 'ГАЗ.06', 'ГАЗ.07', 'ГАЗ.11', 'ГАЗ.12', 'ГАЗ.13', 'ГНВП.01', 'ГНВП.02', 'ГНВП.03', 'ГНВП.04', 'ГНВП.07', 'ГНВП.08', 'ГНВП.09', 'ГНВП.10', 'ГНВП.11', 'ГНВП.12', 'ГРУЗ.01', 'ГРУЗ.02', 'ГРУЗ.05', 'ГРУЗ.07', 'ГРУЗ.08', 'ДТП.01', 'ДТП.03', 'ДТП.04', 'ДТП.05-в', 'ДТП.06', 'ДТП.07', 'ДТП.08', 'ЗЕМЛ.01', 'ЗЕМЛ.03', 'ЗЕМЛ.04', 'ЗЕМЛ.05', 'ЗЕМЛ.07', 'ОЗ.03', 'ОЗ.04', 'ОЗ.05', 'ОЗ.06', 'ОЗ.07', 'ОЗ.09', 'ОЗ.10', 'ПОЖ.01', 'ПОЖ.03', 'ПОЖ.04', 'РВ.01', 'РВ.04', 'РВ.11', 'РВ.12', 'РВ.13', 'РВ.05', 'РВ.06', 'РВ.07', 'РВ.08', 'СБУ.01', 'СБУ.02', 'СБУ.03', 'СБУ.04', 'ЭЛБ.01', 'ЭЛБ.02', 'ЭЛБ.03', 'ЭЛБ.04', 'ЭЛБ.05', 'ЭЛБ.06', 'ЭЛБ.07', 'ЭЛБ.11', 'ЭЛБ.12', 'ЭЛБ.13', 'ЭЛБ.14', 'ЭЛБ.15', 'ЭЛБ.16', 'ЦКР.01', 'ЦКР.02'
 ];
 
 var DEFAULT_METHODS = [
@@ -3196,6 +3198,7 @@ function buildBarriersFromCatalog(existing) {
     g.barriers.forEach(function(name) {
       catalogNames[name] = true;
       var prev = map[name];
+      if (!prev && name === 'ДТП.05-в') prev = map['ДТП.05 - в'];
       out.push({
         name: name,
         passport: g.passport,
@@ -3532,7 +3535,7 @@ var correctiveRecord    = null;
 var correctiveMeasures  = [];
 var _correctiveUnlocked = false;
 var _correctiveSavedText = '';
-var correctiveListFilters = { dateFrom: '', dateTo: '', org: '', barrier: '', status: '' };
+var correctiveListFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '', status: '' };
 
 // ===== ОСПАРИВАНИЕ В СОКБ =====
 
@@ -4081,8 +4084,8 @@ function getCorrectiveStatusCellClass(r) {
 
 // ── Corrective list ────────────────────────────────────────────
 function openCorrectiveList() {
-  correctiveListFilters = { dateFrom: '', dateTo: '', org: '', barrier: '', status: '' };
-  ['dateCheck','org','barrier','status'].forEach(function(k) {
+  correctiveListFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '', status: '' };
+  ['dateCheck','method','org','barrier','status'].forEach(function(k) {
     var btn = document.getElementById('cfl-btn-' + k);
     if (btn) btn.classList.remove('active');
   });
@@ -4136,6 +4139,7 @@ function renderCorrectiveList() {
     var cto   = f.dateTo   ? dateNumFromStr(f.dateTo)   : 99999999;
     violations = violations.filter(function(r) { var n = dateNumFromStr(r.dateCheck); return n >= cfrom && n <= cto; });
   }
+  if (f.method)    violations = violations.filter(function(r) { return r.method    === f.method; });
   if (f.org)       violations = violations.filter(function(r) { return r.org       === f.org; });
   if (f.barrier)   violations = violations.filter(function(r) { return r.barrier   === f.barrier; });
   if (f.status) {
@@ -4151,6 +4155,7 @@ function renderCorrectiveList() {
     tr.className = getCorrectiveRowClass(r);
     tr.innerHTML =
       '<td>' + esc(r.dateCheck||'') + '</td>' +
+      '<td>' + esc(r.method||'') + '</td>' +
       '<td>' + esc(r.org||'') + '</td>' +
       '<td>' + esc(r.barrier||'') + '</td>' +
       '<td class="' + getCorrectiveStatusCellClass(r) + '">' + (statusLabel[st]||'') + '</td>';
@@ -4257,7 +4262,7 @@ function openCorrFilter(col) {
   } else {
     cfg = [{ id: col, items: items, value: f[col] || items[0], minWidth: 200 }];
   }
-  var titles = { org: 'Фильтр: организация', barrier: 'Фильтр: проверяемый барьер' };
+  var titles = { method: 'Фильтр: метод проверки', org: 'Фильтр: организация', barrier: 'Фильтр: проверяемый барьер' };
   navyDrum(titles[col] || 'Фильтр', cfg, function(d) {
     f[col] = d[col].getValue();
     document.getElementById('cfl-btn-' + col).classList.toggle('active', !!f[col]);
