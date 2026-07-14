@@ -857,6 +857,12 @@ html, body {
 /* Barriers table ? identical layout to methods table */
 .barriers-table-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; }
 .barriers-table { width: 100%; border-collapse: collapse; }
+.barriers-th-passport { text-align: left; padding-left: 8px; width: 30%; white-space: normal; line-height: 1.3; }
+.barriers-td-passport {
+  font-size: 14px; color: #1a2035; font-weight: 500;
+  padding: 11px 4px 11px 8px; vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
 .methods-th {
   font-size: 11px; font-weight: 700; color: var(--text2); text-align: center;
   padding: 8px 4px; border-bottom: 2px solid var(--border);
@@ -1409,6 +1415,7 @@ html, body {
     <table class="barriers-table">
       <thead>
         <tr>
+          <th class="methods-th barriers-th-passport">Паспорт</th>
           <th class="methods-th" style="width:44px;">Выбрать</th>
           <th class="methods-th methods-th-name">Барьеры</th>
           <th class="methods-th" style="width:68px;">Барьеры ПК</th>
@@ -2152,12 +2159,24 @@ function requestPushPermission() {
 }
 
 // ===== APP STATE =====
+var BARRIERS_PASSPORT_GROUPS = [
+  { passport: 'Пожары/ взрывы', barriers: ['ВЗР.02', 'ВЗР.03', 'ВЗР.08', 'ВЗР.13', 'ВЗР.18', 'ПАЗ.01', 'ПАЗ.02', 'ПАЗ.03', 'ЧС.01'] },
+  { passport: 'Происшествия, обусловленные  присутствием взрывоопасных, токсичных и инертных газовоздушных сред', barriers: ['ГАЗ.01', 'ГАЗ.02', 'ГАЗ.03', 'ГАЗ.04', 'ГАЗ.05', 'ГАЗ.06', 'ГАЗ.07', 'ГАЗ.11', 'ГАЗ.12', 'ГАЗ.13'] },
+  { passport: 'Газонефтеводопроявление', barriers: ['ГНВП.01', 'ГНВП.02', 'ГНВП.03', 'ГНВП.04', 'ГНВП.07', 'ГНВП.08', 'ГНВП.09', 'ГНВП.10', 'ГНВП.11', 'ГНВП.12'] },
+  { passport: 'Происшествия при перемещении/ подъеме грузов', barriers: ['ГРУЗ.01', 'ГРУЗ.02', 'ГРУЗ.05', 'ГРУЗ.07', 'ГРУЗ.08'] },
+  { passport: 'Дорожно-транспортные происшествия', barriers: ['ДТП.01', 'ДТП.03', 'ДТП.04', 'ДТП.05 - в', 'ДТП.06', 'ДТП.07', 'ДТП.08'] },
+  { passport: 'Происшествия при проведении земляных работ', barriers: ['ЗЕМЛ.01', 'ЗЕМЛ.03', 'ЗЕМЛ.04', 'ЗЕМЛ.05', 'ЗЕМЛ.07'] },
+  { passport: 'Происшествия со здоровьем человека', barriers: ['ОЗ.03', 'ОЗ.04', 'ОЗ.05', 'ОЗ.06', 'ОЗ.07', 'ОЗ.09', 'ОЗ.10'] },
+  { passport: 'Пожары/ взрывы, не связанные с разгерметизацией технологического оборудования', barriers: ['ПОЖ.01', 'ПОЖ.03', 'ПОЖ.04'] },
+  { passport: 'Происшествия при проведении работ на высоте/ при нахождении на высоте', barriers: ['РВ.01', 'РВ.04', 'РВ.11', 'РВ.12', 'РВ.13'] },
+  { passport: 'Падение предметов с высоты', barriers: ['РВ.05', 'РВ.06', 'РВ.07', 'РВ.08'] },
+  { passport: 'Обеспечение социально-бытовых условий', barriers: ['СБУ.01', 'СБУ.02', 'СБУ.03', 'СБУ.04'] },
+  { passport: 'Поражение электрическим током', barriers: ['ЭЛБ.01', 'ЭЛБ.02', 'ЭЛБ.03', 'ЭЛБ.04', 'ЭЛБ.05', 'ЭЛБ.06', 'ЭЛБ.07', 'ЭЛБ.11', 'ЭЛБ.12', 'ЭЛБ.13', 'ЭЛБ.14', 'ЭЛБ.15', 'ЭЛБ.16'] },
+  { passport: 'Цифровой контроль выполнения работ', barriers: ['ЦКР.01', 'ЦКР.02'] },
+];
+
 var DEFAULT_BARRIERS_LIST = [
-  'АВИА.01','АВИА.05','ВЗР.15','ГАЗ.01','ГАЗ.03','ГАЗ.06','ГАЗ.07',
-  'ГАЗ.09','ГАЗ.10','ГНВП.04','ГНВП.07','ГНВП.08','ГНВП.09',
-  'ГРУЗ.01','ГРУЗ.02','ДТП.05','ДТП.06','ДТП.07','ДТП.08',
-  'ОЗ.06','ПАЗ.01','РВ.01','РВ.04','РВ.06','РВ.07','РВ.08',
-  'ЧС.01','ЭЛБ.03','ЭЛБ.05','ЭЛБ.06','ЭЛБ.11'
+  'ВЗР.02', 'ВЗР.03', 'ВЗР.08', 'ВЗР.13', 'ВЗР.18', 'ПАЗ.01', 'ПАЗ.02', 'ПАЗ.03', 'ЧС.01', 'ГАЗ.01', 'ГАЗ.02', 'ГАЗ.03', 'ГАЗ.04', 'ГАЗ.05', 'ГАЗ.06', 'ГАЗ.07', 'ГАЗ.11', 'ГАЗ.12', 'ГАЗ.13', 'ГНВП.01', 'ГНВП.02', 'ГНВП.03', 'ГНВП.04', 'ГНВП.07', 'ГНВП.08', 'ГНВП.09', 'ГНВП.10', 'ГНВП.11', 'ГНВП.12', 'ГРУЗ.01', 'ГРУЗ.02', 'ГРУЗ.05', 'ГРУЗ.07', 'ГРУЗ.08', 'ДТП.01', 'ДТП.03', 'ДТП.04', 'ДТП.05 - в', 'ДТП.06', 'ДТП.07', 'ДТП.08', 'ЗЕМЛ.01', 'ЗЕМЛ.03', 'ЗЕМЛ.04', 'ЗЕМЛ.05', 'ЗЕМЛ.07', 'ОЗ.03', 'ОЗ.04', 'ОЗ.05', 'ОЗ.06', 'ОЗ.07', 'ОЗ.09', 'ОЗ.10', 'ПОЖ.01', 'ПОЖ.03', 'ПОЖ.04', 'РВ.01', 'РВ.04', 'РВ.11', 'РВ.12', 'РВ.13', 'РВ.05', 'РВ.06', 'РВ.07', 'РВ.08', 'СБУ.01', 'СБУ.02', 'СБУ.03', 'СБУ.04', 'ЭЛБ.01', 'ЭЛБ.02', 'ЭЛБ.03', 'ЭЛБ.04', 'ЭЛБ.05', 'ЭЛБ.06', 'ЭЛБ.07', 'ЭЛБ.11', 'ЭЛБ.12', 'ЭЛБ.13', 'ЭЛБ.14', 'ЭЛБ.15', 'ЭЛБ.16', 'ЦКР.01', 'ЦКР.02'
 ];
 
 var DEFAULT_METHODS = [
@@ -3150,8 +3169,8 @@ function addBarriersYear() {
   if (!appState.barriersConfig) appState.barriersConfig = {};
   var prevList = getBarriersForYear(prevYear);
   // Copy barrier names from previous year, all checkboxes cleared
-  appState.barriersConfig[newYear] = prevList.map(function(b) {
-    return { name: b.name, inPK: false, show: false };
+  appState.barriersConfig[newYear] = buildBarriersFromCatalog(prevList).map(function(b) {
+    return { name: b.name, passport: b.passport, inPK: false, show: false };
   });
   saveState();
   renderBarriersYearList();
@@ -3168,13 +3187,41 @@ function removeBarriersYear() {
   renderBarriersYearList();
 }
 
-function getBarriersForYear(year) {
-  if (!appState.barriersConfig) appState.barriersConfig = {};
-  if (!appState.barriersConfig[year]) {
-    appState.barriersConfig[year] = DEFAULT_BARRIERS_LIST.map(function(name) {
-      return { name: name, inPK: false, show: true };
+function buildBarriersFromCatalog(existing) {
+  var map = {};
+  if (existing) existing.forEach(function(b) { if (b && b.name) map[b.name] = b; });
+  var catalogNames = {};
+  var out = [];
+  BARRIERS_PASSPORT_GROUPS.forEach(function(g) {
+    g.barriers.forEach(function(name) {
+      catalogNames[name] = true;
+      var prev = map[name];
+      out.push({
+        name: name,
+        passport: g.passport,
+        inPK: prev ? !!prev.inPK : false,
+        show: prev ? (prev.show !== false) : true
+      });
+    });
+  });
+  if (existing) {
+    existing.forEach(function(b) {
+      if (b && b.name && !catalogNames[b.name]) {
+        out.push({
+          name: b.name,
+          passport: b.passport || '',
+          inPK: !!b.inPK,
+          show: b.show !== false
+        });
+      }
     });
   }
+  return out;
+}
+
+function getBarriersForYear(year) {
+  if (!appState.barriersConfig) appState.barriersConfig = {};
+  appState.barriersConfig[year] = buildBarriersFromCatalog(appState.barriersConfig[year]);
   return appState.barriersConfig[year];
 }
 
@@ -3187,42 +3234,71 @@ function openBarriersPKList(year) {
   showScreen('screen-barriers-list');
 }
 
+function appendBarrierRow(tbody, year, b, idx, withPassport, passportText, rowSpan) {
+  var tr = document.createElement('tr');
+  if (withPassport) {
+    var tdPass = document.createElement('td');
+    tdPass.className = 'methods-td barriers-td-passport';
+    tdPass.rowSpan = rowSpan;
+    tdPass.textContent = passportText;
+    tr.appendChild(tdPass);
+  }
+  var tdSel = document.createElement('td');
+  tdSel.className = 'methods-td methods-td-cb';
+  var cbSel = document.createElement('input');
+  cbSel.type = 'checkbox'; cbSel.className = 'method-circle-cb'; cbSel.dataset.idx = idx;
+  cbSel.addEventListener('change', updateBarrierMinusBtnState);
+  tdSel.appendChild(cbSel);
+  var tdName = document.createElement('td');
+  tdName.className = 'methods-td methods-td-name'; tdName.textContent = b.name;
+  var tdPK = document.createElement('td');
+  tdPK.className = 'methods-td methods-td-cb';
+  var cbPK = document.createElement('input');
+  cbPK.type = 'checkbox'; cbPK.className = 'method-square-cb';
+  cbPK.checked = !!b.inPK; cbPK.dataset.idx = idx;
+  cbPK.addEventListener('change', function() {
+    getBarriersForYear(year)[+this.dataset.idx].inPK = this.checked;
+    saveState();
+  });
+  tdPK.appendChild(cbPK);
+  var tdShow = document.createElement('td');
+  tdShow.className = 'methods-td methods-td-cb';
+  var cbShow = document.createElement('input');
+  cbShow.type = 'checkbox'; cbShow.className = 'method-square-cb';
+  cbShow.checked = (b.show !== false); cbShow.dataset.idx = idx;
+  cbShow.addEventListener('change', function() {
+    getBarriersForYear(year)[+this.dataset.idx].show = this.checked;
+    saveState();
+  });
+  tdShow.appendChild(cbShow);
+  tr.appendChild(tdSel); tr.appendChild(tdName); tr.appendChild(tdPK); tr.appendChild(tdShow);
+  tbody.appendChild(tr);
+}
+
 function renderBarriersTable(year) {
   var list = getBarriersForYear(year);
   var tbody = document.getElementById('barriers-tbody');
   tbody.innerHTML = '';
+  var rendered = {};
+  BARRIERS_PASSPORT_GROUPS.forEach(function(g) {
+    var items = [];
+    g.barriers.forEach(function(name) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].name === name && !rendered[name]) {
+          items.push({ b: list[i], idx: i });
+          rendered[name] = true;
+          break;
+        }
+      }
+    });
+    items.forEach(function(item, gi) {
+      appendBarrierRow(tbody, year, item.b, item.idx, gi === 0, g.passport, items.length);
+    });
+  });
   list.forEach(function(b, idx) {
-    var tr = document.createElement('tr');
-    var tdSel = document.createElement('td');
-    tdSel.className = 'methods-td methods-td-cb';
-    var cbSel = document.createElement('input');
-    cbSel.type = 'checkbox'; cbSel.className = 'method-circle-cb'; cbSel.dataset.idx = idx;
-    cbSel.addEventListener('change', updateBarrierMinusBtnState);
-    tdSel.appendChild(cbSel);
-    var tdName = document.createElement('td');
-    tdName.className = 'methods-td methods-td-name'; tdName.textContent = b.name;
-    var tdPK = document.createElement('td');
-    tdPK.className = 'methods-td methods-td-cb';
-    var cbPK = document.createElement('input');
-    cbPK.type = 'checkbox'; cbPK.className = 'method-square-cb';
-    cbPK.checked = !!b.inPK; cbPK.dataset.idx = idx;
-    cbPK.addEventListener('change', function() {
-      getBarriersForYear(year)[+this.dataset.idx].inPK = this.checked;
-      saveState();
-    });
-    tdPK.appendChild(cbPK);
-    var tdShow = document.createElement('td');
-    tdShow.className = 'methods-td methods-td-cb';
-    var cbShow = document.createElement('input');
-    cbShow.type = 'checkbox'; cbShow.className = 'method-square-cb';
-    cbShow.checked = (b.show !== false); cbShow.dataset.idx = idx;
-    cbShow.addEventListener('change', function() {
-      getBarriersForYear(year)[+this.dataset.idx].show = this.checked;
-      saveState();
-    });
-    tdShow.appendChild(cbShow);
-    tr.appendChild(tdSel); tr.appendChild(tdName); tr.appendChild(tdPK); tr.appendChild(tdShow);
-    tbody.appendChild(tr);
+    if (!rendered[b.name]) {
+      appendBarrierRow(tbody, year, b, idx, true, b.passport || '', 1);
+    }
   });
   updateBarrierMinusBtnState();
 }
@@ -3260,7 +3336,7 @@ function saveNewBarrier() {
   var input = document.getElementById('barrier-new-input');
   var name = input.value.trim().toUpperCase();
   if (!name || !_bpkYear) return;
-  getBarriersForYear(_bpkYear).push({ name: name, inPK: false, show: true });
+  getBarriersForYear(_bpkYear).push({ name: name, passport: '', inPK: false, show: true });
   saveState();
   input.value = '';
   document.getElementById('barrier-new-row').style.display = 'none';
@@ -3269,10 +3345,8 @@ function saveNewBarrier() {
 
 
 function backFromBarriersList() {
-  if (_bpkYear && appState.barriersConfig && appState.barriersConfig[_bpkYear]) {
-    appState.barriersConfig[_bpkYear].sort(function(a, b) {
-      return a.name.localeCompare(b.name, 'ru');
-    });
+  if (_bpkYear) {
+    appState.barriersConfig[_bpkYear] = buildBarriersFromCatalog(appState.barriersConfig[_bpkYear]);
     saveState();
   }
   showScreen('screen-barriers-years');
