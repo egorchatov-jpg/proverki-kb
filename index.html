@@ -578,7 +578,7 @@ html, body {
 .corr-row-ok     { background: transparent; }
 .corr-status-none    { color: var(--red);   font-size: 11px; }
 .corr-status-entered { color: var(--navy);  font-size: 11px; }
-.corr-status-overdue { color: var(--red); font-size: 11px; font-weight: 700; }
+.corr-status-overdue { color: var(--red); font-size: 11px; }
 .corr-status-done    { color: var(--green); font-size: 11px; }
 .corr-status-na      { color: var(--text2); font-size: 11px; }
 #screen-sokb-list .th-col-btn.active { color: var(--navy); }
@@ -2516,12 +2516,7 @@ function openFindFilter(col) {
   function sortAlpha(a) { return a.sort(function(x, y) { return x.localeCompare(y, 'ru'); }); }
   function sortDateAsc(a) { return a.sort(function(x, y) { return dateNumFromStr(x) - dateNumFromStr(y); }); }
   function sortMethod(a) {
-    var order = ['ОСИР', 'ЦРПО', 'Прочее'];
-    return a.sort(function(x, y) {
-      var ix = order.indexOf(x), iy = order.indexOf(y);
-      if (ix < 0) ix = 999; if (iy < 0) iy = 999;
-      return ix - iy;
-    });
+    return sortMethodsForDrum(a.sort(function(x, y) { return x.localeCompare(y, 'ru'); }));
   }
 
   if (col === 'dateCheck') {
@@ -4500,6 +4495,7 @@ function openCorrFilter(col) {
 
   // ── OTHER COLUMNS — only present values ───────────────────────
   var items = uniqSort(all.map(function(r) { return r[col]; }));
+  if (col === 'method') items = sortMethodsForDrum(items);
   if (!items.length) return;
   var cfg;
   if (col === 'org') {
@@ -4685,7 +4681,7 @@ function createCorrMeasureEl(m, idx) {
   dlCell.className = 'corr-m-cell corr-m-half';
   dlCell.id = 'corr-dl-' + idx;
   if (m.deadline) {
-    dlCell.textContent = 'Выполнить до: ' + m.deadline;
+    dlCell.textContent = 'Срок: ' + m.deadline;
   } else {
     dlCell.textContent = 'Срок выполнения';
     dlCell.classList.add('corr-m-ph');
@@ -4770,7 +4766,7 @@ function openDeadlineDrum(idx) {
     correctiveMeasures[idx].deadline = deadline;
     var dlCell = document.getElementById('corr-dl-' + idx);
     if (dlCell) {
-      dlCell.textContent = 'Выполнить до: ' + deadline;
+      dlCell.textContent = 'Срок: ' + deadline;
       dlCell.classList.remove('corr-m-ph');
     }
     setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
@@ -5162,10 +5158,17 @@ function openDrumDate() {
   DRUM_INSTANCES['year'].onSnap = updateDayDrum;
 }
 
+function sortMethodsForDrum(methods) {
+  var list = (methods || []).slice();
+  var i = list.indexOf('Прочее');
+  if (i >= 0) { list.splice(i, 1); list.push('Прочее'); }
+  return list;
+}
+
 function openDrumMethod() {
-  var visibleMethods = (appState.methods || DEFAULT_METHODS)
+  var visibleMethods = sortMethodsForDrum((appState.methods || DEFAULT_METHODS)
     .filter(function(m) { return m.show !== false; })
-    .map(function(m) { return m.name; });
+    .map(function(m) { return m.name; }));
   if (!visibleMethods.length) { alert('Нет доступных методов. Настройте их в разделе «Методы проверок».'); return; }
   var def = (visibleMethods.indexOf(cardData.method) >= 0) ? cardData.method : visibleMethods[0];
   openDrumOverlay('Выберите метод проверки', [
