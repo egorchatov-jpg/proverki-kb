@@ -3772,6 +3772,7 @@ var correctiveRecord    = null;
 var correctiveMeasures  = [];
 var _correctiveUnlocked = false;
 var _correctiveSavedText = '';
+var _corrDeletedAllInSession = false;
 var correctiveListFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '', status: '' };
 
 // ===== ОСПАРИВАНИЕ В СОКБ =====
@@ -4586,6 +4587,7 @@ function newEmptyMeasure(n) {
 function openCorrectiveEdit(r) {
   correctiveRecord = r;
   _correctiveSavedText = r.corrective || '';
+  _corrDeletedAllInSession = false;
   correctiveMeasures = parseCorrective(r.corrective);
   if (!correctiveMeasures.length) correctiveMeasures = [newEmptyMeasure(1)];
   var infoEl = document.getElementById('corr-viol-info');
@@ -4728,6 +4730,7 @@ function deleteCorrMeasures() {
   // Keep at least 1
   if (!newList.length) newList = [newEmptyMeasure(1)];
   correctiveMeasures = newList;
+  if (correctiveMeasures.every(isCorrMeasureEmpty)) _corrDeletedAllInSession = true;
   renderCorrMeasures();
 }
 
@@ -4824,14 +4827,14 @@ function checkCorrFilled() {
     return m.desc && m.desc.trim() && m.responsible && m.responsible.trim() && m.deadline && m.status;
   });
   var allEmpty = correctiveMeasures.every(isCorrMeasureEmpty);
-  var canSave = allFilled || allEmpty;
+  var canSave = allFilled || (allEmpty && _corrDeletedAllInSession);
   var msgEl = document.getElementById('corr-valid-msg');
   var saveBtn = document.getElementById('corr-btn-save');
   if (msgEl) {
     if (allFilled) {
       msgEl.textContent = 'Заполнены все поля';
       msgEl.style.color = 'var(--green)';
-    } else if (allEmpty) {
+    } else if (allEmpty && _corrDeletedAllInSession) {
       msgEl.textContent = 'Мероприятия удалены';
       msgEl.style.color = 'var(--green)';
     } else {
@@ -4855,6 +4858,7 @@ function formatCorrText(measures) {
 }
 
 function cancelCorrEdit() {
+  _corrDeletedAllInSession = false;
   if (correctiveRecord) {
     correctiveRecord.corrective = _correctiveSavedText;
   }
@@ -4866,6 +4870,7 @@ function saveCorrMeasures() {
   var text = nonEmpty.length ? formatCorrText(nonEmpty) : '';
   correctiveRecord.corrective = text;
   _correctiveSavedText = text;
+  _corrDeletedAllInSession = false;
   var year = correctiveRecord.year || (correctiveRecord.dateCheck ? correctiveRecord.dateCheck.split('.')[2] : String(new Date().getFullYear()));
   saveRecordFieldUpdate(correctiveRecord.dateEntry, year, { corrective: text });
   renderCorrectiveList();
