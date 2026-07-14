@@ -857,13 +857,13 @@ html, body {
 /* Barriers table ? identical layout to methods table */
 .barriers-table-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; }
 .barriers-table { width: 100%; border-collapse: collapse; }
-.barriers-th-passport { text-align: left; padding-left: 8px; width: 15%; white-space: normal; line-height: 1.3; }
+.barriers-th-passport { text-align: left; padding-left: 8px; width: 13.5%; white-space: normal; line-height: 1.3; }
 .barriers-td-passport {
-  font-size: 11px; color: #1a2035; font-weight: 500;
+  font-size: 12px; color: #1a2035; font-weight: 500;
   padding: 11px 4px 11px 8px; vertical-align: top;
   border-bottom: 1px solid var(--border);
 }
-.barriers-table .methods-td-name { font-size: 11px; }
+.barriers-table .methods-td-name { font-size: 12px; }
 .methods-th {
   font-size: 11px; font-weight: 700; color: var(--text2); text-align: center;
   padding: 8px 4px; border-bottom: 2px solid var(--border);
@@ -1445,7 +1445,7 @@ html, body {
     </button>
   </div>
   <div class="settings-footer">
-    <button class="screen-back-btn" onclick="backFromBarriersList()">Готово</button>
+    <button class="screen-back-btn" onclick="backFromBarriersList()">Назад</button>
   </div>
 </div>
 
@@ -1483,7 +1483,7 @@ html, body {
     </button>
   </div>
   <div class="settings-footer">
-    <button class="screen-back-btn" onclick="showScreen('screen-settings')">Назад</button>
+    <button class="screen-back-btn" onclick="backFromMethodsScreen()">Назад</button>
   </div>
 </div>
 
@@ -2744,6 +2744,7 @@ function checkPin() {
       pinMode = 'settings';
       showScreen('screen-passwords');
       renderPasswordsScreen();
+      markPasswordsDirty();
     } else {
       document.getElementById('pin-error').textContent = 'Неверный пароль суперпользователя';
       pinValue = '';
@@ -3016,12 +3017,83 @@ function downloadExcel(year, btn) {
 var _bpkYear = null; // year currently being edited
 var _settingsUnlocked = false; // true after settings PIN entered in this session
 var _currentRole = null;        // 'superuser' | 'admin' — set on successful settings PIN
+var _settingsSnap = {};
+
+function settingsBackBtn(screenId) {
+  var scr = document.getElementById(screenId);
+  return scr ? scr.querySelector('.settings-footer .screen-back-btn') : null;
+}
+
+function setSettingsBackLabel(screenId, dirty) {
+  var btn = settingsBackBtn(screenId);
+  if (btn) btn.textContent = dirty ? 'Готово' : 'Назад';
+}
+
+function takeSettingsSnap(key, value) {
+  _settingsSnap[key] = JSON.stringify(value);
+}
+
+function refreshSettingsBackLabel(screenId, key, value) {
+  setSettingsBackLabel(screenId, _settingsSnap[key] !== JSON.stringify(value));
+}
+
+function snapBarriersYearList() {
+  if (!_bpkYear) return [];
+  return getBarriersForYear(_bpkYear).map(function(b) {
+    return { name: b.name, passport: b.passport || '', inPK: !!b.inPK, show: b.show !== false };
+  });
+}
+
+function snapMethodsList() {
+  return (appState.methods || []).map(function(m) {
+    return { name: m.name, show: m.show !== false };
+  });
+}
+
+function snapOrgsList() {
+  return (appState.orgs || []).map(function(o) {
+    return { name: o.name, show: o.show !== false };
+  });
+}
+
+function snapPasswordsState() {
+  var pw = getPw();
+  var out = { admin: pw.admin, inspector: pw.inspector, orgs: {} };
+  if (pw.orgs) {
+    Object.keys(pw.orgs).sort(function(a, b) { return a.localeCompare(b, 'ru'); }).forEach(function(k) {
+      out.orgs[k] = pw.orgs[k];
+    });
+  }
+  return out;
+}
+
+function markBarriersDirty() {
+  refreshSettingsBackLabel('screen-barriers-list', 'barriers', snapBarriersYearList());
+}
+
+function markMethodsDirty() {
+  refreshSettingsBackLabel('screen-methods', 'methods', snapMethodsList());
+}
+
+function markOrgsDirty() {
+  refreshSettingsBackLabel('screen-orgs', 'orgs', snapOrgsList());
+}
+
+function markPasswordsDirty() {
+  refreshSettingsBackLabel('screen-passwords', 'passwords', snapPasswordsState());
+}
 
 function openMethodsScreen() {
   document.getElementById('method-new-row').style.display = 'none';
   document.getElementById('method-new-input').value = '';
   renderMethodsTable();
+  takeSettingsSnap('methods', snapMethodsList());
+  setSettingsBackLabel('screen-methods', false);
   showScreen('screen-methods');
+}
+
+function backFromMethodsScreen() {
+  showScreen('screen-settings');
 }
 
 function renderMethodsTable() {
@@ -3052,6 +3124,7 @@ function renderMethodsTable() {
     cbShow.addEventListener('change', function() {
       (appState.methods || [])[+this.dataset.idx].show = this.checked;
       saveState();
+      markMethodsDirty();
     });
     tdShow.appendChild(cbShow);
     tr.appendChild(tdSel); tr.appendChild(tdName); tr.appendChild(tdShow);
@@ -3075,6 +3148,7 @@ function deleteSelectedMethods() {
   appState.methods = (appState.methods || []).filter(function(_, i) { return selected.indexOf(i) < 0; });
   saveState();
   renderMethodsTable();
+  markMethodsDirty();
 }
 
 function showAddMethodInput() {
@@ -3106,6 +3180,7 @@ function saveNewMethod() {
   input.value = '';
   document.getElementById('method-new-row').style.display = 'none';
   renderMethodsTable();
+  markMethodsDirty();
 }
 
 function openBarriersPKYearsScreen() {
@@ -3234,6 +3309,8 @@ function openBarriersPKList(year) {
   document.getElementById('barrier-new-row').style.display = 'none';
   document.getElementById('barrier-new-input').value = '';
   renderBarriersTable(year);
+  takeSettingsSnap('barriers', snapBarriersYearList());
+  setSettingsBackLabel('screen-barriers-list', false);
   showScreen('screen-barriers-list');
 }
 
@@ -3262,6 +3339,7 @@ function appendBarrierRow(tbody, year, b, idx, withPassport, passportText, rowSp
   cbPK.addEventListener('change', function() {
     getBarriersForYear(year)[+this.dataset.idx].inPK = this.checked;
     saveState();
+    markBarriersDirty();
   });
   tdPK.appendChild(cbPK);
   var tdShow = document.createElement('td');
@@ -3272,6 +3350,7 @@ function appendBarrierRow(tbody, year, b, idx, withPassport, passportText, rowSp
   cbShow.addEventListener('change', function() {
     getBarriersForYear(year)[+this.dataset.idx].show = this.checked;
     saveState();
+    markBarriersDirty();
   });
   tdShow.appendChild(cbShow);
   tr.appendChild(tdSel); tr.appendChild(tdName); tr.appendChild(tdPK); tr.appendChild(tdShow);
@@ -3322,6 +3401,7 @@ function deleteSelectedBarriers() {
     .filter(function(_, i) { return selected.indexOf(i) < 0; });
   saveState();
   renderBarriersTable(_bpkYear);
+  markBarriersDirty();
 }
 
 function showAddBarrierInput() {
@@ -3344,6 +3424,7 @@ function saveNewBarrier() {
   input.value = '';
   document.getElementById('barrier-new-row').style.display = 'none';
   renderBarriersTable(_bpkYear);
+  markBarriersDirty();
 }
 
 
@@ -3359,6 +3440,8 @@ function openOrgsScreen() {
   document.getElementById('org-new-row').style.display = 'none';
   document.getElementById('org-new-input').value = '';
   renderOrgsTable();
+  takeSettingsSnap('orgs', snapOrgsList());
+  setSettingsBackLabel('screen-orgs', false);
   showScreen('screen-orgs');
 }
 
@@ -3384,6 +3467,7 @@ function renderOrgsTable() {
     cbShow.addEventListener('change', function() {
       (appState.orgs || [])[+this.dataset.idx].show = this.checked;
       saveState();
+      markOrgsDirty();
     });
     tdShow.appendChild(cbShow);
     tr.appendChild(tdSel); tr.appendChild(tdName); tr.appendChild(tdShow);
@@ -3411,6 +3495,7 @@ function deleteSelectedOrgs() {
   deletedNames.forEach(function(n) { if (pw.orgs) delete pw.orgs[n]; });
   saveState();
   renderOrgsTable();
+  markOrgsDirty();
 }
 
 function showAddOrgInput() {
@@ -3441,6 +3526,7 @@ function saveNewOrg() {
   input.value = '';
   document.getElementById('org-new-row').style.display = 'none';
   renderOrgsTable();
+  markOrgsDirty();
 }
 
 function backFromOrgsScreen() {
@@ -3456,6 +3542,8 @@ function backFromOrgsScreen() {
 function openPasswordsScreen() {
   ensureOrgPasswords();
   renderPasswordsScreen();
+  takeSettingsSnap('passwords', snapPasswordsState());
+  setSettingsBackLabel('screen-passwords', false);
   showScreen('screen-passwords');
 }
 
@@ -3505,7 +3593,7 @@ function renderPasswordsScreen() {
   // Проверяющий
   body.appendChild(makePwRow('Проверяющий', pw.inspector, function() {
     var newPw = generateUniquePassword();
-    if (newPw) { pw.inspector = newPw; saveState(); renderPasswordsScreen(); }
+    if (newPw) { pw.inspector = newPw; saveState(); renderPasswordsScreen(); markPasswordsDirty(); }
   }));
 
   // Section: Проверяемые организации
@@ -3523,7 +3611,7 @@ function renderPasswordsScreen() {
     body.appendChild(makePwRow(o.name, orgPw, (function(orgName) {
       return function() {
         var newPw = generateUniquePassword();
-        if (newPw) { pw.orgs[orgName] = newPw; saveState(); renderPasswordsScreen(); }
+        if (newPw) { pw.orgs[orgName] = newPw; saveState(); renderPasswordsScreen(); markPasswordsDirty(); }
       };
     }(o.name))));
   });
