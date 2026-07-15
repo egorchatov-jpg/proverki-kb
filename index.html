@@ -893,6 +893,10 @@ html, body {
 }
 .methods-th-count-gray { color: var(--text2); }
 .methods-th-count-orange { color: var(--orange); }
+.methods-th-count-label { color: var(--text2); }
+.methods-th-count-col { white-space: normal; line-height: 1.3; }
+.methods-th-name .methods-th-count,
+.barriers-th-passport .methods-th-count { text-align: left; }
 .methods-td { padding: 11px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .methods-td-name { font-size: 14px; color: #1a2035; font-weight: 500; padding-left: 8px; }
 .methods-td-cb { text-align: center; }
@@ -1447,9 +1451,9 @@ html, body {
       </colgroup>
       <thead>
         <tr>
-          <th class="methods-th barriers-th-passport">Паспорт</th>
+          <th class="methods-th barriers-th-passport methods-th-count-col">Паспорт<span class="methods-th-count methods-th-count-label" id="barriers-count-passport">0</span></th>
           <th class="methods-th methods-th-cb-col">Выбрать<span class="methods-th-count methods-th-count-gray" id="barriers-count-sel">0</span></th>
-          <th class="methods-th methods-th-name">Барьеры</th>
+          <th class="methods-th methods-th-name methods-th-count-col">Барьеры<span class="methods-th-count methods-th-count-label" id="barriers-count-items">0</span></th>
           <th class="methods-th methods-th-cb-col">в ПК<span class="methods-th-count methods-th-count-orange" id="barriers-count-pk">0</span></th>
           <th class="methods-th methods-th-cb-col">Показывать<span class="methods-th-count methods-th-count-orange" id="barriers-count-show">0</span></th>
         </tr>
@@ -1487,7 +1491,7 @@ html, body {
       <thead>
         <tr>
           <th class="methods-th methods-th-cb-col" style="width:44px;">Выбрать<span class="methods-th-count methods-th-count-gray" id="methods-count-sel">0</span></th>
-          <th class="methods-th methods-th-name">Метод</th>
+          <th class="methods-th methods-th-name methods-th-count-col">Метод<span class="methods-th-count methods-th-count-label" id="methods-count-items">0</span></th>
           <th class="methods-th methods-th-cb-col" style="width:74px;">Показывать<span class="methods-th-count methods-th-count-orange" id="methods-count-show">0</span></th>
         </tr>
       </thead>
@@ -1525,7 +1529,7 @@ html, body {
       <thead>
         <tr>
           <th class="methods-th methods-th-cb-col" style="width:44px;">Выбрать<span class="methods-th-count methods-th-count-gray" id="orgs-count-sel">0</span></th>
-          <th class="methods-th methods-th-name">Организация</th>
+          <th class="methods-th methods-th-name methods-th-count-col">Организация<span class="methods-th-count methods-th-count-label" id="orgs-count-items">0</span></th>
           <th class="methods-th methods-th-cb-col" style="width:74px;">Показывать<span class="methods-th-count methods-th-count-orange" id="orgs-count-show">0</span></th>
         </tr>
       </thead>
@@ -3393,10 +3397,13 @@ function backFromMethodsScreen() {
 function updateMethodsCheckboxCounts() {
   var sel = document.querySelectorAll('#methods-tbody .method-circle-cb:checked:not(:disabled)').length;
   var show = document.querySelectorAll('#methods-tbody .method-square-cb:checked').length;
+  var items = document.querySelectorAll('#methods-tbody tr').length;
   var elSel = document.getElementById('methods-count-sel');
   var elShow = document.getElementById('methods-count-show');
+  var elItems = document.getElementById('methods-count-items');
   if (elSel) elSel.textContent = sel;
   if (elShow) elShow.textContent = show;
+  if (elItems) elItems.textContent = items;
 }
 
 function renderMethodsTable() {
@@ -3702,6 +3709,8 @@ function renderBarriersTable(year) {
 function updateBarriersCheckboxCounts() {
   var sel = document.querySelectorAll('#barriers-tbody .method-circle-cb:checked').length;
   var pk = 0, show = 0;
+  var items = document.querySelectorAll('#barriers-tbody tr').length;
+  var passports = document.querySelectorAll('#barriers-tbody .barriers-td-passport').length;
   document.querySelectorAll('#barriers-tbody tr').forEach(function(tr) {
     var cbs = tr.querySelectorAll('.method-square-cb');
     if (cbs.length >= 1 && cbs[0].checked) pk++;
@@ -3710,9 +3719,13 @@ function updateBarriersCheckboxCounts() {
   var elSel = document.getElementById('barriers-count-sel');
   var elPK = document.getElementById('barriers-count-pk');
   var elShow = document.getElementById('barriers-count-show');
+  var elItems = document.getElementById('barriers-count-items');
+  var elPassport = document.getElementById('barriers-count-passport');
   if (elSel) elSel.textContent = sel;
   if (elPK) elPK.textContent = pk;
   if (elShow) elShow.textContent = show;
+  if (elItems) elItems.textContent = items;
+  if (elPassport) elPassport.textContent = passports;
 }
 
 function updateBarrierMinusBtnState() {
@@ -3819,10 +3832,13 @@ function renderOrgsTable() {
 function updateOrgsCheckboxCounts() {
   var sel = document.querySelectorAll('#orgs-tbody .method-circle-cb:checked').length;
   var show = document.querySelectorAll('#orgs-tbody .method-square-cb:checked').length;
+  var items = document.querySelectorAll('#orgs-tbody tr').length;
   var elSel = document.getElementById('orgs-count-sel');
   var elShow = document.getElementById('orgs-count-show');
+  var elItems = document.getElementById('orgs-count-items');
   if (elSel) elSel.textContent = sel;
   if (elShow) elShow.textContent = show;
+  if (elItems) elItems.textContent = items;
 }
 
 function updateOrgMinusBtnState() {
