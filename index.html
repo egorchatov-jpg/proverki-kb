@@ -102,7 +102,7 @@ html, body {
 .no-violations-banner {
   width: 100%;
   padding: 20px 24px;
-  display: flex; align-items: center; justify-content: center;
+  display: none; align-items: center; justify-content: center;
   text-align: center;
   color: var(--green);
   font-size: 17px; font-weight: 700; line-height: 1;
@@ -114,7 +114,7 @@ html, body {
   border-radius: var(--card-radius);
   padding: 0 20px;
   height: 53px;
-  display: flex; align-items: center; justify-content: center;
+  display: none; align-items: center; justify-content: center;
   text-align: center;
   color: #fff;
   font-size: 18px; font-weight: 700;
@@ -1020,8 +1020,8 @@ html, body {
   </div>
 
   <div class="lobby-content" id="lobby-content">
-    <div class="no-violations-banner" id="no-violations-banner">Сегодня без нарушений!</div>
-    <div class="violations-banner" id="violations-banner">Нарушения</div>
+    <div class="no-violations-banner" id="no-violations-banner" hidden>Сегодня без нарушений!</div>
+    <div class="violations-banner" id="violations-banner" hidden>Нарушения</div>
     <!-- Violation cards inserted here by JS -->
   </div>
 
@@ -2325,7 +2325,8 @@ window.addEventListener('DOMContentLoaded', function() {
   initDateDrum();
   initViolatorGroups();
   setTodayDate();
-  loadFromServer(); // independent of SW / push permission
+  setTimeout(_unlockLobbyBanners, 400);
+  loadFromServer(function() { _unlockLobbyBanners(); }); // independent of SW / push permission
   setInterval(function() {
     if (hasPendingSync()) retryAllQueues();
   }, 30000);
@@ -2585,6 +2586,33 @@ function openFindFilter(col) {
 }
 
 // ===== LOBBY =====
+var _lobbyViolCount = -1;
+var _lobbyBannersReady = false;
+
+function _showLobbyBanners(count) {
+  var noBanner = document.getElementById('no-violations-banner');
+  var vBanner  = document.getElementById('violations-banner');
+  if (!noBanner || !vBanner) return;
+  if (count === 0) {
+    noBanner.style.display = 'flex';
+    noBanner.hidden = false;
+    vBanner.style.display = 'none';
+    vBanner.hidden = true;
+  } else {
+    noBanner.style.display = 'none';
+    noBanner.hidden = true;
+    vBanner.style.display = 'flex';
+    vBanner.hidden = false;
+  }
+}
+
+function _unlockLobbyBanners() {
+  if (_lobbyBannersReady) return;
+  _lobbyBannersReady = true;
+  _lobbyViolCount = -1;
+  renderLobby();
+}
+
 function renderLobby() {
   var today = todayStr();
   var violations = appState.db.filter(function(r) {
@@ -2595,15 +2623,20 @@ function renderLobby() {
   // remove old violation cards
   content.querySelectorAll('.violation-card').forEach(function(el){ el.remove(); });
 
-  var noBanner = document.getElementById('no-violations-banner');
-  var vBanner  = document.getElementById('violations-banner');
+  var count = violations.length;
+  var bannersChanged = (_lobbyViolCount !== count);
+  _lobbyViolCount = count;
 
-  if (violations.length === 0) {
-    noBanner.style.display = 'flex';
-    vBanner.style.display = 'none';
-  } else {
-    noBanner.style.display = 'none';
-    vBanner.style.display = 'flex';
+  if (_lobbyBannersReady && bannersChanged) {
+    _showLobbyBanners(count);
+  } else if (!_lobbyBannersReady) {
+    var noBanner = document.getElementById('no-violations-banner');
+    var vBanner  = document.getElementById('violations-banner');
+    if (noBanner) { noBanner.style.display = 'none'; noBanner.hidden = true; }
+    if (vBanner)  { vBanner.style.display = 'none';  vBanner.hidden = true; }
+  }
+
+  if (count > 0) {
     violations.forEach(function(r) {
       var card = document.createElement('div');
       card.className = 'violation-card';
