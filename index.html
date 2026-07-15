@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#efefef">
 <title>Проверки КБ</title>
 <link rel="manifest" href="/manifest.json">
@@ -63,39 +63,14 @@ html, body {
   overflow: hidden;
 }
 .screen.active { opacity: 1; pointer-events: all; }
-/* iOS standalone PWA only — Safari tabs unchanged */
-.is-ios-standalone {
-  --sat-top: 59px;
-}
-#ios-pwa-top-fill {
-  display: none;
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: calc(var(--sat-top, 59px) + 3px);
-  background: #efefef;
-  z-index: 2147483646;
-  pointer-events: none;
-}
-.is-ios-standalone #ios-pwa-top-fill { display: block; }
-.is-ios-standalone .screen {
-  inset: auto;
-  top: 0; left: 0; right: 0; bottom: 0;
-  width: 100%;
-  height: 100lvh;
-  padding-top: var(--sat-top, 59px);
-  box-sizing: border-box;
-}
-.is-ios-standalone .lobby-topbar { padding-top: 16px; }
-.is-ios-standalone #pull-indicator { top: var(--sat-top, 59px); }
-
-
 /* ===== LOBBY ===== */
 #screen-lobby { background: var(--bg); }
 
 .lobby-topbar {
-  display: flex; align-items: flex-start; justify-content: flex-end;
-  padding: 16px 16px 0;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding: max(16px, env(safe-area-inset-top)) 16px 10px;
   flex-shrink: 0;
+  background: var(--bg);
 }
 
 .settings-btn {
@@ -762,12 +737,6 @@ html, body {
   pointer-events: none;
   transform: translateY(-48px);
   opacity: 0;
-  visibility: hidden;
-  box-shadow: none;
-}
-#pull-indicator.release,
-#pull-indicator.syncing,
-#pull-indicator.done {
   box-shadow: 0 2px 10px rgba(0,0,0,0.10);
 }
 #pull-indicator.release { color: var(--orange); }
@@ -1016,8 +985,6 @@ html, body {
 </style>
 </head>
 <body>
-
-<div id="ios-pwa-top-fill" aria-hidden="true"></div>
 
 <!-- Pull-to-refresh indicator (global, position:fixed) -->
 <div id="pull-indicator" aria-hidden="true">
@@ -2087,25 +2054,21 @@ function setPullIndicator(cls, text) {
 function animatePullIndicator(translateY, transition) {
   var el = document.getElementById('pull-indicator');
   if (!el) return;
-  el.style.transition = transition ? 'transform 0.22s ease, opacity 0.22s ease, visibility 0s' : 'none';
+  el.style.transition = transition ? 'transform 0.22s ease, opacity 0.22s ease' : 'none';
   el.style.transform  = 'translateY(' + translateY + 'px)';
-  el.style.visibility = translateY >= -4 ? 'visible' : 'hidden';
   el.style.opacity    = translateY >= -4 ? '1' : String(Math.max(0, 1 + translateY / 48));
 }
 
 function hidePullIndicator(animate) {
   var el = document.getElementById('pull-indicator');
   if (!el) return;
-  el.style.transition = animate ? 'transform 0.22s ease, opacity 0.22s ease, visibility 0s linear 0.22s' : 'none';
+  el.style.transition = animate ? 'transform 0.22s ease, opacity 0.22s ease' : 'none';
   el.style.transform  = 'translateY(-48px)';
   el.style.opacity    = '0';
-  el.style.visibility = 'hidden';
   setTimeout(function(){ setPullIndicator('', 'Потяните для обновления'); }, 250);
 }
 
 function triggerManualSync() {
-  var el = document.getElementById('pull-indicator');
-  if (el) el.style.visibility = 'visible';
   setPullIndicator('syncing', 'Синхронизация...');
   animatePullIndicator(0, true);
   retrySyncQueue();
@@ -2292,29 +2255,7 @@ function closeDetail() {
 // iOS already positions fixed elements relative to visual viewport — no fix needed there.
 var _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-if (_isIOS) document.documentElement.classList.add('is-ios');
 if (!_isIOS) document.documentElement.classList.add('is-not-ios');
-
-function initIosStandaloneSafeArea() {
-  var isStandalone = window.navigator.standalone === true
-    || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-  if (!_isIOS || !isStandalone) return;
-  document.documentElement.classList.add('is-ios-standalone');
-  var sat = 59;
-  try {
-    var probe = document.createElement('div');
-    probe.style.cssText = 'position:fixed;top:0;left:0;padding-top:env(safe-area-inset-top);visibility:hidden;pointer-events:none';
-    document.documentElement.appendChild(probe);
-    var v = parseFloat(getComputedStyle(probe).paddingTop);
-    document.documentElement.removeChild(probe);
-    if (v > 0) sat = Math.ceil(v);
-  } catch (e) {}
-  document.documentElement.style.setProperty('--sat-top', sat + 'px');
-  var fill = document.getElementById('ios-pwa-top-fill');
-  if (fill) fill.style.height = (sat + 3) + 'px';
-}
-initIosStandaloneSafeArea();
-
 if (window.visualViewport && !_isIOS) {
   function syncOverlayHeight() {
     var h = window.visualViewport.height + 'px';
