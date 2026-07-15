@@ -64,6 +64,21 @@ html, body {
 }
 .screen.active { opacity: 1; pointer-events: all; }
 
+/* iOS: hide 1px seam at physical top edge in standalone PWA */
+html.is-ios,
+html.is-ios body {
+  background: var(--bg);
+}
+.is-ios .screen::before {
+  content: '';
+  position: absolute;
+  top: -2px; left: 0; right: 0;
+  height: 3px;
+  background: var(--bg);
+  z-index: 10000;
+  pointer-events: none;
+}
+
 /* ===== LOBBY ===== */
 #screen-lobby { background: var(--bg); }
 
@@ -2256,6 +2271,7 @@ function closeDetail() {
 // iOS already positions fixed elements relative to visual viewport — no fix needed there.
 var _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+if (_isIOS) document.documentElement.classList.add('is-ios');
 if (!_isIOS) document.documentElement.classList.add('is-not-ios');
 if (window.visualViewport && !_isIOS) {
   function syncOverlayHeight() {
@@ -2331,6 +2347,7 @@ window.addEventListener('DOMContentLoaded', function() {
     if (hasPendingSync()) retryAllQueues();
   }, 30000);
   document.addEventListener('visibilitychange', function() {
+    if (document.hidden && isSettingsDirty()) syncSettingsToServer();
     if (!document.hidden) {
       renderLobby();
       loadFromServer();
@@ -2391,6 +2408,7 @@ function saveState() {
       barriers: appState.barriers,
       autocomplete: appState.autocomplete,
       barriersPK: appState.barriersPK || {},
+      barriersConfig: appState.barriersConfig || {},
       methods: appState.methods || DEFAULT_METHODS,
       passwords: appState.passwords || getDefaultPasswords(),
       usedPasswords: appState.usedPasswords || getDefaultUsedPasswords()
@@ -2821,6 +2839,86 @@ function checkPin() {
 
 // ===== SETTINGS SYNC =====
 
+
+function markSettingsDirty() {
+  try { localStorage.setItem('pkb-settings-dirty', '1'); } catch(e) {}
+}
+function clearSettingsDirty() {
+  try { localStorage.removeItem('pkb-settings-dirty'); } catch(e) {}
+}
+function isSettingsDirty() {
+  try { return localStorage.getItem('pkb-settings-dirty') === '1'; } catch(e) { return false; }
+}
+function mergeMethods(server, local) {
+  if (!server || !server.length) return local || DEFAULT_METHODS;
+  local = local || [];
+  var localMap = {};
+  local.forEach(function(m) { if (m && m.name) localMap[m.name] = m; });
+  var out = server.map(function(m) {
+    var loc = localMap[m.name];
+    if (!loc) return Object.assign({}, m);
+    return { name: m.name, show: loc.show !== undefined ? loc.show : (m.show !== false), fixed: m.fixed || loc.fixed };
+  });
+  local.forEach(function(m) {
+    if (m && m.name && !out.some(function(x) { return x.name === m.name; })) out.push(Object.assign({}, m));
+  });
+  return out;
+}
+function mergeOrgs(server, local) {
+  if (!server || !server.length) return local || [];
+  local = local || [];
+  var localMap = {};
+  local.forEach(function(o) {
+    var n = (typeof o === 'string') ? o : o.name;
+    if (n) localMap[n] = o;
+  });
+  var out = server.map(function(o) {
+    if (typeof o === 'string') {
+      var loc = localMap[o];
+      return loc && typeof loc !== 'string' ? { name: o, show: loc.show !== false } : { name: o, show: true };
+    }
+    var loc = localMap[o.name];
+    if (!loc || typeof loc === 'string') return Object.assign({}, o);
+    return { name: o.name, show: loc.show !== undefined ? loc.show : (o.show !== false) };
+  });
+  local.forEach(function(o) {
+    var n = (typeof o === 'string') ? o : o.name;
+    if (n && !out.some(function(x) { return x.name === n; })) {
+      out.push(typeof o === 'string' ? { name: o, show: true } : Object.assign({}, o));
+    }
+  });
+  return out;
+}
+function mergeBarriersConfig(server, local) {
+  if (!server) return local || {};
+  if (!local) return server;
+  var out = {};
+  var years = {};
+  Object.keys(server).forEach(function(y) { years[y] = true; });
+  Object.keys(local).forEach(function(y) { years[y] = true; });
+  Object.keys(years).forEach(function(year) {
+    var srv = server[year] || [];
+    var loc = local[year] || [];
+    var localMap = {};
+    loc.forEach(function(b) { if (b && b.name) localMap[b.name] = b; });
+    var merged = srv.map(function(b) {
+      var lb = localMap[b.name];
+      if (!lb) return Object.assign({}, b);
+      return {
+        name: b.name,
+        passport: lb.passport !== undefined ? lb.passport : (b.passport || ''),
+        inPK: !!lb.inPK,
+        show: lb.show !== undefined ? (lb.show !== false) : (b.show !== false)
+      };
+    });
+    loc.forEach(function(b) {
+      if (b && b.name && !merged.some(function(x) { return x.name === b.name; })) merged.push(Object.assign({}, b));
+    });
+    out[year] = merged;
+  });
+  return out;
+}
+
 /**
  * Sync settings FROM server and merge into appState.
  * Calls callback() when done (or on error — still proceeds).
@@ -2839,21 +2937,35 @@ function syncSettingsFromServer(callback) {
     })
     .then(function(data) {
       if (errEl) errEl.textContent = '';
+      var localDirty = isSettingsDirty();
+      var localMethods = appState.methods;
+      var localOrgs = appState.orgs;
+      var localBarriersConfig = appState.barriersConfig;
       // Merge server settings — never rewrite Excel records (values used only for NEW entries)
-      if (data.methods  && data.methods.length)  appState.methods    = data.methods;
-      if (data.barriersPK)                        appState.barriersPK = data.barriersPK;
+      if (data.methods && data.methods.length) {
+        appState.methods = localDirty ? mergeMethods(data.methods, localMethods) : data.methods;
+      }
+      if (data.barriersPK) appState.barriersPK = data.barriersPK;
       if (data.orgs && data.orgs.length) {
-        if (typeof data.orgs[0] === 'string') {
+        if (localDirty) {
+          appState.orgs = mergeOrgs(data.orgs, localOrgs);
+        } else if (typeof data.orgs[0] === 'string') {
           appState.orgs = data.orgs.map(function(n) { return { name: n, show: true }; });
-        } else { appState.orgs = data.orgs; }
+        } else {
+          appState.orgs = data.orgs;
+        }
         // Migrate stale 2-item server data to DEFAULT_ORGS
-        if (appState.orgs.length <= 2 ||
-            appState.orgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; })) {
+        if (!localDirty && (appState.orgs.length <= 2 ||
+            appState.orgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; }))) {
           appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
         }
       }
-      if (data.barriers && data.barriers.length)  appState.barriers      = data.barriers;
-      if (data.barriersConfig) appState.barriersConfig = data.barriersConfig;
+      if (data.barriers && data.barriers.length) appState.barriers = data.barriers;
+      if (data.barriersConfig) {
+        appState.barriersConfig = localDirty
+          ? mergeBarriersConfig(data.barriersConfig, localBarriersConfig)
+          : data.barriersConfig;
+      }
       if (data.passwords) {
         // Merge server passwords — superuser PIN is hardcoded, never synced
         var sp = data.passwords;
@@ -2889,6 +3001,7 @@ function syncSettingsToServer() {
   var settings = {
     methods:       appState.methods       || DEFAULT_METHODS,
     barriersPK:    appState.barriersPK    || {},
+    barriersConfig: appState.barriersConfig || {},
     orgs:          appState.orgs          || [],
     barriers:      appState.barriers      || [],
       passwords:     (function(){ var p=Object.assign({},appState.passwords||getDefaultPasswords()); delete p.superuser; return p; })(),
@@ -2898,7 +3011,10 @@ function syncSettingsToServer() {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(settings)
-  }).catch(function(e) { console.warn('[settings] sync to server failed:', e.message); });
+  })
+  .then(function(r) { return r.json().catch(function() { return {}; }); })
+  .then(function(d) { if (d && d.success) clearSettingsDirty(); })
+  .catch(function(e) { console.warn('[settings] sync to server failed:', e.message); });
 }
 
 /** Exit settings screen: sync to server, then go back to lobby. */
@@ -3217,14 +3333,17 @@ function snapPasswordsState() {
 }
 
 function markBarriersDirty() {
+  markSettingsDirty();
   refreshSettingsBackLabel('screen-barriers-list', 'barriers', snapBarriersYearList());
 }
 
 function markMethodsDirty() {
+  markSettingsDirty();
   refreshSettingsBackLabel('screen-methods', 'methods', snapMethodsList());
 }
 
 function markOrgsDirty() {
+  markSettingsDirty();
   refreshSettingsBackLabel('screen-orgs', 'orgs', snapOrgsList());
 }
 
@@ -3242,6 +3361,7 @@ function openMethodsScreen() {
 }
 
 function backFromMethodsScreen() {
+  if (_settingsSnap.methods !== JSON.stringify(snapMethodsList())) syncSettingsToServer();
   showScreen('screen-settings');
 }
 
@@ -3578,10 +3698,14 @@ function saveNewBarrier() {
 
 
 function backFromBarriersList() {
+  var wasDirty = _settingsSnap.barriers !== JSON.stringify(snapBarriersYearList());
   if (_bpkYear) {
     appState.barriersConfig[_bpkYear] = buildBarriersFromCatalog(appState.barriersConfig[_bpkYear]);
     saveState();
+    takeSettingsSnap('barriers', snapBarriersYearList());
+    setSettingsBackLabel('screen-barriers-list', false);
   }
+  if (wasDirty) syncSettingsToServer();
   showScreen('screen-barriers-years');
 }
 
@@ -3683,6 +3807,7 @@ function backFromOrgsScreen() {
     appState.orgs.sort(function(a, b) { return a.name.localeCompare(b.name, 'ru'); });
     saveState();
   }
+  if (_settingsSnap.orgs !== JSON.stringify(snapOrgsList())) syncSettingsToServer();
   showScreen('screen-settings');
 }
 
@@ -5569,20 +5694,17 @@ function dateEntryToMs(s) {
 }
 
 // Master comparator:
-// 1. дата проверки ↑  2. орг А-Я  3. барьер А-Я  4. метод А-Я
-// 5. объект А-Я  6. дата+время внесения ↓ (полный timestamp, включает чч:мм:сс)
+// 1. дата проверки ↑  2. дата+время внесения ↓  3. орг А-Я  4. метод А-Я  5. барьер А-Я
 function cmpRecords(a, b) {
   var d = dateToMs(a.dateCheck) - dateToMs(b.dateCheck);
   if (d) return d;
-  d = (a.org     || '').localeCompare(b.org     || '', 'ru');
+  d = dateEntryToMs(b.dateEntry) - dateEntryToMs(a.dateEntry);
   if (d) return d;
-  d = (a.barrier || '').localeCompare(b.barrier || '', 'ru');
+  d = (a.org     || '').localeCompare(b.org     || '', 'ru');
   if (d) return d;
   d = (a.method  || '').localeCompare(b.method  || '', 'ru');
   if (d) return d;
-  d = (a.obj     || '').localeCompare(b.obj     || '', 'ru');
-  if (d) return d;
-  return dateEntryToMs(b.dateEntry) - dateEntryToMs(a.dateEntry);
+  return (a.barrier || '').localeCompare(b.barrier || '', 'ru');
 }
 
 function pad(n) { return String(n).padStart(2,'0'); }

@@ -1,4 +1,5 @@
 const XLSX = require('xlsx');
+const { sortAndRenumberSheet } = require('./excel-utils');
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'egorchatov-jpg';
@@ -185,7 +186,8 @@ async function updateRecord(fileName, dateEntry, fields, fallback) {
       if (ci !== undefined) rows[rowIdx][ci] = fields[k];
     });
 
-    const newWs = XLSX.utils.aoa_to_sheet(rows);
+    const sorted = sortAndRenumberSheet(rows);
+    const newWs = XLSX.utils.aoa_to_sheet(sorted);
     newWs['!cols'] = ws['!cols'];
     wb.Sheets[wb.SheetNames[0]] = newWs;
 

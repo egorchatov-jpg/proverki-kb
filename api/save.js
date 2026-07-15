@@ -1,26 +1,10 @@
 const XLSX = require('xlsx');
+const { COLUMNS, sortAndRenumberSheet } = require('./excel-utils');
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'egorchatov-jpg';
 const GITHUB_REPO  = process.env.GITHUB_DATA_REPO || 'proverki-kb-data';
 
-const COLUMNS = [
-  { h: '№',                                       k: 'num'             },
-  { h: 'Дата проверки',                           k: 'dateCheck'       },
-  { h: 'Дата внесения проверки',                  k: 'dateEntry'       },
-  { h: 'Метод проверки',                          k: 'method'          },
-  { h: 'Проверку выполнил',                       k: 'inspector'       },
-  { h: 'Проверяемая организация',                 k: 'org'             },
-  { h: 'Проверяемый объект',                      k: 'obj'             },
-  { h: 'Куратор от заказчика',                    k: 'curator'         },
-  { h: 'Проверяемый барьер',                      k: 'barrier'         },
-  { h: 'Барьер в ПК',                             k: 'barrierInPK'     },
-  { h: 'Работоспособность барьера',               k: 'works'           },
-  { h: 'Нарушение допустил',                      k: 'violator'        },
-  { h: 'Описание нарушения',                      k: 'desc'            },
-  { h: 'Корректирующие мероприятия',              k: 'corrective'      },
-  { h: 'Оспаривание в СОКБ',                      k: 'contestMeasures' },
-];
 
 function ghApiUrl(fileName) {
   return `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(fileName)}`;
@@ -106,34 +90,14 @@ async function appendRecord(fileName, record) {
       origin: { r: rows.length, c: 0 },
     });
 
-    // Sort: dateCheck asc (col 1) → org А-Я (col 5) → barrier А-Я (col 8) → method А-Я (col 3) → obj А-Я (col 6) → dateEntry desc (col 2)
     const allRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-    const header = allRows[0];
-    const data = allRows.slice(1).filter(row => row[1] && String(row[1]).trim());
-    const toDateNum = s => { const p = (s || '').split('.'); return p.length >= 3 ? parseInt(p[2].slice(0,4) + p[1] + p[0]) : 0; };
-    const toDateEntryNum = s => {
-      const m = String(s || '').match(/(\d{1,2})\.(\d{1,2})\.(\d{4}),?\s*(\d{1,2}):(\d{2}):(\d{2})/);
-      if (!m) return 0;
-      return +m[3]*10000000000 + +m[2]*100000000 + +m[1]*1000000 + +m[4]*10000 + +m[5]*100 + +m[6];
-    };
-    data.sort((a, b) => {
-      let d = toDateNum(a[1]) - toDateNum(b[1]);                                    // date asc
-      if (d) return d;
-      d = String(a[5] || '').localeCompare(String(b[5] || ''), 'ru');               // org А-Я
-      if (d) return d;
-      d = String(a[8] || '').localeCompare(String(b[8] || ''), 'ru');               // barrier А-Я
-      if (d) return d;
-      d = String(a[3] || '').localeCompare(String(b[3] || ''), 'ru');               // method А-Я
-      if (d) return d;
-      d = String(a[6] || '').localeCompare(String(b[6] || ''), 'ru');               // obj А-Я
-      if (d) return d;
-      return toDateEntryNum(b[2]) - toDateEntryNum(a[2]);                           // dateEntry desc
-    });
-    data.forEach((row, i) => { row[0] = i + 1; });
-    const idx = data.findIndex(row => row[1] === (record.dateCheck || '') && row[2] === (record.dateEntry || ''));
-    record.num = idx >= 0 ? idx + 1 : data.length;
+    const sorted = sortAndRenumberSheet(allRows);
+    const idx = sorted.slice(1).findIndex(row =>
+      row[1] === (record.dateCheck || '') && row[2] === (record.dateEntry || '')
+    );
+    record.num = idx >= 0 ? idx + 1 : sorted.length - 1;
 
-    const newWs = XLSX.utils.aoa_to_sheet([header, ...data]);
+    const newWs = XLSX.utils.aoa_to_sheet(sorted);
     newWs['!cols'] = ws['!cols'];
     wb.Sheets[wb.SheetNames[0]] = newWs;
 

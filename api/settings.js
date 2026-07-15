@@ -3,6 +3,7 @@ const GITHUB_OWNER = process.env.GITHUB_OWNER || 'egorchatov-jpg';
 const GITHUB_REPO  = process.env.GITHUB_DATA_REPO || 'proverki-kb-data';
 const FILE_PATH    = 'settings.json';
 const API_URL      = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
+const { syncBarriersConfigToExcel } = require('./gh-excel');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -70,7 +71,18 @@ module.exports = async (req, res) => {
         const err = await rPut.text();
         return res.status(502).json({ error: `GitHub HTTP ${rPut.status}: ${err}` });
       }
-      return res.status(200).json({ success: true });
+
+      let excelSync = null;
+      if (req.body && req.body.barriersConfig) {
+        try {
+          excelSync = await syncBarriersConfigToExcel(req.body.barriersConfig);
+        } catch (excelErr) {
+          console.error('[settings] excel sync failed:', excelErr.message);
+          return res.status(500).json({ error: 'Settings saved but Excel sync failed: ' + excelErr.message });
+        }
+      }
+
+      return res.status(200).json({ success: true, excelSync });
     } catch (e) {
       clearTimeout(timer);
       return res.status(500).json({ error: e.message });
