@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#efefef">
 <title>Проверки КБ</title>
 <link rel="manifest" href="/manifest.json">
@@ -63,6 +63,31 @@ html, body {
   overflow: hidden;
 }
 .screen.active { opacity: 1; pointer-events: all; }
+/* iOS: remove hairline under Dynamic Island / status bar */
+.is-ios .screen {
+  padding-top: env(safe-area-inset-top, 0px);
+  box-sizing: border-box;
+}
+.is-ios .screen.active::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--bg);
+  z-index: 0;
+  pointer-events: none;
+}
+.is-ios .screen > * {
+  position: relative;
+  z-index: 1;
+}
+.is-ios .lobby-topbar {
+  padding-top: 16px;
+}
+.is-ios #pull-indicator {
+  top: env(safe-area-inset-top, 0px);
+}
+
 
 /* ===== LOBBY ===== */
 #screen-lobby { background: var(--bg); }
@@ -737,6 +762,7 @@ html, body {
   pointer-events: none;
   transform: translateY(-48px);
   opacity: 0;
+  visibility: hidden;
   box-shadow: none;
 }
 #pull-indicator.release,
@@ -2059,21 +2085,25 @@ function setPullIndicator(cls, text) {
 function animatePullIndicator(translateY, transition) {
   var el = document.getElementById('pull-indicator');
   if (!el) return;
-  el.style.transition = transition ? 'transform 0.22s ease, opacity 0.22s ease' : 'none';
+  el.style.transition = transition ? 'transform 0.22s ease, opacity 0.22s ease, visibility 0s' : 'none';
   el.style.transform  = 'translateY(' + translateY + 'px)';
+  el.style.visibility = translateY >= -4 ? 'visible' : 'hidden';
   el.style.opacity    = translateY >= -4 ? '1' : String(Math.max(0, 1 + translateY / 48));
 }
 
 function hidePullIndicator(animate) {
   var el = document.getElementById('pull-indicator');
   if (!el) return;
-  el.style.transition = animate ? 'transform 0.22s ease, opacity 0.22s ease' : 'none';
+  el.style.transition = animate ? 'transform 0.22s ease, opacity 0.22s ease, visibility 0s linear 0.22s' : 'none';
   el.style.transform  = 'translateY(-48px)';
   el.style.opacity    = '0';
+  el.style.visibility = 'hidden';
   setTimeout(function(){ setPullIndicator('', 'Потяните для обновления'); }, 250);
 }
 
 function triggerManualSync() {
+  var el = document.getElementById('pull-indicator');
+  if (el) el.style.visibility = 'visible';
   setPullIndicator('syncing', 'Синхронизация...');
   animatePullIndicator(0, true);
   retrySyncQueue();
