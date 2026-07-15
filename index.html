@@ -7,23 +7,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#efefef">
-<script>
-(function(){
-  var standalone = window.navigator.standalone === true
-    || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-  if (!standalone) return;
-  var sat = 59;
-  try {
-    var probe = document.createElement('div');
-    probe.style.cssText = 'padding-top:env(safe-area-inset-top);position:fixed;visibility:hidden;pointer-events:none';
-    document.documentElement.appendChild(probe);
-    var v = parseFloat(getComputedStyle(probe).paddingTop) || 0;
-    document.documentElement.removeChild(probe);
-    if (v > 20) sat = Math.ceil(v);
-  } catch (e) {}
-  document.documentElement.style.setProperty('--pkb-sat-top', sat + 'px');
-})();
-</script>
 <title>Проверки КБ</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/png" href="/favicon.png">
@@ -80,26 +63,6 @@ html, body {
   overflow: hidden;
 }
 .screen.active { opacity: 1; pointer-events: all; }
-
-/* iOS standalone PWA: cover system hairline under Dynamic Island (WebKit #301994) */
-#pkb-ios-hairline-cover { display: none; }
-@supports (-webkit-touch-callout: none) {
-  @media (display-mode: standalone) {
-    #pkb-ios-hairline-cover {
-      display: block;
-      position: fixed;
-      /* sit ON the system hairline (top edge of safe-area), not below it */
-      top: calc(var(--pkb-sat-top, 59px) - 1px);
-      left: 0; right: 0;
-      height: 2px;
-      transform: translateY(-100%);
-      background: #efefef;
-      z-index: 2147483646;
-      pointer-events: none;
-    }
-  }
-}
-
 /* ===== LOBBY ===== */
 #screen-lobby { background: var(--bg); }
 
@@ -1022,8 +985,6 @@ html, body {
 </style>
 </head>
 <body>
-
-<div id="pkb-ios-hairline-cover" aria-hidden="true"></div>
 
 <!-- Pull-to-refresh indicator (global, position:fixed) -->
 <div id="pull-indicator" aria-hidden="true">
