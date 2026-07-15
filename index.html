@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#efefef">
-<meta name="color-scheme" content="light">
 <title>Проверки КБ</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/png" href="/favicon.png">
@@ -65,38 +64,13 @@ html, body {
 }
 .screen.active { opacity: 1; pointer-events: all; }
 
-/* iOS standalone: extend background into status-bar area (no top hairline) */
-html.is-ios,
-html.is-ios body {
-  background: var(--bg);
-  min-height: 100%;
-  min-height: -webkit-fill-available;
-}
-.is-ios .screen {
-  padding-top: constant(safe-area-inset-top);
-  padding-top: env(safe-area-inset-top, 0px);
-  box-sizing: border-box;
-  min-height: 100%;
-  min-height: -webkit-fill-available;
-}
-.is-ios .lobby-topbar {
-  padding-top: 16px;
-}
-.is-ios #pull-indicator {
-  padding-top: env(safe-area-inset-top, 0px);
-  height: calc(48px + env(safe-area-inset-top, 0px));
-  transform: translateY(calc(-48px - env(safe-area-inset-top, 0px)));
-  box-shadow: none;
-}
-
 /* ===== LOBBY ===== */
 #screen-lobby { background: var(--bg); }
 
 .lobby-topbar {
-  display: flex; align-items: center; justify-content: flex-end;
-  padding: max(16px, env(safe-area-inset-top)) 16px 10px;
+  display: flex; align-items: flex-start; justify-content: flex-end;
+  padding: 16px 16px 0;
   flex-shrink: 0;
-  background: var(--bg);
 }
 
 .settings-btn {
@@ -763,6 +737,11 @@ html.is-ios body {
   pointer-events: none;
   transform: translateY(-48px);
   opacity: 0;
+  box-shadow: none;
+}
+#pull-indicator.release,
+#pull-indicator.syncing,
+#pull-indicator.done {
   box-shadow: 0 2px 10px rgba(0,0,0,0.10);
 }
 #pull-indicator.release { color: var(--orange); }
@@ -2281,10 +2260,7 @@ function closeDetail() {
 // iOS already positions fixed elements relative to visual viewport — no fix needed there.
 var _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-if (_isIOS) {
-  document.documentElement.classList.add('is-ios');
-  document.body.classList.add('is-ios');
-}
+if (_isIOS) document.documentElement.classList.add('is-ios');
 if (!_isIOS) document.documentElement.classList.add('is-not-ios');
 if (window.visualViewport && !_isIOS) {
   function syncOverlayHeight() {
