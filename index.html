@@ -2517,6 +2517,23 @@ function dateNumFromStr(s) {
   return p.length === 3 ? parseInt(p[2] + p[1] + p[0]) : 0;
 }
 
+// Pool for filter overlay: apply all active filters except the column being edited
+function filterPoolForOverlay(recs, filters, openCol, statusFn) {
+  return recs.filter(function(r) {
+    if (openCol !== 'dateCheck' && (filters.dateFrom || filters.dateTo)) {
+      var n = dateNumFromStr(r.dateCheck);
+      var from = filters.dateFrom ? dateNumFromStr(filters.dateFrom) : 0;
+      var to = filters.dateTo ? dateNumFromStr(filters.dateTo) : 99999999;
+      if (n < from || n > to) return false;
+    }
+    if (openCol !== 'method' && filters.method && r.method !== filters.method) return false;
+    if (openCol !== 'org' && filters.org && r.org !== filters.org) return false;
+    if (openCol !== 'barrier' && filters.barrier && r.barrier !== filters.barrier) return false;
+    if (openCol !== 'status' && filters.status && statusFn && statusFn(r) !== filters.status) return false;
+    return true;
+  });
+}
+
 function openFind() {
   applyFindFilters();
   showScreen('screen-find');
@@ -2554,7 +2571,12 @@ function updateFilterIcons() {
 }
 
 function openFindFilter(col) {
-  var all = appState.db;
+  var all = filterPoolForOverlay(
+    appState.db.filter(function(r) { return r.dateCheck && r.dateCheck.trim(); }),
+    findFilters,
+    col,
+    null
+  );
   function unique(arr) {
     var seen = {}, out = [];
     arr.forEach(function(v) { if (v && !seen[v]) { seen[v] = 1; out.push(v); } });
@@ -4154,8 +4176,13 @@ function renderSokbList() {
 }
 
 function openSokbFilter(col) {
-  var all = (appState.db || []).filter(isSokbListRecord);
   var f = sokbListFilters;
+  var all = filterPoolForOverlay(
+    (appState.db || []).filter(isSokbListRecord),
+    f,
+    col,
+    getSokbStatus
+  );
   var statMap = {'В процессе':'process','Успешно':'success','Безуспешно':'fail'};
   var revMap = {process:'В процессе',success:'Успешно',fail:'Безуспешно'};
 
@@ -4662,8 +4689,13 @@ function renderCorrectiveList() {
 }
 
 function openCorrFilter(col) {
-  var all = (appState.db || []).filter(isCorrectiveListRecord);
   var f = correctiveListFilters;
+  var all = filterPoolForOverlay(
+    (appState.db || []).filter(isCorrectiveListRecord),
+    f,
+    col,
+    getCorrectiveStatus
+  );
   var statMap = {'Не внесено':'none','Внесено':'entered','Просрочено':'overdue','Выполнено':'done'};
   var revMap = {none:'Не внесено',entered:'Внесено',overdue:'Просрочено',done:'Выполнено'};
 
