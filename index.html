@@ -1609,8 +1609,12 @@ function normalizeDateStr(s) {
   if (!s) return '';
   var dot = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
   if (dot) return pad(+dot[1]) + '.' + pad(+dot[2]) + '.' + dot[3];
-  var slash = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (slash) return pad(+slash[2]) + '.' + pad(+slash[1]) + '.' + slash[3];
+  var slash = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (slash) {
+    var y = +slash[3];
+    if (y < 100) y += 2000;
+    return pad(+slash[2]) + '.' + pad(+slash[1]) + '.' + y;
+  }
   if (/^\d+(\.\d+)?$/.test(s) && +s > 30000) {
     var d = new Date((+s - 25569) * 86400 * 1000);
     if (!isNaN(d.getTime())) return formatDate(d);
@@ -1637,7 +1641,7 @@ var SYNC_QUEUE_KEY   = 'pkb-sync-queue';
 var UPDATE_QUEUE_KEY = 'pkb-update-queue';
 var SERVER_SHA_KEY   = 'pkb-server-shas';
 var DATA_VERSION_KEY = 'pkb-data-version';
-var CURRENT_DATA_VERSION = 'v8-date-format-sort';
+var CURRENT_DATA_VERSION = 'v9-excel-dates-migrated';
 var VAPID_KEY_STORE = 'pkb-vapid-key';
 var swRegistration   = null;
 

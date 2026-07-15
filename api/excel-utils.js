@@ -22,7 +22,39 @@ const COL = {
   corrective: 13, contestMeasures: 14,
 };
 
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function excelSerialToDate(n) {
+  return new Date((Math.floor(n) - 25569) * 86400 * 1000);
+}
+
+function normalizeDateStr(val) {
+  if (val == null || val === '') return '';
+  if (typeof val === 'number' && val > 30000) val = excelSerialToDate(val);
+  if (val instanceof Date) {
+    return `${pad2(val.getDate())}.${pad2(val.getMonth() + 1)}.${val.getFullYear()}`;
+  }
+  const s = String(val).trim();
+  if (!s) return '';
+  const dot = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (dot) return `${pad2(+dot[1])}.${pad2(+dot[2])}.${dot[3]}`;
+  const slash = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (slash) {
+    let y = +slash[3];
+    if (y < 100) y += 2000;
+    return `${pad2(+slash[2])}.${pad2(+slash[1])}.${y}`;
+  }
+  if (/^\d+(\.\d+)?$/.test(s) && +s > 30000) {
+    const d = excelSerialToDate(+s);
+    if (!Number.isNaN(d.getTime())) {
+      return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
+    }
+  }
+  return s;
+}
+
 function toDateNum(s) {
+  s = normalizeDateStr(s);
   const p = String(s || '').split('.');
   return p.length >= 3 ? parseInt(p[2].slice(0, 4) + p[1] + p[0], 10) : 0;
 }
@@ -122,6 +154,7 @@ module.exports = {
   COLUMNS,
   COL,
   buildColIdx,
+  normalizeDateStr,
   toDateNum,
   toDateEntryNum,
   sortDataRows,

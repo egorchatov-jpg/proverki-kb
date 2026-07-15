@@ -1,6 +1,5 @@
 const XLSX = require('xlsx');
-
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const { normalizeDateStr, toDateNum, toDateEntryNum } = require('./excel-utils');
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'egorchatov-jpg';
 const GITHUB_REPO  = process.env.GITHUB_DATA_REPO || 'proverki-kb-data';
 
@@ -33,37 +32,7 @@ function fmtDateTime(d) {
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-function excelSerialToDate(n) {
-  return new Date((Math.floor(n) - 25569) * 86400 * 1000);
-}
-
-function normalizeDateStr(val) {
-  if (val == null || val === '') return '';
-  if (val instanceof Date) return fmtDate(val);
-  const s = String(val).trim();
-  if (!s) return '';
-  const dot = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-  if (dot) return `${pad(+dot[1])}.${pad(+dot[2])}.${dot[3]}`;
-  const slash = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (slash) return `${pad(+slash[2])}.${pad(+slash[1])}.${slash[3]}`;
-  if (/^\d+(\.\d+)?$/.test(s) && +s > 30000) {
-    const d = excelSerialToDate(+s);
-    if (!Number.isNaN(d.getTime())) return fmtDate(d);
-  }
-  return s;
-}
-
-function toDateNum(s) {
-  s = normalizeDateStr(s);
-  const p = (s || '').split('.');
-  return p.length >= 3 ? parseInt(p[2].slice(0, 4) + p[1] + p[0], 10) : 0;
-}
-
-function toDateEntryNum(s) {
-  const m = String(s || '').match(/(\d{1,2})\.(\d{1,2})\.(\d{4}),?\s*(\d{1,2}):(\d{2}):(\d{2})/);
-  if (!m) return 0;
-  return +m[3] * 10000000000 + +m[2] * 100000000 + +m[1] * 1000000 + +m[4] * 10000 + +m[5] * 100 + +m[6];
-}
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
 function cmpRecords(a, b) {
   let d = toDateNum(a.dateCheck) - toDateNum(b.dateCheck);
@@ -131,9 +100,12 @@ function cellToStr(val, key) {
   if (val instanceof Date) {
     return key === 'dateEntry' ? fmtDateTime(val) : fmtDate(val);
   }
-  if (typeof val === 'number' && (key === 'dateCheck' || key === 'dateEntry') && val > 30000) {
-    const d = excelSerialToDate(val);
-    return key === 'dateEntry' ? fmtDateTime(d) : fmtDate(d);
+  if (typeof val === 'number' && key === 'dateEntry' && val > 30000) {
+    const d = new Date((Math.floor(val) - 25569) * 86400 * 1000);
+    return fmtDateTime(d);
+  }
+  if (typeof val === 'number' && key === 'dateCheck' && val > 30000) {
+    return normalizeDateStr(val);
   }
   const s = String(val).trim();
   if (key === 'dateCheck') return normalizeDateStr(s);
