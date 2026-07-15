@@ -1,4 +1,4 @@
-const CACHE = 'pkb-v121';
+const CACHE = 'pkb-v122';
 const PRECACHE = ['/', '/manifest.json', '/apple-touch-icon.png', '/favicon.png', '/icon-192.png', '/icon-512.png', '/badge.svg'];
 
 self.addEventListener('install', e => {
@@ -59,6 +59,17 @@ self.addEventListener('fetch', e => {
   if (url.origin !== location.origin) return;
   // Never cache API routes — always pass through to network
   if (url.pathname.startsWith('/api/')) return;
+  // App shell: network-first so deploys reach users without stale SW cache
+  const isAppShell = url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/sw.js';
+  if (isAppShell) {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+        return res;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
   e.respondWith(
     caches.match(e.request).then(cached => {
       const net = fetch(e.request).then(res => {
