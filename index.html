@@ -581,9 +581,9 @@ html, body {
 .corr-status-done    { color: var(--green); font-size: 11px; }
 .corr-status-na      { color: var(--text2); font-size: 11px; }
 #screen-sokb-list .th-col-btn.active { color: var(--navy); }
-.sokb-status-process { color: var(--navy);  font-size: 11px; }
-.sokb-status-success { color: var(--green); font-size: 11px; }
-.sokb-status-fail    { color: var(--red);   font-size: 11px; font-weight: 700; }
+.sokb-status-process { color: var(--navy);  font-size: 11px; font-weight: 400; }
+.sokb-status-success { color: var(--green); font-size: 11px; font-weight: 400; }
+.sokb-status-fail    { color: var(--red);   font-size: 11px; font-weight: 400; }
 
 /* Detail card corrective block — navy highlight (from corrective screen) */
 .detail-block-navy .detail-block-label { color: var(--text2); font-weight: 500; }
@@ -869,7 +869,7 @@ html, body {
 .barriers-col-name    { width: 20%; }
 .barriers-col-pk      { width: 15%; }
 .barriers-col-show    { width: 20%; }
-.barriers-th-passport { text-align: left; padding-left: 8px; white-space: normal; line-height: 1.3; }
+.barriers-th-passport { text-align: center; padding-left: 8px; white-space: normal; line-height: 1.3; }
 .barriers-td-passport {
   font-size: 12px; color: #1a2035; font-weight: 500;
   padding: 11px 4px 11px 8px; vertical-align: top;
@@ -895,8 +895,8 @@ html, body {
 .methods-th-count-orange { color: var(--orange); }
 .methods-th-count-label { color: var(--text2); }
 .methods-th-count-col { white-space: normal; line-height: 1.3; }
-.methods-th-name .methods-th-count,
-.barriers-th-passport .methods-th-count { text-align: left; }
+.methods-th-name .methods-th-count { text-align: left; }
+.barriers-th-passport .methods-th-count { text-align: center; }
 .methods-td { padding: 11px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .methods-td-name { font-size: 14px; color: #1a2035; font-weight: 500; padding-left: 8px; }
 .methods-td-cb { text-align: center; }
@@ -1601,8 +1601,32 @@ function esc(s) {
     .replace(/"/g, '&quot;');
 }
 
-// Re-assign sequential numbers (1-based) to all records by their current sort order
+// Normalize dateCheck to DD.MM.YYYY (fix MM/DD/YYYY and Excel serials)
+function normalizeDateStr(s) {
+  if (s == null || s === '') return '';
+  if (s instanceof Date) return formatDate(s);
+  s = String(s).trim();
+  if (!s) return '';
+  var dot = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (dot) return pad(+dot[1]) + '.' + pad(+dot[2]) + '.' + dot[3];
+  var slash = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slash) return pad(+slash[2]) + '.' + pad(+slash[1]) + '.' + slash[3];
+  if (/^\d+(\.\d+)?$/.test(s) && +s > 30000) {
+    var d = new Date((+s - 25569) * 86400 * 1000);
+    if (!isNaN(d.getTime())) return formatDate(d);
+  }
+  return s;
+}
+
+function normalizeDbDates() {
+  (appState.db || []).forEach(function(r) {
+    if (r.dateCheck) r.dateCheck = normalizeDateStr(r.dateCheck);
+  });
+}
+
+// Sort by cmpRecords, then assign sequential numbers: oldest=1, newest=N
 function renumberDb() {
+  appState.db.sort(cmpRecords);
   appState.db.forEach(function(r, i) { r.num = i + 1; });
 }
 
@@ -1613,7 +1637,7 @@ var SYNC_QUEUE_KEY   = 'pkb-sync-queue';
 var UPDATE_QUEUE_KEY = 'pkb-update-queue';
 var SERVER_SHA_KEY   = 'pkb-server-shas';
 var DATA_VERSION_KEY = 'pkb-data-version';
-var CURRENT_DATA_VERSION = 'v7-excel-import-2026';
+var CURRENT_DATA_VERSION = 'v8-date-format-sort';
 var VAPID_KEY_STORE = 'pkb-vapid-key';
 var swRegistration   = null;
 
@@ -1956,6 +1980,7 @@ function mergeWithQueue(serverRecords) {
     return !fps[[r.dateCheck, r.method, r.org, r.obj, r.barrier, r.violator, r.desc].join('|')];
   });
   var merged = serverRecords.concat(unsynced).filter(function(r) { return r.dateCheck && r.dateCheck.trim(); });
+  merged.forEach(function(r) { if (r.dateCheck) r.dateCheck = normalizeDateStr(r.dateCheck); });
   merged.sort(cmpRecords);
   return merged;
 }
@@ -2016,6 +2041,7 @@ function loadFromServer(onDone) {
       appState.db = mergeWithQueue(d.records);
       appState.db = applyPendingUpdates(appState.db);
       purgeSyncedUpdates(appState.db);
+      normalizeDbDates();
       renumberDb();
       saveState();
       renderLobby();
@@ -2383,6 +2409,7 @@ function loadState() {
       // Passwords
       appState.passwords     = parsed.passwords     || getDefaultPasswords();
       appState.usedPasswords = parsed.usedPasswords || getDefaultUsedPasswords();
+      normalizeDbDates();
       renumberDb();
     } else {
       appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
@@ -2481,6 +2508,7 @@ function scrollCheckListToEnd(screenId) {
   });
 }
 function dateNumFromStr(s) {
+  s = normalizeDateStr(s);
   var p = s ? s.split('.') : [];
   return p.length === 3 ? parseInt(p[2] + p[1] + p[0]) : 0;
 }
@@ -3233,7 +3261,6 @@ function submitCard() {
   }
   // insert sorted by dateCheck, then re-assign sequential numbers
   appState.db.push(cardData);
-  appState.db.sort(cmpRecords);
   renumberDb();
   saveState();
   syncToServer(Object.assign({}, cardData)); // fire-and-forget sync to server Excel
@@ -5769,8 +5796,9 @@ function formatDate(d) {
 }
 
 function parseDate(s) {
+  s = normalizeDateStr(s);
   var p = s.split('.');
-  return new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+  return new Date(parseInt(p[2], 10), parseInt(p[1], 10) - 1, parseInt(p[0], 10));
 }
 
 function dateToMs(s) {

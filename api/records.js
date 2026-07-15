@@ -33,6 +33,50 @@ function fmtDateTime(d) {
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
+function excelSerialToDate(n) {
+  return new Date((Math.floor(n) - 25569) * 86400 * 1000);
+}
+
+function normalizeDateStr(val) {
+  if (val == null || val === '') return '';
+  if (val instanceof Date) return fmtDate(val);
+  const s = String(val).trim();
+  if (!s) return '';
+  const dot = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (dot) return `${pad(+dot[1])}.${pad(+dot[2])}.${dot[3]}`;
+  const slash = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slash) return `${pad(+slash[2])}.${pad(+slash[1])}.${slash[3]}`;
+  if (/^\d+(\.\d+)?$/.test(s) && +s > 30000) {
+    const d = excelSerialToDate(+s);
+    if (!Number.isNaN(d.getTime())) return fmtDate(d);
+  }
+  return s;
+}
+
+function toDateNum(s) {
+  s = normalizeDateStr(s);
+  const p = (s || '').split('.');
+  return p.length >= 3 ? parseInt(p[2].slice(0, 4) + p[1] + p[0], 10) : 0;
+}
+
+function toDateEntryNum(s) {
+  const m = String(s || '').match(/(\d{1,2})\.(\d{1,2})\.(\d{4}),?\s*(\d{1,2}):(\d{2}):(\d{2})/);
+  if (!m) return 0;
+  return +m[3] * 10000000000 + +m[2] * 100000000 + +m[1] * 1000000 + +m[4] * 10000 + +m[5] * 100 + +m[6];
+}
+
+function cmpRecords(a, b) {
+  let d = toDateNum(a.dateCheck) - toDateNum(b.dateCheck);
+  if (d) return d;
+  d = toDateEntryNum(b.dateEntry) - toDateEntryNum(a.dateEntry);
+  if (d) return d;
+  d = String(a.org || '').localeCompare(String(b.org || ''), 'ru');
+  if (d) return d;
+  d = String(a.method || '').localeCompare(String(b.method || ''), 'ru');
+  if (d) return d;
+  return String(a.barrier || '').localeCompare(String(b.barrier || ''), 'ru');
+}
+
 function normHeader(h) {
   return String(h || '').trim().replace(/\s+/g, ' ');
 }
@@ -87,7 +131,13 @@ function cellToStr(val, key) {
   if (val instanceof Date) {
     return key === 'dateEntry' ? fmtDateTime(val) : fmtDate(val);
   }
-  return String(val).trim();
+  if (typeof val === 'number' && (key === 'dateCheck' || key === 'dateEntry') && val > 30000) {
+    const d = excelSerialToDate(val);
+    return key === 'dateEntry' ? fmtDateTime(d) : fmtDate(d);
+  }
+  const s = String(val).trim();
+  if (key === 'dateCheck') return normalizeDateStr(s);
+  return s;
 }
 
 function parseXlsx(base64) {
@@ -115,11 +165,8 @@ function parseXlsx(base64) {
     if (rec.dateCheck && rec.dateCheck.trim()) recs.push(rec);
   }
 
-  const dn = s => {
-    const p = (s || '').split('.');
-    return p.length >= 3 ? parseInt(p[2].slice(0, 4) + p[1] + p[0]) : 0;
-  };
-  recs.sort((a, b) => dn(a.dateCheck) - dn(b.dateCheck));
+  const dn = s => toDateNum(s);
+  recs.sort(cmpRecords);
   recs.forEach((r, i) => { r.num = i + 1; });
   return recs;
 }
