@@ -88,16 +88,14 @@ html, body {
     #pkb-ios-hairline-cover {
       display: block;
       position: fixed;
-      top: var(--pkb-sat-top, 59px);
+      /* sit ON the system hairline (top edge of safe-area), not below it */
+      top: calc(var(--pkb-sat-top, 59px) - 1px);
       left: 0; right: 0;
-      height: 4px;
-      transform: translateY(-2px);
+      height: 2px;
+      transform: translateY(-100%);
       background: #efefef;
       z-index: 2147483646;
       pointer-events: none;
-    }
-    .lobby-topbar {
-      padding-top: max(16px, var(--pkb-sat-top, 59px));
     }
   }
 }
