@@ -1600,7 +1600,7 @@ var SYNC_QUEUE_KEY   = 'pkb-sync-queue';
 var UPDATE_QUEUE_KEY = 'pkb-update-queue';
 var SERVER_SHA_KEY   = 'pkb-server-shas';
 var DATA_VERSION_KEY = 'pkb-data-version';
-var CURRENT_DATA_VERSION = 'v6-sokb-section';
+var CURRENT_DATA_VERSION = 'v7-excel-import-2026';
 var VAPID_KEY_STORE = 'pkb-vapid-key';
 var swRegistration   = null;
 
@@ -3944,7 +3944,7 @@ function openSokb() {
 
 function parseContestMeasures(text) {
   if (!text || !text.trim()) return [];
-  if (/Срок рассмотрения:/i.test(text) || /Статус оспаривания:/i.test(text)) {
+  if (/Срок рассмотрения:/i.test(text) || /Статус оспаривания:/i.test(text) || /Рассмотрение:/i.test(text) || (/^\d+\.\s/m.test(text) && /^\s*Статус:/im.test(text))) {
     var attempts = [];
     var parts = text.split(/(?=^\d+\.\s)/m).filter(function(p) { return p.trim(); });
     parts.forEach(function(part) {
@@ -3955,12 +3955,12 @@ function parseContestMeasures(text) {
       var desc = head[2].replace(/\.$/, '').trim();
       var dl = 'нет даты', st = '';
       lines.forEach(function(line) {
-        var lm = line.match(/Срок рассмотрения:\s*(.+?)\.?\s*$/i);
+        var lm = line.match(/(?:Срок рассмотрения|Рассмотрение):\s*(.+?)\.?\s*$/i);
         if (lm) {
           dl = lm[1].trim().replace(/\s*\.$/, '');
           if (!dl) dl = 'нет даты';
         }
-        var sm = line.match(/Статус оспаривания:\s*(.+?)\.?\s*$/i);
+        var sm = line.match(/(?:Статус оспаривания|Статус):\s*(.+?)\.?\s*$/i);
         if (sm) st = sm[1].trim().replace(/\.$/, '').toUpperCase();
       });
       if (desc || st) attempts.push({ desc: desc, deadline: dl, status: st, selected: false });
@@ -4699,7 +4699,7 @@ function parseCorrective(text) {
       lines.forEach(function(line) {
         var rm = line.match(/Ответственный:\s*(.+?)\.?\s*$/i);
         if (rm) resp = rm[1].trim().replace(/\s*\.$/, '');
-        var lm = line.match(/Выполнить до:\s*(.+?)\.?\s*$/i);
+        var lm = line.match(/(?:Выполнить до|Срок):\s*(.+?)\.?\s*$/i);
         if (lm) dl = lm[1].trim().replace(/\s*\.$/, '');
         var sm = line.match(/Статус:\s*(.+?)\.?\s*$/i);
         if (sm) st = sm[1].trim().replace(/\.$/, '').toUpperCase();
