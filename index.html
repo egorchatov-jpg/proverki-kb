@@ -63,30 +63,30 @@ html, body {
   overflow: hidden;
 }
 .screen.active { opacity: 1; pointer-events: all; }
-/* iOS: remove hairline under Dynamic Island / status bar */
-.is-ios .screen {
-  padding-top: env(safe-area-inset-top, 0px);
-  box-sizing: border-box;
+/* iOS standalone PWA only — Safari tabs unchanged */
+.is-ios-standalone {
+  --sat-top: 59px;
 }
-.is-ios .screen.active::before {
-  content: '';
-  position: absolute;
+#ios-pwa-top-fill {
+  display: none;
+  position: fixed;
   top: 0; left: 0; right: 0;
-  height: env(safe-area-inset-top, 0px);
-  background: var(--bg);
-  z-index: 0;
+  height: calc(var(--sat-top, 59px) + 3px);
+  background: #efefef;
+  z-index: 2147483646;
   pointer-events: none;
 }
-.is-ios .screen > * {
-  position: relative;
-  z-index: 1;
+.is-ios-standalone #ios-pwa-top-fill { display: block; }
+.is-ios-standalone .screen {
+  inset: auto;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 100lvh;
+  padding-top: var(--sat-top, 59px);
+  box-sizing: border-box;
 }
-.is-ios .lobby-topbar {
-  padding-top: 16px;
-}
-.is-ios #pull-indicator {
-  top: env(safe-area-inset-top, 0px);
-}
+.is-ios-standalone .lobby-topbar { padding-top: 16px; }
+.is-ios-standalone #pull-indicator { top: var(--sat-top, 59px); }
 
 
 /* ===== LOBBY ===== */
@@ -1016,6 +1016,8 @@ html, body {
 </style>
 </head>
 <body>
+
+<div id="ios-pwa-top-fill" aria-hidden="true"></div>
 
 <!-- Pull-to-refresh indicator (global, position:fixed) -->
 <div id="pull-indicator" aria-hidden="true">
@@ -2292,6 +2294,27 @@ var _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 if (_isIOS) document.documentElement.classList.add('is-ios');
 if (!_isIOS) document.documentElement.classList.add('is-not-ios');
+
+function initIosStandaloneSafeArea() {
+  var isStandalone = window.navigator.standalone === true
+    || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  if (!_isIOS || !isStandalone) return;
+  document.documentElement.classList.add('is-ios-standalone');
+  var sat = 59;
+  try {
+    var probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;top:0;left:0;padding-top:env(safe-area-inset-top);visibility:hidden;pointer-events:none';
+    document.documentElement.appendChild(probe);
+    var v = parseFloat(getComputedStyle(probe).paddingTop);
+    document.documentElement.removeChild(probe);
+    if (v > 0) sat = Math.ceil(v);
+  } catch (e) {}
+  document.documentElement.style.setProperty('--sat-top', sat + 'px');
+  var fill = document.getElementById('ios-pwa-top-fill');
+  if (fill) fill.style.height = (sat + 3) + 'px';
+}
+initIosStandaloneSafeArea();
+
 if (window.visualViewport && !_isIOS) {
   function syncOverlayHeight() {
     var h = window.visualViewport.height + 'px';
