@@ -884,6 +884,15 @@ html, body {
   position: sticky; top: 0; z-index: 2; background: var(--bg); white-space: nowrap;
 }
 .methods-th-name { text-align: left; padding-left: 8px; }
+.methods-th-cb-col { white-space: normal; line-height: 1.3; }
+.methods-th-count {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 3px;
+}
+.methods-th-count-gray { color: var(--text2); }
+.methods-th-count-orange { color: var(--orange); }
 .methods-td { padding: 11px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .methods-td-name { font-size: 14px; color: #1a2035; font-weight: 500; padding-left: 8px; }
 .methods-td-cb { text-align: center; }
@@ -1439,10 +1448,10 @@ html, body {
       <thead>
         <tr>
           <th class="methods-th barriers-th-passport">Паспорт</th>
-          <th class="methods-th">Выбрать</th>
+          <th class="methods-th methods-th-cb-col">Выбрать<span class="methods-th-count methods-th-count-gray" id="barriers-count-sel">0</span></th>
           <th class="methods-th methods-th-name">Барьеры</th>
-          <th class="methods-th">в ПК</th>
-          <th class="methods-th">Показывать</th>
+          <th class="methods-th methods-th-cb-col">в ПК<span class="methods-th-count methods-th-count-orange" id="barriers-count-pk">0</span></th>
+          <th class="methods-th methods-th-cb-col">Показывать<span class="methods-th-count methods-th-count-orange" id="barriers-count-show">0</span></th>
         </tr>
       </thead>
       <tbody id="barriers-tbody"></tbody>
@@ -1477,9 +1486,9 @@ html, body {
     <table class="methods-table">
       <thead>
         <tr>
-          <th class="methods-th" style="width:44px;">Выбрать</th>
+          <th class="methods-th methods-th-cb-col" style="width:44px;">Выбрать<span class="methods-th-count methods-th-count-gray" id="methods-count-sel">0</span></th>
           <th class="methods-th methods-th-name">Метод</th>
-          <th class="methods-th" style="width:74px;">Показывать</th>
+          <th class="methods-th methods-th-cb-col" style="width:74px;">Показывать<span class="methods-th-count methods-th-count-orange" id="methods-count-show">0</span></th>
         </tr>
       </thead>
       <tbody id="methods-tbody"></tbody>
@@ -1515,9 +1524,9 @@ html, body {
     <table class="methods-table">
       <thead>
         <tr>
-          <th class="methods-th" style="width:44px;">Выбрать</th>
+          <th class="methods-th methods-th-cb-col" style="width:44px;">Выбрать<span class="methods-th-count methods-th-count-gray" id="orgs-count-sel">0</span></th>
           <th class="methods-th methods-th-name">Организация</th>
-          <th class="methods-th" style="width:74px;">Показывать</th>
+          <th class="methods-th methods-th-cb-col" style="width:74px;">Показывать<span class="methods-th-count methods-th-count-orange" id="orgs-count-show">0</span></th>
         </tr>
       </thead>
       <tbody id="orgs-tbody"></tbody>
@@ -3381,6 +3390,15 @@ function backFromMethodsScreen() {
   showScreen('screen-settings');
 }
 
+function updateMethodsCheckboxCounts() {
+  var sel = document.querySelectorAll('#methods-tbody .method-circle-cb:checked:not(:disabled)').length;
+  var show = document.querySelectorAll('#methods-tbody .method-square-cb:checked').length;
+  var elSel = document.getElementById('methods-count-sel');
+  var elShow = document.getElementById('methods-count-show');
+  if (elSel) elSel.textContent = sel;
+  if (elShow) elShow.textContent = show;
+}
+
 function renderMethodsTable() {
   var list = appState.methods || [];
   var tbody = document.getElementById('methods-tbody');
@@ -3394,7 +3412,10 @@ function renderMethodsTable() {
     cbSel.type = 'checkbox'; cbSel.className = 'method-circle-cb'; cbSel.dataset.idx = idx;
     // "Прочее" cannot be selected for deletion
     if (m.name !== 'Прочее') {
-      cbSel.addEventListener('change', updateMethodMinusBtnState);
+      cbSel.addEventListener('change', function() {
+        updateMethodMinusBtnState();
+        updateMethodsCheckboxCounts();
+      });
       tdSel.appendChild(cbSel);
     }
     // Метод (name)
@@ -3410,18 +3431,21 @@ function renderMethodsTable() {
       (appState.methods || [])[+this.dataset.idx].show = this.checked;
       saveState();
       markMethodsDirty();
+      updateMethodsCheckboxCounts();
     });
     tdShow.appendChild(cbShow);
     tr.appendChild(tdSel); tr.appendChild(tdName); tr.appendChild(tdShow);
     tbody.appendChild(tr);
   });
   updateMethodMinusBtnState();
+  updateMethodsCheckboxCounts();
 }
 
 function updateMethodMinusBtnState() {
   var anyChecked = !!document.querySelector('#methods-tbody .method-circle-cb:checked:not(:disabled)');
   var btn = document.getElementById('method-btn-minus');
   if (btn) btn.disabled = !anyChecked;
+  updateMethodsCheckboxCounts();
 }
 
 function deleteSelectedMethods() {
@@ -3530,11 +3554,10 @@ function addBarriersYear() {
   var prevYear = String(maxYear);
   if (!appState.barriersConfig) appState.barriersConfig = {};
   var prevList = getBarriersForYear(prevYear);
-  // Copy barrier names from previous year, all checkboxes cleared
-  appState.barriersConfig[newYear] = buildBarriersFromCatalog(prevList).map(function(b) {
-    return { name: b.name, passport: b.passport, inPK: false, show: false };
-  });
+  // Copy barrier names and checkbox states from previous year
+  appState.barriersConfig[newYear] = buildBarriersFromCatalog(prevList);
   saveState();
+  markBarriersDirty();
   renderBarriersYearList();
 }
 
@@ -3612,7 +3635,10 @@ function appendBarrierRow(tbody, year, b, idx, withPassport, passportText, rowSp
   tdSel.className = 'methods-td methods-td-cb';
   var cbSel = document.createElement('input');
   cbSel.type = 'checkbox'; cbSel.className = 'method-circle-cb'; cbSel.dataset.idx = idx;
-  cbSel.addEventListener('change', updateBarrierMinusBtnState);
+  cbSel.addEventListener('change', function() {
+    updateBarrierMinusBtnState();
+    updateBarriersCheckboxCounts();
+  });
   tdSel.appendChild(cbSel);
   var tdName = document.createElement('td');
   tdName.className = 'methods-td methods-td-name'; tdName.textContent = b.name;
@@ -3625,6 +3651,7 @@ function appendBarrierRow(tbody, year, b, idx, withPassport, passportText, rowSp
     getBarriersForYear(year)[+this.dataset.idx].inPK = this.checked;
     saveState();
     markBarriersDirty();
+    updateBarriersCheckboxCounts();
   });
   tdPK.appendChild(cbPK);
   var tdShow = document.createElement('td');
@@ -3636,6 +3663,7 @@ function appendBarrierRow(tbody, year, b, idx, withPassport, passportText, rowSp
     getBarriersForYear(year)[+this.dataset.idx].show = this.checked;
     saveState();
     markBarriersDirty();
+    updateBarriersCheckboxCounts();
   });
   tdShow.appendChild(cbShow);
   tr.appendChild(tdSel); tr.appendChild(tdName); tr.appendChild(tdPK); tr.appendChild(tdShow);
@@ -3668,12 +3696,30 @@ function renderBarriersTable(year) {
     }
   });
   updateBarrierMinusBtnState();
+  updateBarriersCheckboxCounts();
+}
+
+function updateBarriersCheckboxCounts() {
+  var sel = document.querySelectorAll('#barriers-tbody .method-circle-cb:checked').length;
+  var pk = 0, show = 0;
+  document.querySelectorAll('#barriers-tbody tr').forEach(function(tr) {
+    var cbs = tr.querySelectorAll('.method-square-cb');
+    if (cbs.length >= 1 && cbs[0].checked) pk++;
+    if (cbs.length >= 2 && cbs[1].checked) show++;
+  });
+  var elSel = document.getElementById('barriers-count-sel');
+  var elPK = document.getElementById('barriers-count-pk');
+  var elShow = document.getElementById('barriers-count-show');
+  if (elSel) elSel.textContent = sel;
+  if (elPK) elPK.textContent = pk;
+  if (elShow) elShow.textContent = show;
 }
 
 function updateBarrierMinusBtnState() {
   var anyChecked = !!document.querySelector('#barriers-tbody .method-circle-cb:checked');
   var btn = document.getElementById('barrier-btn-minus');
   if (btn) btn.disabled = !anyChecked;
+  updateBarriersCheckboxCounts();
 }
 
 function deleteSelectedBarriers() {
@@ -3744,7 +3790,10 @@ function renderOrgsTable() {
     tdSel.className = 'methods-td methods-td-cb';
     var cbSel = document.createElement('input');
     cbSel.type = 'checkbox'; cbSel.className = 'method-circle-cb'; cbSel.dataset.idx = idx;
-    cbSel.addEventListener('change', updateOrgMinusBtnState);
+    cbSel.addEventListener('change', function() {
+      updateOrgMinusBtnState();
+      updateOrgsCheckboxCounts();
+    });
     tdSel.appendChild(cbSel);
     var tdName = document.createElement('td');
     tdName.className = 'methods-td methods-td-name'; tdName.textContent = o.name;
@@ -3757,18 +3806,30 @@ function renderOrgsTable() {
       (appState.orgs || [])[+this.dataset.idx].show = this.checked;
       saveState();
       markOrgsDirty();
+      updateOrgsCheckboxCounts();
     });
     tdShow.appendChild(cbShow);
     tr.appendChild(tdSel); tr.appendChild(tdName); tr.appendChild(tdShow);
     tbody.appendChild(tr);
   });
   updateOrgMinusBtnState();
+  updateOrgsCheckboxCounts();
+}
+
+function updateOrgsCheckboxCounts() {
+  var sel = document.querySelectorAll('#orgs-tbody .method-circle-cb:checked').length;
+  var show = document.querySelectorAll('#orgs-tbody .method-square-cb:checked').length;
+  var elSel = document.getElementById('orgs-count-sel');
+  var elShow = document.getElementById('orgs-count-show');
+  if (elSel) elSel.textContent = sel;
+  if (elShow) elShow.textContent = show;
 }
 
 function updateOrgMinusBtnState() {
   var anyChecked = !!document.querySelector('#orgs-tbody .method-circle-cb:checked');
   var btn = document.getElementById('org-btn-minus');
   if (btn) btn.disabled = !anyChecked;
+  updateOrgsCheckboxCounts();
 }
 
 function deleteSelectedOrgs() {
