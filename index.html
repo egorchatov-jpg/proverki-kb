@@ -4156,6 +4156,22 @@ function updateBarrierMinusBtnState() {
   updateBarriersCheckboxCounts();
 }
 
+function findFullySelectedCustomPassports(year, selectedIdx, alreadyPassports) {
+  var full = [];
+  var skip = {};
+  (alreadyPassports || []).forEach(function(p) { skip[p] = true; });
+  getCustomPassportsForYear(year).forEach(function(passport) {
+    if (skip[passport]) return;
+    var indices = [];
+    getBarriersForYear(year).forEach(function(b, i) {
+      if (b.passport === passport) indices.push(i);
+    });
+    if (!indices.length) return;
+    if (indices.every(function(i) { return selectedIdx.indexOf(i) >= 0; })) full.push(passport);
+  });
+  return full;
+}
+
 function deleteSelectedBarriers() {
   if (!_bpkYear) return;
   var selectedIdx = [];
@@ -4166,6 +4182,14 @@ function deleteSelectedBarriers() {
     } else if (cb.dataset.idx !== undefined && cb.dataset.idx !== '') {
       selectedIdx.push(+cb.dataset.idx);
     }
+  });
+  findFullySelectedCustomPassports(_bpkYear, selectedIdx, selectedPassports).forEach(function(passport) {
+    selectedPassports.push(passport);
+    getBarriersForYear(_bpkYear).forEach(function(b, i) {
+      if (b.passport !== passport) return;
+      var pos = selectedIdx.indexOf(i);
+      if (pos >= 0) selectedIdx.splice(pos, 1);
+    });
   });
   if (!selectedIdx.length && !selectedPassports.length) return;
   if (selectedIdx.length) {
