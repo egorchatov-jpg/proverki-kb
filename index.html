@@ -3990,7 +3990,7 @@ function appendEmptyPassportRow(tbody, passportText) {
   tbody.appendChild(tr);
 }
 
-function appendBarrierRow(tbody, year, b, idx, withPassport, passportText, rowSpan) {
+function appendBarrierRow(tbody, year, b, idx, withPassport, passportText, rowSpan, passportSelectKey) {
   var tr = document.createElement('tr');
   if (withPassport) {
     var tdPass = document.createElement('td');
@@ -4002,7 +4002,14 @@ function appendBarrierRow(tbody, year, b, idx, withPassport, passportText, rowSp
   var tdSel = document.createElement('td');
   tdSel.className = 'methods-td methods-td-cb';
   var cbSel = document.createElement('input');
-  cbSel.type = 'checkbox'; cbSel.className = 'method-circle-cb'; cbSel.dataset.idx = idx;
+  cbSel.type = 'checkbox';
+  if (passportSelectKey) {
+    cbSel.className = 'method-circle-cb bpk-passport-only-cb';
+    cbSel.dataset.passport = passportSelectKey;
+  } else {
+    cbSel.className = 'method-circle-cb';
+    cbSel.dataset.idx = idx;
+  }
   cbSel.addEventListener('change', function() {
     updateBarrierMinusBtnState();
     updateBarriersCheckboxCounts();
@@ -4064,14 +4071,28 @@ function renderBarriersTable(year) {
       appendBarrierRow(tbody, year, item.b, item.idx, gi === 0, g.passport, items.length);
     });
   });
+  var customPassports = getCustomPassportsForYear(year);
+  var customSet = {};
+  customPassports.forEach(function(p) { customSet[p] = true; });
   list.forEach(function(b, idx) {
-    if (!rendered[b.name]) {
+    if (!rendered[b.name] && !customSet[b.passport]) {
       appendBarrierRow(tbody, year, b, idx, true, b.passport || '', 1);
+      rendered[b.name] = true;
     }
   });
-  getCustomPassportsForYear(year).forEach(function(passport) {
-    if (!list.some(function(b) { return b.passport === passport; })) {
+  customPassports.forEach(function(passport) {
+    var items = [];
+    list.forEach(function(b, idx) {
+      if (b.passport === passport) items.push({ b: b, idx: idx });
+    });
+    if (!items.length) {
       appendEmptyPassportRow(tbody, passport);
+    } else if (items.length === 1) {
+      appendBarrierRow(tbody, year, items[0].b, items[0].idx, true, passport, 1, passport);
+    } else {
+      items.forEach(function(item, gi) {
+        appendBarrierRow(tbody, year, item.b, item.idx, gi === 0, passport, items.length);
+      });
     }
   });
   updateBarrierMinusBtnState();
@@ -4128,6 +4149,9 @@ function deleteSelectedBarriers() {
     var customs = appState.barriersCustomPassports[_bpkYear] || [];
     appState.barriersCustomPassports[_bpkYear] = customs.filter(function(p) {
       return selectedPassports.indexOf(p) < 0;
+    });
+    appState.barriersConfig[_bpkYear] = getBarriersForYear(_bpkYear).filter(function(b) {
+      return selectedPassports.indexOf(b.passport) < 0;
     });
   }
   saveState();
