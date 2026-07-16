@@ -1433,7 +1433,7 @@ html, body {
   <div class="settings-screen-title">Отметьте барьеры Каркаса Безопасности, вошедшие в производственный контракт</div>
   <div class="settings-screen-body" id="barriers-year-list"></div>
   <div class="settings-footer">
-    <button class="screen-back-btn" onclick="showScreen('screen-settings')">Назад</button>
+    <button class="screen-back-btn" onclick="backFromBarriersYearsScreen()">Назад</button>
   </div>
 </div>
 
@@ -2413,6 +2413,7 @@ function loadState() {
       // Passwords
       appState.passwords     = parsed.passwords     || getDefaultPasswords();
       appState.usedPasswords = parsed.usedPasswords || getDefaultUsedPasswords();
+      appState.settingsUpdatedAt = parsed.settingsUpdatedAt || 0;
       normalizeDbDates();
       renumberDb();
     } else {
@@ -2439,7 +2440,8 @@ function saveState() {
       barriersConfig: appState.barriersConfig || {},
       methods: appState.methods || DEFAULT_METHODS,
       passwords: appState.passwords || getDefaultPasswords(),
-      usedPasswords: appState.usedPasswords || getDefaultUsedPasswords()
+      usedPasswords: appState.usedPasswords || getDefaultUsedPasswords(),
+      settingsUpdatedAt: appState.settingsUpdatedAt || 0
     }));
   } catch(e) {}
 }
@@ -2922,9 +2924,21 @@ function checkPin() {
 
 // ===== SETTINGS SYNC =====
 
+var _settingsSyncTimer = null;
+var _settingsSyncGen = 0;
+
+function scheduleSettingsSync() {
+  if (_settingsSyncTimer) clearTimeout(_settingsSyncTimer);
+  _settingsSyncTimer = setTimeout(function() {
+    _settingsSyncTimer = null;
+    syncSettingsToServer();
+  }, 1500);
+}
 
 function markSettingsDirty() {
   try { localStorage.setItem('pkb-settings-dirty', '1'); } catch(e) {}
+  appState.settingsUpdatedAt = Date.now();
+  scheduleSettingsSync();
 }
 function clearSettingsDirty() {
   try { localStorage.removeItem('pkb-settings-dirty'); } catch(e) {}
@@ -3026,28 +3040,26 @@ function syncSettingsFromServer(callback) {
       var localBarriersConfig = appState.barriersConfig;
       // Merge server settings — never rewrite Excel records (values used only for NEW entries)
       if (data.methods && data.methods.length) {
-        appState.methods = localDirty ? mergeMethods(data.methods, localMethods) : data.methods;
+        appState.methods = mergeMethods(data.methods, localMethods);
       }
       if (data.barriersPK) appState.barriersPK = data.barriersPK;
       if (data.orgs && data.orgs.length) {
-        if (localDirty) {
-          appState.orgs = mergeOrgs(data.orgs, localOrgs);
-        } else if (typeof data.orgs[0] === 'string') {
-          appState.orgs = data.orgs.map(function(n) { return { name: n, show: true }; });
-        } else {
-          appState.orgs = data.orgs;
+        var serverOrgs = data.orgs;
+        if (typeof serverOrgs[0] === 'string') {
+          serverOrgs = serverOrgs.map(function(n) { return { name: n, show: true }; });
         }
-        // Migrate stale 2-item server data to DEFAULT_ORGS
-        if (!localDirty && (appState.orgs.length <= 2 ||
-            appState.orgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; }))) {
-          appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
+        if (!localDirty && (serverOrgs.length <= 2 ||
+            serverOrgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; }))) {
+          serverOrgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
         }
+        appState.orgs = mergeOrgs(serverOrgs, localOrgs);
       }
       if (data.barriers && data.barriers.length) appState.barriers = data.barriers;
       if (data.barriersConfig) {
-        appState.barriersConfig = localDirty
-          ? mergeBarriersConfig(data.barriersConfig, localBarriersConfig)
-          : data.barriersConfig;
+        appState.barriersConfig = mergeBarriersConfig(data.barriersConfig, localBarriersConfig);
+      }
+      if (data.settingsUpdatedAt && (!appState.settingsUpdatedAt || data.settingsUpdatedAt > appState.settingsUpdatedAt)) {
+        appState.settingsUpdatedAt = data.settingsUpdatedAt;
       }
       if (data.passwords) {
         // Merge server passwords — superuser PIN is hardcoded, never synced
@@ -3081,14 +3093,18 @@ function syncSettingsFromServer(callback) {
  * Called when admin exits settings screen.
  */
 function syncSettingsToServer() {
+  var gen = ++_settingsSyncGen;
+  var updatedAt = appState.settingsUpdatedAt || Date.now();
+  appState.settingsUpdatedAt = updatedAt;
   var settings = {
     methods:       appState.methods       || DEFAULT_METHODS,
     barriersPK:    appState.barriersPK    || {},
     barriersConfig: appState.barriersConfig || {},
     orgs:          appState.orgs          || [],
     barriers:      appState.barriers      || [],
-      passwords:     (function(){ var p=Object.assign({},appState.passwords||getDefaultPasswords()); delete p.superuser; return p; })(),
-      usedPasswords: appState.usedPasswords || getDefaultUsedPasswords()
+    settingsUpdatedAt: updatedAt,
+    passwords:     (function(){ var p=Object.assign({},appState.passwords||getDefaultPasswords()); delete p.superuser; return p; })(),
+    usedPasswords: appState.usedPasswords || getDefaultUsedPasswords()
   };
   fetch('/api/settings', {
     method: 'PUT',
@@ -3096,7 +3112,12 @@ function syncSettingsToServer() {
     body: JSON.stringify(settings)
   })
   .then(function(r) { return r.json().catch(function() { return {}; }); })
-  .then(function(d) { if (d && d.success) clearSettingsDirty(); })
+  .then(function(d) {
+    if (d && d.success && gen === _settingsSyncGen) {
+      clearSettingsDirty();
+      saveState();
+    }
+  })
   .catch(function(e) { console.warn('[settings] sync to server failed:', e.message); });
 }
 
@@ -3430,6 +3451,7 @@ function markOrgsDirty() {
 }
 
 function markPasswordsDirty() {
+  markSettingsDirty();
   refreshSettingsBackLabel('screen-passwords', 'passwords', snapPasswordsState());
 }
 
@@ -3557,6 +3579,11 @@ function openBarriersPKYearsScreen() {
   showScreen('screen-barriers-years');
 }
 
+function backFromBarriersYearsScreen() {
+  if (isSettingsDirty()) syncSettingsToServer();
+  showScreen('screen-settings');
+}
+
 function getBarriersYears() {
   var currentYear = new Date().getFullYear();
   var ySet = {};
@@ -3629,6 +3656,7 @@ function removeBarriersYear() {
   if (maxYear <= currentYear) return; // protect current and past years
   if (appState.barriersConfig) delete appState.barriersConfig[String(maxYear)];
   saveState();
+  markBarriersDirty();
   renderBarriersYearList();
 }
 
@@ -3969,6 +3997,7 @@ function openPasswordsScreen() {
 
 function backFromPasswordsScreen() {
   saveState();
+  if (_settingsSnap.passwords !== JSON.stringify(snapPasswordsState())) syncSettingsToServer();
   showScreen('screen-settings');
 }
 
