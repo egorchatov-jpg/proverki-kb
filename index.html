@@ -5378,12 +5378,12 @@ function pluralProverka(n) {
   return n + '<br>' + word;
 }
 function countColumnValues(records, getter) {
-  var seen = {};
+  var n = 0;
   (records || []).forEach(function(r) {
     var v = getter(r);
-    if (v !== undefined && v !== null && String(v).trim() !== '') seen[String(v)] = 1;
+    if (v !== undefined && v !== null && String(v).trim() !== '') n++;
   });
-  return Object.keys(seen).length;
+  return n;
 }
 function setFilterColCount(id, n) {
   var el = document.getElementById(id);
