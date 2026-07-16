@@ -789,6 +789,7 @@ html, body {
 
 /* ===== SCREENS: SETTINGS FAMILY ===== */
 #screen-settings,
+#screen-restore-points,
 #screen-export,
 #screen-barriers-years,
 #screen-barriers-list,
@@ -823,6 +824,23 @@ html, body {
 }
 .settings-wide-btn:active { opacity: 0.75; }
 .is-win .settings-wide-btn { width: calc((100vw - 48px) / 3); }
+.restore-point-btn {
+  width: 100%; padding: 16px 20px;
+  background: var(--gray-btn); color: #fff;
+  font-size: 16px; font-weight: 600;
+  border: none; border-radius: 14px; cursor: pointer; text-align: center;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+  margin-bottom: 10px;
+}
+.restore-point-btn:active { opacity: 0.75; }
+.restore-point-btn.active {
+  background: var(--orange); cursor: default; pointer-events: none;
+}
+.is-win .restore-point-btn { width: calc((100vw - 48px) / 3); }
+#screen-restore-points .restore-points-empty {
+  text-align: center; color: var(--text2); font-size: 14px; padding: 24px 0;
+}
+#overlay-restore-confirm .overlay-title { text-align: center; line-height: 1.4; }
 /* Orange year action button — same width as a single nav-btn */
 .year-action-btn {
   width: calc((100vw - 48px) / 3);
@@ -1571,6 +1589,7 @@ html, body {
     <button class="settings-wide-btn" onclick="openMethodsScreen()">Методы проверок</button>
     <button class="settings-wide-btn" onclick="openOrgsScreen()">Проверяемые организации</button>
     <button class="settings-wide-btn" onclick="openPasswordsScreen()">Управление паролями</button>
+    <button class="settings-wide-btn" onclick="openRestorePointsScreen()">Точки восстановления</button>
   </div>
   <div class="settings-footer">
     <!-- exitSettings syncs settings to server before returning to lobby -->
@@ -1723,6 +1742,26 @@ html, body {
   <div class="pw-body" id="passwords-body"></div>
   <div class="settings-footer">
     <button class="screen-back-btn" onclick="backFromPasswordsScreen()">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: ТОЧКИ ВОССТАНОВЛЕНИЯ ===== -->
+<div class="screen" id="screen-restore-points">
+  <div class="settings-screen-title">Точки восстановления</div>
+  <div class="settings-screen-body" id="restore-points-list"></div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="showScreen('screen-settings')">Назад</button>
+  </div>
+</div>
+
+<!-- ===== OVERLAY: ПОДТВЕРЖДЕНИЕ ВОССТАНОВЛЕНИЯ ===== -->
+<div class="overlay" id="overlay-restore-confirm">
+  <div class="overlay-box">
+    <div class="overlay-title" id="restore-confirm-title"></div>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="closeRestoreConfirm()">Отмена</button>
+      <button class="overlay-btn overlay-btn-apply" onclick="applyRestoreBackup()">Применить</button>
+    </div>
   </div>
 </div>
 
@@ -2229,7 +2268,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -4593,6 +4632,94 @@ function backFromOrgsScreen() {
 }
 
 // ===== УПРАВЛЕНИЕ ПАРОЛЯМИ =====
+
+// ===== ТОЧКИ ВОССТАНОВЛЕНИЯ (бэкапы Excel) =====
+var _restoreBackupsState = { activeBackupId: null, backups: [] };
+var _restorePendingId = null;
+
+function openRestorePointsScreen() {
+  var list = document.getElementById('restore-points-list');
+  if (list) list.innerHTML = '<div class="restore-points-empty">Загрузка…</div>';
+  showScreen('screen-restore-points');
+  fetch('/api/backups')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      _restoreBackupsState.activeBackupId = data.activeBackupId || null;
+      _restoreBackupsState.backups = data.backups || [];
+      renderRestorePointsList();
+    })
+    .catch(function(e) {
+      if (list) list.innerHTML = '<div class="restore-points-empty">Ошибка загрузки: ' + esc(e.message) + '</div>';
+    });
+}
+
+function renderRestorePointsList() {
+  var list = document.getElementById('restore-points-list');
+  if (!list) return;
+  list.innerHTML = '';
+  var backups = _restoreBackupsState.backups || [];
+  if (!backups.length) {
+    list.innerHTML = '<div class="restore-points-empty">Резервные копии пока не созданы</div>';
+    return;
+  }
+  backups.forEach(function(b) {
+    var btn = document.createElement('button');
+    var isActive = b.id === _restoreBackupsState.activeBackupId;
+    btn.className = 'restore-point-btn' + (isActive ? ' active' : '');
+    btn.textContent = b.label;
+    if (!isActive) {
+      btn.onclick = function() { openRestoreConfirm(b); };
+    }
+    list.appendChild(btn);
+  });
+}
+
+function openRestoreConfirm(backup) {
+  _restorePendingId = backup.id;
+  var title = document.getElementById('restore-confirm-title');
+  if (title) title.textContent = 'Вы уверены что хотите продолжить с ' + backup.label + '?';
+  document.getElementById('overlay-restore-confirm').classList.add('active');
+}
+
+function closeRestoreConfirm() {
+  _restorePendingId = null;
+  document.getElementById('overlay-restore-confirm').classList.remove('active');
+}
+
+function applyRestoreBackup() {
+  if (!_restorePendingId) return;
+  var id = _restorePendingId;
+  closeRestoreConfirm();
+  var list = document.getElementById('restore-points-list');
+  if (list) list.innerHTML = '<div class="restore-points-empty">Восстановление…</div>';
+  fetch('/api/backups', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ backupId: id })
+  })
+    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, d: d }; }); })
+    .then(function(res) {
+      if (!res.ok || !res.d.success) throw new Error((res.d && res.d.error) || 'Ошибка восстановления');
+      _restoreBackupsState.activeBackupId = res.d.id;
+      return fetch('/api/backups').then(function(r) { return r.json(); });
+    })
+    .then(function(data) {
+      _restoreBackupsState.activeBackupId = data.activeBackupId;
+      _restoreBackupsState.backups = data.backups || [];
+      renderRestorePointsList();
+      loadFromServer(function() {
+        var fs = document.getElementById('screen-find');
+        if (fs && fs.classList.contains('active')) applyFindFilters();
+        var cs = document.getElementById('screen-corrective-list');
+        if (cs && cs.classList.contains('active')) renderCorrectiveList();
+        var ss = document.getElementById('screen-sokb-list');
+        if (ss && ss.classList.contains('active')) renderSokbList();
+      });
+    })
+    .catch(function(e) {
+      if (list) list.innerHTML = '<div class="restore-points-empty">Ошибка: ' + esc(e.message) + '</div>';
+    });
+}
 
 function openPasswordsScreen() {
   ensureOrgPasswords();
