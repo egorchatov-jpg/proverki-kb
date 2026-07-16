@@ -1053,10 +1053,14 @@ html, body {
 .drum-wrap.bpk-passport-drum::before,
 .drum-wrap.bpk-passport-drum::after { height: 35px; }
 .drum-wrap.bpk-passport-drum.full-width .drum-item {
-  font-size: 13px; font-weight: 500; white-space: normal; text-align: left;
-  line-height: 1.25; overflow: hidden; padding: 2px 12px;
-  display: flex; align-items: center; justify-content: flex-start;
-  height: 35px;
+  font-size: 14px; font-weight: 500; white-space: nowrap; text-align: left;
+  line-height: 35px; overflow: hidden; padding: 0 12px;
+  display: block; height: 35px;
+}
+.bpk-selected-passport {
+  width: 100%; text-align: left; font-size: 12px; font-weight: 500;
+  color: #1a2035; line-height: 1.35; margin-bottom: 10px;
+  white-space: nowrap; overflow: hidden;
 }
 #overlay-drum .overlay-btns.bpk-drum-btns {
   justify-content: center;
@@ -1439,6 +1443,7 @@ html, body {
 <!-- ===== OVERLAY: БАРЬЕРЫ ПК — ВВОД НАЗВАНИЯ ===== -->
 <div class="overlay" id="overlay-bpk-input">
   <div class="overlay-box">
+    <div class="bpk-selected-passport" id="bpk-selected-passport" hidden></div>
     <div class="bpk-input-row">
       <input class="bpk-input-field" id="bpk-input-field" type="text" autocomplete="off">
       <button type="button" class="method-cancel-btn" onclick="closeBpkNameOverlay()">
@@ -4127,12 +4132,13 @@ function getFirstPassportInBarriersTable(year) {
   return std.length ? std[0] : '';
 }
 
-function applyBpkOverlayHeights() {
+function applyBpkOverlayHeights(extra) {
   if (!_bpkChoiceOverlayH) return;
-  var h = _bpkChoiceOverlayH + 'px';
+  var total = _bpkChoiceOverlayH + (extra || 0);
+  var h = total + 'px';
   var choiceBox = document.querySelector('#overlay-bpk-choice .overlay-box');
   var inputBox = document.querySelector('#overlay-bpk-input .overlay-box');
-  if (choiceBox) choiceBox.style.height = h;
+  if (choiceBox) choiceBox.style.height = _bpkChoiceOverlayH + 'px';
   if (inputBox) inputBox.style.height = h;
 }
 
@@ -4172,21 +4178,37 @@ function closeBpkChoiceOverlay() {
   document.getElementById('overlay-bpk-choice').classList.remove('active');
 }
 
-function openBpkNameOverlay(mode, placeholder) {
+function openBpkNameOverlay(mode, placeholder, passportLabel) {
   _bpkNameMode = mode;
   var input = document.getElementById('bpk-input-field');
+  var labelEl = document.getElementById('bpk-selected-passport');
   input.value = '';
   input.placeholder = placeholder || '';
-  applyBpkOverlayHeights();
-  document.getElementById('overlay-bpk-input').classList.add('active');
-  setTimeout(function() { input.focus(); }, 80);
+  if (mode === 'barrier' && passportLabel) {
+    labelEl.textContent = passportLabel;
+    labelEl.hidden = false;
+    document.getElementById('overlay-bpk-input').classList.add('active');
+    requestAnimationFrame(function() {
+      var extra = labelEl.offsetHeight + 10;
+      applyBpkOverlayHeights(extra);
+      input.focus();
+    });
+  } else {
+    labelEl.hidden = true;
+    labelEl.textContent = '';
+    applyBpkOverlayHeights();
+    document.getElementById('overlay-bpk-input').classList.add('active');
+    setTimeout(function() { input.focus(); }, 80);
+  }
 }
 
 function closeBpkNameOverlay() {
   document.getElementById('overlay-bpk-input').classList.remove('active');
   var input = document.getElementById('bpk-input-field');
+  var labelEl = document.getElementById('bpk-selected-passport');
   input.value = '';
   input.blur();
+  if (labelEl) { labelEl.hidden = true; labelEl.textContent = ''; }
   _bpkNameMode = '';
   _bpkBarrierPassport = '';
 }
@@ -4221,13 +4243,11 @@ function openBpkBarrierPassportDrum() {
   if (applyBtn) applyBtn.textContent = 'Далее';
   if (btns) btns.classList.add('bpk-drum-btns');
   openDrumOverlay('Выберите паспорт', [
-    { id: 'passport', items: passports, value: defPassport, fullWidth: true, widthFactor: 0.94, leftAlign: true, passportDrum: true }
+    { id: 'passport', items: passports, value: defPassport, fullWidth: true, widthFactor: 0.94, leftAlign: true, passportDrum: true, drumCenter: 1 }
   ], function(d) {
-    _bpkBarrierPassport = d['passport'].getValue();
-    openBpkNameOverlay('barrier', 'Название барьера');
-  });
-  requestAnimationFrame(function() {
-    if (DRUM_INSTANCES.passport) DRUM_INSTANCES.passport.setValue(defPassport);
+    var selected = d['passport'] ? d['passport'].getValue() : defPassport;
+    _bpkBarrierPassport = selected;
+    openBpkNameOverlay('barrier', 'Название барьера', selected);
   });
 }
 
@@ -5826,7 +5846,7 @@ var DRUM_ITEM_H = 35;
 var DRUM_OFFSET = 3;
 var DRUM_INSTANCES = {};
 
-function createDrumEl(id, items, wrap) {
+function createDrumEl(id, items, wrap, drumCenter) {
   var TOTAL = items.length + DRUM_OFFSET * 2;
   var listEl = document.createElement('div');
   listEl.className = 'drum-list';
@@ -5846,7 +5866,7 @@ function createDrumEl(id, items, wrap) {
 
   var drum = { items: items, idx: DRUM_OFFSET, offset: 0, dragging: false, velocity: 0, lastY: 0, lastTime: 0 };
 
-  var DRUM_CENTER = 2; // visual center = item #2 from top (y=70 in 175px drum)
+  var DRUM_CENTER = (drumCenter != null) ? drumCenter : 2;
   function idxToOffset(idx) { return -(idx - DRUM_CENTER) * DRUM_ITEM_H; }
   function setOffset(o, anim) {
     drum.offset = o;
@@ -5866,7 +5886,11 @@ function createDrumEl(id, items, wrap) {
     drum.idx = DRUM_OFFSET + i;
     setOffset(idxToOffset(drum.idx), false);
   };
-  drum.getValue = function() { return items[(drum.idx - DRUM_OFFSET + items.length) % items.length]; };
+  drum.getValue = function() {
+    var i = drum.idx - DRUM_OFFSET;
+    if (i < 0 || i >= items.length) return items[0] || '';
+    return items[i];
+  };
   drum._start = function(y) { drum.dragging = true; drum.lastY = y; drum.lastTime = Date.now(); drum.velocity = 0; drum.startOffset = drum.offset; drum.startY = y; };
   drum._move = function(y) {
     if (!drum.dragging) return;
@@ -5929,7 +5953,7 @@ function openDrumOverlay(title, drumConfigs, callback) {
     group.appendChild(wrap);
     block.appendChild(group);
     row.appendChild(block);
-    createDrumEl(cfg.id, cfg.items, wrap);
+    createDrumEl(cfg.id, cfg.items, wrap, cfg.drumCenter);
     if (cfg.value !== undefined) DRUM_INSTANCES[cfg.id].setValue(cfg.value);
     if (cfg.fullWidth) {
       wrap.classList.add('full-width');
