@@ -6106,15 +6106,20 @@ function formatDetailShareText(r) {
   if (!r) return '';
   var lines = [
     'Проверка КБ ' + checkIdLabel(r),
+    '',
     'Дата проверки: ' + (r.dateCheck || '—'),
-    'Метод: ' + (r.method || '—'),
-    'Организация: ' + (r.org || '—'),
-    'Объект: ' + (r.obj || '—'),
-    'Барьер: ' + (r.barrier || '—'),
-    'Работоспособность: ' + (r.works || '—')
+    'Дата внесения проверки: ' + (r.dateEntry || '—'),
+    'Метод проверки: ' + (r.method || '—'),
+    'Проверку выполнил: ' + (r.inspector || '—'),
+    'Проверяемая организация: ' + (r.org || '—'),
+    'Проверяемый объект: ' + (r.obj || '—'),
+    'Куратор от заказчика: ' + (r.curator || '—'),
+    'Проверяемый барьер: ' + (r.barrier || '—'),
+    'Барьер в ПК: ' + (r.barrierInPK || '—'),
+    'Работоспособность барьера: ' + (r.works || '—')
   ];
-  if (r.works === 'Нет' && r.violator) lines.push('Нарушение допустил: ' + r.violator);
-  if (r.desc) lines.push('Описание: ' + r.desc);
+  if (r.violator) lines.push('Нарушение допустил: ' + r.violator);
+  if (r.desc) lines.push('Описание нарушения: ' + r.desc);
   if (r.corrective) lines.push('Корректирующие мероприятия: ' + r.corrective);
   if (r.contestMeasures) lines.push('Оспаривание в СОКБ: ' + r.contestMeasures);
   return lines.join('\n');
