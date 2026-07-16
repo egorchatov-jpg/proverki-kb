@@ -2486,7 +2486,7 @@ function saveState() {
       barriers: appState.barriers,
       autocomplete: appState.autocomplete,
       barriersPK: appState.barriersPK || {},
-      barriersConfig: appState.barriersConfig || {},
+      barriersConfig: normalizeBarriersConfigForSave(),
       methods: appState.methods || DEFAULT_METHODS,
       passwords: appState.passwords || getDefaultPasswords(),
       usedPasswords: appState.usedPasswords || getDefaultUsedPasswords(),
@@ -3067,9 +3067,10 @@ function mergeOrgs(server, local) {
   });
   return out;
 }
-function mergeBarriersConfig(server, local) {
+function mergeBarriersConfig(server, local, preferLocal) {
   if (!server) return local || {};
   if (!local) return server;
+  preferLocal = !!preferLocal;
   var out = {};
   var years = {};
   Object.keys(server).forEach(function(y) { years[y] = true; });
@@ -3082,11 +3083,19 @@ function mergeBarriersConfig(server, local) {
     var merged = srv.map(function(b) {
       var lb = localMap[b.name];
       if (!lb) return Object.assign({}, b);
+      if (preferLocal) {
+        return {
+          name: b.name,
+          passport: lb.passport !== undefined ? lb.passport : (b.passport || ''),
+          inPK: !!lb.inPK,
+          show: lb.show !== undefined ? (lb.show !== false) : (b.show !== false)
+        };
+      }
       return {
         name: b.name,
-        passport: lb.passport !== undefined ? lb.passport : (b.passport || ''),
-        inPK: !!lb.inPK,
-        show: lb.show !== undefined ? (lb.show !== false) : (b.show !== false)
+        passport: b.passport !== undefined ? b.passport : (lb.passport || ''),
+        inPK: !!b.inPK,
+        show: b.show !== undefined ? (b.show !== false) : (lb.show !== false)
       };
     });
     loc.forEach(function(b) {
@@ -3095,6 +3104,20 @@ function mergeBarriersConfig(server, local) {
     out[year] = merged;
   });
   return out;
+}
+
+function applyBarriersPKToConfig(barriersPK, config) {
+  if (!barriersPK || !config) return;
+  Object.keys(barriersPK).forEach(function(year) {
+    var names = barriersPK[year] || [];
+    if (!names.length) return;
+    if (!config[year]) config[year] = buildBarriersFromCatalog([]);
+    var byName = {};
+    config[year].forEach(function(b) { if (b && b.name) byName[b.name] = b; });
+    names.forEach(function(name) {
+      if (byName[name]) byName[name].inPK = true;
+    });
+  });
 }
 
 /**
@@ -3121,7 +3144,9 @@ function syncSettingsFromServer(callback) {
       var localBarriersConfig = appState.barriersConfig;
       // Merge server settings — never rewrite Excel records (values used only for NEW entries)
       if (data.methods && data.methods.length) {
-        appState.methods = mergeMethods(data.methods, localMethods);
+        appState.methods = localDirty
+          ? mergeMethods(data.methods, localMethods)
+          : data.methods.map(function(m) { return Object.assign({}, m); });
       }
       if (data.barriersPK) appState.barriersPK = data.barriersPK;
       if (data.orgs && data.orgs.length) {
@@ -3133,13 +3158,26 @@ function syncSettingsFromServer(callback) {
             serverOrgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; }))) {
           serverOrgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
         }
-        appState.orgs = mergeOrgs(serverOrgs, localOrgs);
+        appState.orgs = localDirty
+          ? mergeOrgs(serverOrgs, localOrgs)
+          : serverOrgs.map(function(o) { return Object.assign({}, o); });
       }
       if (data.barriers && data.barriers.length) appState.barriers = data.barriers;
-      if (data.barriersConfig) {
-        appState.barriersConfig = mergeBarriersConfig(data.barriersConfig, localBarriersConfig);
+      if (data.barriersConfig || data.barriersPK) {
+        if (localDirty) {
+          appState.barriersConfig = mergeBarriersConfig(data.barriersConfig || {}, localBarriersConfig, true);
+          Object.keys(appState.barriersConfig).forEach(function(y) {
+            appState.barriersConfig[y] = buildBarriersFromCatalog(appState.barriersConfig[y]);
+          });
+        } else if (data.barriersConfig) {
+          appState.barriersConfig = {};
+          Object.keys(data.barriersConfig).forEach(function(y) {
+            appState.barriersConfig[y] = buildBarriersFromCatalog(data.barriersConfig[y]);
+          });
+        }
+        applyBarriersPKToConfig(data.barriersPK, appState.barriersConfig);
       }
-      if (data.settingsUpdatedAt && (!appState.settingsUpdatedAt || data.settingsUpdatedAt > appState.settingsUpdatedAt)) {
+      if (!localDirty && data.settingsUpdatedAt) {
         appState.settingsUpdatedAt = data.settingsUpdatedAt;
       }
       if (data.passwords) {
@@ -3779,6 +3817,15 @@ function buildBarriersFromCatalog(existing) {
       }
     });
   }
+  return out;
+}
+
+function normalizeBarriersConfigForSave() {
+  var src = appState.barriersConfig || {};
+  var out = {};
+  Object.keys(src).forEach(function(y) {
+    out[y] = buildBarriersFromCatalog(src[y]);
+  });
   return out;
 }
 
