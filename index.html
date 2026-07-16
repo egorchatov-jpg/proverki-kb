@@ -562,6 +562,13 @@ html, body {
 .th-col-btn.active { color: var(--orange); }
 .th-col-btn.active .th-fi path { fill: currentColor; }
 .th-fi { flex-shrink: 0; display: block; }
+.th-col-meta {
+  display: flex; flex-direction: row; align-items: center; gap: 4px;
+}
+.th-filter-count {
+  font-size: 11px; font-weight: 700; color: var(--text2); line-height: 1;
+}
+.th-col-btn.active .th-filter-count { color: inherit; }
 #screen-corrective-list .th-col-btn.active { color: var(--navy); }
 
 .find-bottom {
@@ -1094,11 +1101,11 @@ html, body {
       </colgroup>
       <thead>
         <tr>
-          <th><button class="th-col-btn" id="cfl-btn-dateCheck" onclick="openCorrFilter('dateCheck')"><span>Дата<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th><button class="th-col-btn" id="cfl-btn-method" onclick="openCorrFilter('method')"><span>Метод<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th><button class="th-col-btn" id="cfl-btn-org" onclick="openCorrFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th><button class="th-col-btn" id="cfl-btn-barrier" onclick="openCorrFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th><button class="th-col-btn" id="cfl-btn-status" onclick="openCorrFilter('status')"><span>Меро-<br>приятия</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="cfl-btn-dateCheck" onclick="openCorrFilter('dateCheck')"><span>Дата<br>проверки</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-dateCheck"></span></div></button></th>
+          <th><button class="th-col-btn" id="cfl-btn-method" onclick="openCorrFilter('method')"><span>Метод<br>проверки</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-method"></span></div></button></th>
+          <th><button class="th-col-btn" id="cfl-btn-org" onclick="openCorrFilter('org')"><span>Проверка<br>организации</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-org"></span></div></button></th>
+          <th><button class="th-col-btn" id="cfl-btn-barrier" onclick="openCorrFilter('barrier')"><span>Проверка<br>барьера</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-barrier"></span></div></button></th>
+          <th><button class="th-col-btn" id="cfl-btn-status" onclick="openCorrFilter('status')"><span>Меро-<br>приятия</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-status"></span></div></button></th>
         </tr>
       </thead>
     </table>
@@ -1126,10 +1133,10 @@ html, body {
       </colgroup>
       <thead>
         <tr>
-          <th><button class="th-col-btn" id="sfl-btn-dateCheck" onclick="openSokbFilter('dateCheck')"><span>Дата<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th><button class="th-col-btn" id="sfl-btn-org" onclick="openSokbFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th><button class="th-col-btn" id="sfl-btn-barrier" onclick="openSokbFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th><button class="th-col-btn" id="sfl-btn-status" onclick="openSokbFilter('status')"><span>Оспа-<br>ривание</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="sfl-btn-dateCheck" onclick="openSokbFilter('dateCheck')"><span>Дата<br>проверки</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="sfl-count-dateCheck"></span></div></button></th>
+          <th><button class="th-col-btn" id="sfl-btn-org" onclick="openSokbFilter('org')"><span>Проверка<br>организации</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="sfl-count-org"></span></div></button></th>
+          <th><button class="th-col-btn" id="sfl-btn-barrier" onclick="openSokbFilter('barrier')"><span>Проверка<br>барьера</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="sfl-count-barrier"></span></div></button></th>
+          <th><button class="th-col-btn" id="sfl-btn-status" onclick="openSokbFilter('status')"><span>Оспа-<br>ривание</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="sfl-count-status"></span></div></button></th>
         </tr>
       </thead>
     </table>
@@ -1326,10 +1333,10 @@ html, body {
       </colgroup>
       <thead>
         <tr>
-          <th><button class="th-col-btn" id="filter-btn-dateCheck" onclick="openFindFilter('dateCheck')"><span>Дата<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th><button class="th-col-btn" id="filter-btn-method" onclick="openFindFilter('method')"><span>Метод<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th><button class="th-col-btn" id="filter-btn-org" onclick="openFindFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th><button class="th-col-btn" id="filter-btn-barrier" onclick="openFindFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="filter-btn-dateCheck" onclick="openFindFilter('dateCheck')"><span>Дата<br>проверки</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="filter-count-dateCheck"></span></div></button></th>
+          <th><button class="th-col-btn" id="filter-btn-method" onclick="openFindFilter('method')"><span>Метод<br>проверки</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="filter-count-method"></span></div></button></th>
+          <th><button class="th-col-btn" id="filter-btn-org" onclick="openFindFilter('org')"><span>Проверка<br>организации</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="filter-count-org"></span></div></button></th>
+          <th><button class="th-col-btn" id="filter-btn-barrier" onclick="openFindFilter('barrier')"><span>Проверка<br>барьера</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="filter-count-barrier"></span></div></button></th>
         </tr>
       </thead>
     </table>
@@ -4228,7 +4235,9 @@ function isOsirNonWorking(r) {
 }
 
 function isSokbListRecord(r) {
-  return isOsirNonWorking(r);
+  if (!r || r.method !== 'ОСИР') return false;
+  if (r.works === 'Нет') return true;
+  return getSokbStatus(r) !== 'none';
 }
 
 function openSokb() {
@@ -4336,9 +4345,11 @@ function renderSokbList() {
     tr.onclick = (function(rec) { return function() { openDetail(rec, 'sokb'); }; })(r);
     tbody.appendChild(tr);
   });
+  var violCount = violations.filter(function(r) { return r.works === 'Нет'; }).length;
   var cnt = document.getElementById('sokb-list-count');
-  if (cnt) cnt.innerHTML = violations.length + '<br>' + pluralNarushenie(violations.length);
+  if (cnt) cnt.innerHTML = violCount + '<br>' + pluralNarushenie(violCount);
   var enteredCount = violations.filter(function(r) { return (r.contestMeasures || '').trim(); }).length;
+  updateSokbFilterCounts(violations);
   var cntR = document.getElementById('sokb-entered-count');
   if (cntR) cntR.innerHTML = enteredCount + '<br>' + pluralOsparivanie(enteredCount);
   scrollCheckListToEnd('screen-sokb-list');
@@ -4740,6 +4751,7 @@ function saveSokbAttempts() {
   renderSokbList();
   renderCorrectiveList();
   renderLobby();
+  applyFindFilters();
   openDetail(sokbRecord, 'sokb');
 }
 
@@ -4852,6 +4864,7 @@ function renderCorrectiveList() {
   });
   var cnt = document.getElementById('corr-list-count');
   if (cnt) cnt.innerHTML = violations.length + '<br>' + pluralNarushenie(violations.length);
+  updateCorrFilterCounts(violations);
   // Right counter: violations with at least one measure entered
   var enteredCount = violations.filter(function(r) { return r.works === 'Нет' && getCorrectiveStatus(r) !== 'none'; }).length;
   var cntR = document.getElementById('corr-entered-count');
@@ -5364,6 +5377,39 @@ function pluralProverka(n) {
   else word = 'проверок';
   return n + '<br>' + word;
 }
+function countColumnValues(records, getter) {
+  var seen = {};
+  (records || []).forEach(function(r) {
+    var v = getter(r);
+    if (v !== undefined && v !== null && String(v).trim() !== '') seen[String(v)] = 1;
+  });
+  return Object.keys(seen).length;
+}
+function setFilterColCount(id, n) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = String(n);
+}
+function updateFindFilterCounts(records) {
+  setFilterColCount('filter-count-dateCheck', countColumnValues(records, function(r) { return r.dateCheck; }));
+  setFilterColCount('filter-count-method', countColumnValues(records, function(r) { return r.method; }));
+  setFilterColCount('filter-count-org', countColumnValues(records, function(r) { return r.org; }));
+  setFilterColCount('filter-count-barrier', countColumnValues(records, function(r) { return r.barrier; }));
+}
+function updateSokbFilterCounts(records) {
+  setFilterColCount('sfl-count-dateCheck', countColumnValues(records, function(r) { return r.dateCheck; }));
+  setFilterColCount('sfl-count-org', countColumnValues(records, function(r) { return r.org; }));
+  setFilterColCount('sfl-count-barrier', countColumnValues(records, function(r) { return r.barrier; }));
+  setFilterColCount('sfl-count-status', countColumnValues(records, function(r) { return sokbStatusLabel(getSokbStatus(r)) || ''; }));
+}
+function updateCorrFilterCounts(records) {
+  var statusLabel = { none: 'Не внесено', entered: 'Внесено', overdue: 'Просрочено', done: 'Выполнено', na: '' };
+  setFilterColCount('cfl-count-dateCheck', countColumnValues(records, function(r) { return r.dateCheck; }));
+  setFilterColCount('cfl-count-method', countColumnValues(records, function(r) { return r.method; }));
+  setFilterColCount('cfl-count-org', countColumnValues(records, function(r) { return r.org; }));
+  setFilterColCount('cfl-count-barrier', countColumnValues(records, function(r) { return r.barrier; }));
+  setFilterColCount('cfl-count-status', countColumnValues(records, function(r) { return statusLabel[getCorrectiveStatus(r)] || ''; }));
+}
+
 function renderFindList(records) {
   var tbody = document.getElementById('find-tbody');
   tbody.innerHTML = '';
@@ -5371,6 +5417,7 @@ function renderFindList(records) {
   var viol = records.filter(function(r) { return r.works === 'Нет'; }).length;
   document.getElementById('find-count').innerHTML = pluralProverka(records.length);
   document.getElementById('find-violation-count').innerHTML = viol + '<br>' + pluralNarushenie(viol);
+  updateFindFilterCounts(records);
   records.forEach(function(r) {
     var tr = document.createElement('tr');
     if (r.works === 'Нет') tr.className = 'has-violation';
@@ -5394,9 +5441,10 @@ function openDetail(r, source) {
   document.getElementById('detail-title').textContent = 'Проверка №' + (r.num || '?') + ' ' + (r.year || '');
   var body = document.getElementById('detail-body');
   var isFind = source === 'find';
+  var sokbSuccess = isSokbSuccessful(r);
   var isNonWorking = r.works === 'Нет';
-  var showViolBlock = isNonWorking;
-  var showContest = isNonWorking && r.method === 'ОСИР';
+  var showViolBlock = isNonWorking && !sokbSuccess;
+  var showContest = r.method === 'ОСИР' && source !== 'lobby' && (isNonWorking || getSokbStatus(r) !== 'none');
   function row(label, val, cls, editable) {
     var vCls = 'detail-val' + (cls ? ' ' + cls : '') + (editable ? ' detail-val-editable' : '');
     var onclick = editable ? ' onclick="openRecordEditPIN()"' : '';
@@ -5420,7 +5468,7 @@ function openDetail(r, source) {
       : block('Корректирующие мероприятия', r.corrective, false);
   }
   var contestBlock = '';
-  if (showContest && source !== 'lobby') {
+  if (showContest) {
     contestBlock = source === 'sokb'
       ? '<div class="detail-block detail-block-navy" onclick="openSokbPIN()">' +
           '<div class="detail-block-label">Оспаривание в СОКБ</div>' +
