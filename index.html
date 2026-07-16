@@ -876,12 +876,20 @@ html, body {
   padding: 7px 4px; font-size: 16px; font-family: monospace;
   color: #1a2035; background: #f0f0f0; text-align: center; letter-spacing: 3px;
 }
-.pw-update-btn {
-  background: var(--orange); color: #fff; border: none;
-  border-radius: 8px; padding: 8px 12px;
-  font-size: 13px; font-weight: 700; cursor: pointer; flex-shrink: 0;
+.pw-actions {
+  display: flex; gap: 8px; flex-shrink: 0; align-items: center;
 }
-.pw-update-btn:active { opacity: 0.75; }
+.pw-update-btn, .pw-revert-btn {
+  width: 44px; height: 44px;
+  color: #fff; border: none; border-radius: 8px;
+  padding: 0; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--btn-shadow);
+}
+.pw-update-btn { background: var(--orange); }
+.pw-revert-btn { background: var(--gray-btn); }
+.pw-update-btn:active, .pw-revert-btn:active { opacity: 0.75; }
+.pw-update-btn svg, .pw-revert-btn svg { display: block; }
 
 /* ===== SCREEN: МЕТОДЫ ПРОВЕРОК ===== */
 .methods-table-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; }
@@ -4148,12 +4156,39 @@ function backFromPasswordsScreen() {
   showScreen('screen-settings');
 }
 
+var PW_ICON_UPDATE = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>';
+var PW_ICON_REVERT = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M21 16.811c0 .864-.933 1.406-1.683.977l-7.108-4.061a1.125 1.125 0 0 1 0-1.954l7.108-4.061A1.125 1.125 0 0 1 21 8.689v8.122ZM11.25 16.811c0 .864-.933 1.406-1.683.977l-7.108-4.061a1.125 1.125 0 0 1 0-1.954l7.108-4.061a1.125 1.125 0 0 1 1.683.977v8.122Z"/></svg>';
+
+function getPasswordSnap() {
+  try {
+    return JSON.parse(_settingsSnap.passwords || 'null') || snapPasswordsState();
+  } catch (e) {
+    return snapPasswordsState();
+  }
+}
+
+function revertPassword(role, orgName) {
+  var snap = getPasswordSnap();
+  var pw = getPw();
+  if (role === 'admin' && snap.admin !== undefined) {
+    pw.admin = snap.admin;
+  } else if (role === 'inspector' && snap.inspector !== undefined) {
+    pw.inspector = snap.inspector;
+  } else if (orgName && snap.orgs && snap.orgs[orgName] !== undefined) {
+    if (!pw.orgs) pw.orgs = {};
+    pw.orgs[orgName] = snap.orgs[orgName];
+  }
+  saveState();
+  renderPasswordsScreen();
+  markPasswordsDirty();
+}
+
 function renderPasswordsScreen() {
   var pw = getPw();
   var body = document.getElementById('passwords-body');
   body.innerHTML = '';
 
-  function makePwRow(label, password, onUpdate) {
+  function makePwRow(label, password, onUpdate, revertRole, revertOrgName) {
     var row = document.createElement('div');
     row.className = 'pw-row';
 
@@ -4165,32 +4200,42 @@ function renderPasswordsScreen() {
     cell.className = 'pw-cell';
     cell.textContent = password || '—';
 
+    var actions = document.createElement('div');
+    actions.className = 'pw-actions';
+
     var btn = document.createElement('button');
     btn.className = 'pw-update-btn';
-    btn.textContent = 'Обновить';
+    btn.innerHTML = PW_ICON_UPDATE;
     btn.onclick = onUpdate;
+
+    var revBtn = document.createElement('button');
+    revBtn.className = 'pw-revert-btn';
+    revBtn.innerHTML = PW_ICON_REVERT;
+    revBtn.onclick = function() { revertPassword(revertRole, revertOrgName); };
+
+    actions.appendChild(btn);
+    actions.appendChild(revBtn);
 
     row.appendChild(lbl);
     row.appendChild(cell);
-    row.appendChild(btn);
+    row.appendChild(actions);
     return row;
   }
 
   // Администратор — requires superuser PIN confirmation
   body.appendChild(makePwRow('Администратор', pw.admin, function() {
-    // Open dark PIN screen in admin-update mode
     pinMode = 'admin-update';
     document.getElementById('screen-pin').classList.add('screen-pin--dark');
     setPinRole('Доступ суперпользователя');
     resetPin();
     showScreen('screen-pin');
-  }));
+  }, 'admin'));
 
   // Проверяющий
   body.appendChild(makePwRow('Проверяющий', pw.inspector, function() {
     var newPw = generateUniquePassword();
     if (newPw) { pw.inspector = newPw; saveState(); renderPasswordsScreen(); markPasswordsDirty(); }
-  }));
+  }, 'inspector'));
 
   // Section: Проверяемые организации
   var secTitle = document.createElement('div');
@@ -4209,7 +4254,7 @@ function renderPasswordsScreen() {
         var newPw = generateUniquePassword();
         if (newPw) { pw.orgs[orgName] = newPw; saveState(); renderPasswordsScreen(); markPasswordsDirty(); }
       };
-    }(o.name))));
+    }(o.name)), 'org', o.name));
   });
 }
 
