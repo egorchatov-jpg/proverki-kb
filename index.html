@@ -3964,13 +3964,22 @@ function openBarriersPKList(year) {
 
 function appendEmptyPassportRow(tbody, passportText) {
   var tr = document.createElement('tr');
+  tr.className = 'bpk-empty-passport-row';
   var tdPass = document.createElement('td');
   tdPass.className = 'methods-td barriers-td-passport';
   tdPass.textContent = passportText;
   tr.appendChild(tdPass);
   var tdSel = document.createElement('td');
   tdSel.className = 'methods-td methods-td-cb';
-  tr.appendChild(tdSel);
+  var cbSel = document.createElement('input');
+  cbSel.type = 'checkbox';
+  cbSel.className = 'method-circle-cb bpk-passport-only-cb';
+  cbSel.dataset.passport = passportText;
+  cbSel.addEventListener('change', function() {
+    updateBarrierMinusBtnState();
+    updateBarriersCheckboxCounts();
+  });
+  tdSel.appendChild(cbSel);
   var tdName = document.createElement('td');
   tdName.className = 'methods-td methods-td-name';
   tdName.textContent = '—';
@@ -4098,13 +4107,28 @@ function updateBarrierMinusBtnState() {
 }
 
 function deleteSelectedBarriers() {
-  var selected = [];
+  if (!_bpkYear) return;
+  var selectedIdx = [];
+  var selectedPassports = [];
   document.querySelectorAll('#barriers-tbody .method-circle-cb:checked').forEach(function(cb) {
-    selected.push(+cb.dataset.idx);
+    if (cb.dataset.passport) {
+      selectedPassports.push(cb.dataset.passport);
+    } else if (cb.dataset.idx !== undefined && cb.dataset.idx !== '') {
+      selectedIdx.push(+cb.dataset.idx);
+    }
   });
-  if (!selected.length || !_bpkYear) return;
-  appState.barriersConfig[_bpkYear] = getBarriersForYear(_bpkYear)
-    .filter(function(_, i) { return selected.indexOf(i) < 0; });
+  if (!selectedIdx.length && !selectedPassports.length) return;
+  if (selectedIdx.length) {
+    appState.barriersConfig[_bpkYear] = getBarriersForYear(_bpkYear)
+      .filter(function(_, i) { return selectedIdx.indexOf(i) < 0; });
+  }
+  if (selectedPassports.length) {
+    if (!appState.barriersCustomPassports) appState.barriersCustomPassports = {};
+    var customs = appState.barriersCustomPassports[_bpkYear] || [];
+    appState.barriersCustomPassports[_bpkYear] = customs.filter(function(p) {
+      return selectedPassports.indexOf(p) < 0;
+    });
+  }
   saveState();
   renderBarriersTable(_bpkYear);
   markBarriersDirty();
@@ -4116,6 +4140,17 @@ var _bpkChoiceOverlayH = 0;
 
 function getBpkStandardPassports() {
   return BARRIERS_PASSPORT_GROUPS.map(function(g) { return g.passport; });
+}
+
+function getBpkDrumPassports(year) {
+  var seen = {}, out = [];
+  getBpkStandardPassports().forEach(function(p) {
+    if (!seen[p]) { seen[p] = 1; out.push(p); }
+  });
+  getCustomPassportsForYear(year).forEach(function(p) {
+    if (p && !seen[p]) { seen[p] = 1; out.push(p); }
+  });
+  return out;
 }
 
 function getFirstPassportInBarriersTable(year) {
@@ -4276,7 +4311,7 @@ function resetBpkDrumOverlay() {
 
 function openBpkBarrierPassportDrum() {
   closeBpkChoiceOverlay();
-  var passports = getBpkStandardPassports();
+  var passports = getBpkDrumPassports(_bpkYear);
   if (!passports.length) return;
   var defPassport = getFirstPassportInBarriersTable(_bpkYear);
   if (passports.indexOf(defPassport) < 0) defPassport = passports[0];
