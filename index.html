@@ -3139,12 +3139,13 @@ function syncSettingsFromServer(callback) {
     .then(function(data) {
       if (errEl) errEl.textContent = '';
       var localDirty = isSettingsDirty();
+      var preferLocal = localDirty && ((appState.settingsUpdatedAt || 0) > (data.settingsUpdatedAt || 0));
       var localMethods = appState.methods;
       var localOrgs = appState.orgs;
       var localBarriersConfig = appState.barriersConfig;
       // Merge server settings — never rewrite Excel records (values used only for NEW entries)
       if (data.methods && data.methods.length) {
-        appState.methods = localDirty
+        appState.methods = preferLocal
           ? mergeMethods(data.methods, localMethods)
           : data.methods.map(function(m) { return Object.assign({}, m); });
       }
@@ -3154,17 +3155,17 @@ function syncSettingsFromServer(callback) {
         if (typeof serverOrgs[0] === 'string') {
           serverOrgs = serverOrgs.map(function(n) { return { name: n, show: true }; });
         }
-        if (!localDirty && (serverOrgs.length <= 2 ||
+        if (!preferLocal && (serverOrgs.length <= 2 ||
             serverOrgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; }))) {
           serverOrgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
         }
-        appState.orgs = localDirty
+        appState.orgs = preferLocal
           ? mergeOrgs(serverOrgs, localOrgs)
           : serverOrgs.map(function(o) { return Object.assign({}, o); });
       }
       if (data.barriers && data.barriers.length) appState.barriers = data.barriers;
       if (data.barriersConfig || data.barriersPK) {
-        if (localDirty) {
+        if (preferLocal) {
           appState.barriersConfig = mergeBarriersConfig(data.barriersConfig || {}, localBarriersConfig, true);
           Object.keys(appState.barriersConfig).forEach(function(y) {
             appState.barriersConfig[y] = buildBarriersFromCatalog(appState.barriersConfig[y]);
@@ -3177,10 +3178,10 @@ function syncSettingsFromServer(callback) {
         }
         applyBarriersPKToConfig(data.barriersPK, appState.barriersConfig);
       }
-      if (!localDirty && data.settingsUpdatedAt) {
+      if (!preferLocal && data.settingsUpdatedAt) {
         appState.settingsUpdatedAt = data.settingsUpdatedAt;
       }
-      if (data.passwords) {
+      if (data.passwords && !preferLocal) {
         // Merge server passwords — superuser PIN is hardcoded, never synced
         var sp = data.passwords;
         if (!appState.passwords) appState.passwords = getDefaultPasswords();
@@ -3188,7 +3189,9 @@ function syncSettingsFromServer(callback) {
         if (sp.inspector)  appState.passwords.inspector  = sp.inspector;
         if (sp.orgs)       appState.passwords.orgs       = Object.assign(appState.passwords.orgs || {}, sp.orgs);
       }
-      if (data.usedPasswords && data.usedPasswords.length) {
+      if (data.usedPasswords && data.usedPasswords.length && !preferLocal) {
+        appState.usedPasswords = data.usedPasswords.slice();
+      } else if (data.usedPasswords && data.usedPasswords.length) {
         // Union of local and server used lists
         var serverUsed = data.usedPasswords;
         var localUsed  = appState.usedPasswords || [];
@@ -3196,6 +3199,7 @@ function syncSettingsFromServer(callback) {
         serverUsed.forEach(function(p) { if (merged.indexOf(p) < 0) merged.push(p); });
         appState.usedPasswords = merged;
       }
+      if (!preferLocal) clearSettingsDirty();
       saveState();
       if (callback) callback();
     })
@@ -3218,7 +3222,7 @@ function syncSettingsToServer() {
   var settings = {
     methods:       appState.methods       || DEFAULT_METHODS,
     barriersPK:    appState.barriersPK    || {},
-    barriersConfig: appState.barriersConfig || {},
+    barriersConfig: normalizeBarriersConfigForSave(),
     orgs:          appState.orgs          || [],
     barriers:      appState.barriers      || [],
     settingsUpdatedAt: updatedAt,
