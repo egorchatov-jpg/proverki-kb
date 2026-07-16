@@ -525,17 +525,22 @@ html, body {
 
 /* ===== НАЙТИ ПРОВЕРКУ — список ===== */
 #screen-find { background: var(--bg); }
-.find-list-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-.find-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.find-table thead th {
-  position: sticky; top: 0; background: var(--bg);
-  padding: 8px 4px 6px;
-  height: 54px; min-height: 54px; max-height: 54px;
-  box-sizing: border-box; vertical-align: top;
-  font-size: 11px; font-weight: 700; color: var(--text2);
+.list-filter-head {
+  flex-shrink: 0;
+  background: var(--bg);
   border-bottom: 2px solid var(--border);
+}
+.find-list-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; }
+.find-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.list-filter-head .find-table thead th {
+  padding: 0;
+  height: 60px;
+  box-sizing: border-box;
+  vertical-align: top;
+  font-size: 11px; font-weight: 700; color: var(--text2);
+  border-bottom: none;
   text-align: left; line-height: 1.3;
-  z-index: 10; overflow: hidden;
+  overflow: hidden;
 }
 .find-table tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; touch-action: manipulation; }
 .find-table tbody tr:active { background: rgba(232,119,34,0.08); }
@@ -545,9 +550,14 @@ html, body {
   background: none; border: none; cursor: pointer; padding: 0;
   color: var(--text2); text-align: left; line-height: 1.3;
   font-size: 11px; font-weight: 700; font-family: inherit;
-  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
-  width: 100%; height: 100%; min-height: 38px;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 3px;
+  width: 100%; height: 60px; padding: 8px 4px 6px;
+  box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+}
+.th-col-btn > span {
+  display: block;
+  min-height: 28px;
 }
 .th-col-btn.active { color: var(--orange); }
 .th-col-btn.active .th-fi path { fill: currentColor; }
@@ -1077,17 +1087,27 @@ html, body {
 
 <!-- ===== SCREEN: КОРРЕКТИРУЮЩИЕ МЕРОПРИЯТИЯ (список) ===== -->
 <div class="screen" id="screen-corrective-list">
-  <div class="find-list-wrap">
-    <table class="find-table">
+  <div class="list-filter-head">
+    <table class="find-table find-filter-table">
+      <colgroup>
+        <col style="width:20%"><col style="width:18%"><col style="width:25%"><col style="width:17%"><col style="width:20%">
+      </colgroup>
       <thead>
         <tr>
-          <th style="width:20%"><button class="th-col-btn" id="cfl-btn-dateCheck" onclick="openCorrFilter('dateCheck')"><span>Дата<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:18%"><button class="th-col-btn" id="cfl-btn-method" onclick="openCorrFilter('method')"><span>Метод<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:25%"><button class="th-col-btn" id="cfl-btn-org" onclick="openCorrFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:17%"><button class="th-col-btn" id="cfl-btn-barrier" onclick="openCorrFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:20%"><button class="th-col-btn" id="cfl-btn-status" onclick="openCorrFilter('status')"><span>Меро-<br>приятия</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="cfl-btn-dateCheck" onclick="openCorrFilter('dateCheck')"><span>Дата<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="cfl-btn-method" onclick="openCorrFilter('method')"><span>Метод<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="cfl-btn-org" onclick="openCorrFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="cfl-btn-barrier" onclick="openCorrFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="cfl-btn-status" onclick="openCorrFilter('status')"><span>Меро-<br>приятия</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
         </tr>
       </thead>
+    </table>
+  </div>
+  <div class="find-list-wrap">
+    <table class="find-table find-body-table">
+      <colgroup>
+        <col style="width:20%"><col style="width:18%"><col style="width:25%"><col style="width:17%"><col style="width:20%">
+      </colgroup>
       <tbody id="corr-list-tbody"></tbody>
     </table>
   </div>
@@ -1099,16 +1119,26 @@ html, body {
 </div>
 
 <div class="screen" id="screen-sokb-list">
-  <div class="find-list-wrap">
-    <table class="find-table">
+  <div class="list-filter-head">
+    <table class="find-table find-filter-table">
+      <colgroup>
+        <col style="width:22%"><col style="width:34%"><col style="width:22%"><col style="width:22%">
+      </colgroup>
       <thead>
         <tr>
-          <th style="width:22%"><button class="th-col-btn" id="sfl-btn-dateCheck" onclick="openSokbFilter('dateCheck')"><span>Дата<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:34%"><button class="th-col-btn" id="sfl-btn-org" onclick="openSokbFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:22%"><button class="th-col-btn" id="sfl-btn-barrier" onclick="openSokbFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:22%"><button class="th-col-btn" id="sfl-btn-status" onclick="openSokbFilter('status')"><span>Оспа-<br>ривание</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="sfl-btn-dateCheck" onclick="openSokbFilter('dateCheck')"><span>Дата<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="sfl-btn-org" onclick="openSokbFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="sfl-btn-barrier" onclick="openSokbFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="sfl-btn-status" onclick="openSokbFilter('status')"><span>Оспа-<br>ривание</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
         </tr>
       </thead>
+    </table>
+  </div>
+  <div class="find-list-wrap">
+    <table class="find-table find-body-table">
+      <colgroup>
+        <col style="width:22%"><col style="width:34%"><col style="width:22%"><col style="width:22%">
+      </colgroup>
       <tbody id="sokb-list-tbody"></tbody>
     </table>
   </div>
@@ -1289,16 +1319,26 @@ html, body {
 
 <!-- ===== НАЙТИ: СПИСОК ===== -->
 <div class="screen" id="screen-find">
-  <div class="find-list-wrap">
-    <table class="find-table">
+  <div class="list-filter-head">
+    <table class="find-table find-filter-table">
+      <colgroup>
+        <col style="width:22%"><col style="width:22%"><col style="width:34%"><col style="width:22%">
+      </colgroup>
       <thead>
         <tr>
-          <th style="width:22%"><button class="th-col-btn" id="filter-btn-dateCheck" onclick="openFindFilter('dateCheck')"><span>Дата<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:22%"><button class="th-col-btn" id="filter-btn-method" onclick="openFindFilter('method')"><span>Метод<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:34%"><button class="th-col-btn" id="filter-btn-org" onclick="openFindFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
-          <th style="width:22%"><button class="th-col-btn" id="filter-btn-barrier" onclick="openFindFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="filter-btn-dateCheck" onclick="openFindFilter('dateCheck')"><span>Дата<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="filter-btn-method" onclick="openFindFilter('method')"><span>Метод<br>проверки</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="filter-btn-org" onclick="openFindFilter('org')"><span>Проверка<br>организации</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
+          <th><button class="th-col-btn" id="filter-btn-barrier" onclick="openFindFilter('barrier')"><span>Проверка<br>барьера</span><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg></button></th>
         </tr>
       </thead>
+    </table>
+  </div>
+  <div class="find-list-wrap">
+    <table class="find-table find-body-table">
+      <colgroup>
+        <col style="width:22%"><col style="width:22%"><col style="width:34%"><col style="width:22%">
+      </colgroup>
       <tbody id="find-tbody"></tbody>
     </table>
   </div>
