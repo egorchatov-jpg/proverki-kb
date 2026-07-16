@@ -1359,7 +1359,7 @@ html, body {
   </div>
   <div class="find-bottom">
     <div class="find-count" id="find-count">0<br>проверок</div>
-    <button class="find-bottom-btn find-btn-cancel" onclick="showScreen('screen-proverki-menu')">Назад</button>
+    <button class="find-bottom-btn find-btn-cancel" onclick="backFromFindList()">Назад</button>
     <div class="find-violation-count" id="find-violation-count">0<br>нарушений</div>
   </div>
 </div>
@@ -2630,6 +2630,19 @@ function filterPoolForOverlay(recs, filters, openCol, statusFn) {
     if (openCol !== 'status' && filters.status && statusFn && statusFn(r) !== filters.status) return false;
     return true;
   });
+}
+
+function resetFindFilters() {
+  findFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '' };
+  ['dateCheck', 'method', 'org', 'barrier'].forEach(function(k) {
+    var btn = document.getElementById('filter-btn-' + k);
+    if (btn) btn.classList.remove('active');
+  });
+}
+
+function backFromFindList() {
+  resetFindFilters();
+  showScreen('screen-proverki-menu');
 }
 
 function openFind() {
