@@ -5960,6 +5960,7 @@ function openDetail(r, source) {
   var isNonWorking = r.works === 'Нет';
   var showViolBlock = isNonWorking && !sokbSuccess;
   var showContest = r.method === 'ОСИР' && source !== 'lobby' && (isNonWorking || getSokbStatus(r) !== 'none');
+  var showViolationDesc = showViolBlock || (sokbSuccess && r.method === 'ОСИР' && source !== 'lobby');
   function row(label, val, cls, editable) {
     var vCls = 'detail-val' + (cls ? ' ' + cls : '') + (editable ? ' detail-val-editable' : '');
     var onclick = editable ? ' onclick="openRecordEditPIN()"' : '';
@@ -6003,7 +6004,7 @@ function openDetail(r, source) {
     row('Барьер в ПК', r.barrierInPK, '', isFind) +
     row('Работоспособность барьера', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', isFind) +
     (showViolBlock ? row('Нарушение допустил', r.violator, '', isFind) : '') +
-    (showViolBlock ? block('Описание нарушения', r.desc, isFind) : '') +
+    (showViolationDesc ? block('Описание нарушения', r.desc, isFind) : '') +
     corrBlock +
     contestBlock;
   document.getElementById('detail-scroll').scrollTop = 0;
