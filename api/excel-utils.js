@@ -158,29 +158,37 @@ function ensureCheckIdColumn(rows) {
   });
 }
 
-function assignMissingCheckIds(rows, year) {
+function checkIdFromNum(num, year) {
+  const n = parseInt(String(num ?? '').trim(), 10);
+  if (!n || n < 1) return '';
+  const yearSuffix = String(year).slice(-2).padStart(2, '0');
+  return String(n).padStart(4, '0') + yearSuffix;
+}
+
+function assignCheckIdsFromNum(rows, year, opts) {
+  const overwrite = opts && opts.overwrite;
   if (!rows.length) return rows;
   const header = rows[0].map(h => String(h || '').trim());
   const colIdx = buildColIdx(header);
   const idCol = colIdx.checkId;
+  const numCol = colIdx.num ?? COL.num;
+  const dcCol = colIdx.dateCheck ?? COL.dateCheck;
   if (idCol === undefined) return rows;
-  const deCol = colIdx.dateEntry ?? COL.dateEntry;
-  const yearSuffix = String(year).slice(-2).padStart(2, '0');
-  const data = rows.slice(1);
-  let maxSeq = 0;
-  data.forEach(row => {
-    const id = String(row[idCol] || '').trim();
-    const m = id.match(/^(\d{4})(\d{2})$/);
-    if (m && m[2] === yearSuffix) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
-  });
-  const missing = data.filter(row => !String(row[idCol] || '').trim());
-  missing.sort((a, b) => toDateEntryNum(a[deCol]) - toDateEntryNum(b[deCol]));
-  missing.forEach(row => {
-    maxSeq += 1;
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!String(row[dcCol] || '').trim()) continue;
+    if (!overwrite && String(row[idCol] || '').trim()) continue;
+    const id = checkIdFromNum(row[numCol], year);
+    if (!id) continue;
     while (row.length <= idCol) row.push('');
-    row[idCol] = String(maxSeq).padStart(4, '0') + yearSuffix;
-  });
+    row[idCol] = id;
+  }
   return rows;
+}
+
+function assignMissingCheckIds(rows, year) {
+  return assignCheckIdsFromNum(rows, year, { overwrite: false });
 }
 
 function applyBarrierInPK(rows, barriersConfig, defaultYear) {
@@ -216,5 +224,7 @@ module.exports = {
   calcBarrierInPK,
   nextCheckId,
   ensureCheckIdColumn,
+  checkIdFromNum,
+  assignCheckIdsFromNum,
   assignMissingCheckIds,
 };

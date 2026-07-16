@@ -1,20 +1,28 @@
 /**
- * Add "ID проверки" column (position 2) to all Excel DB files on GitHub.
- * Assigns IDs by dateEntry ascending: NNNNYY (NNNN = entry seq in year, YY = year).
+ * Add "ID проверки" and assign IDs for existing rows from column "№".
+ * Format: NNNNYY — NNNN = current № padded to 4 digits, YY = file year.
  *
- * Usage: GITHUB_TOKEN=... node scripts/migrate-check-id.js
+ * Usage: node scripts/migrate-check-id.js [--dry-run]
  */
+require('dotenv').config({ path: require('path').join(__dirname, '../.env.prod') });
+require('dotenv').config({ path: require('path').join(__dirname, '../.env.local') });
+
+const { execSync } = require('child_process');
 const XLSX = require('xlsx');
 const {
-  COLUMNS, COL, buildColIdx, toDateEntryNum, sortAndRenumberSheet, ensureCheckIdColumn,
+  COLUMNS, COL, buildColIdx, sortAndRenumberSheet, ensureCheckIdColumn, assignCheckIdsFromNum,
 } = require('../api/excel-utils');
 
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || (() => {
+  try { return execSync('gh auth token', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
+  catch (_) { return ''; }
+})();
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'egorchatov-jpg';
 const GITHUB_REPO = process.env.GITHUB_DATA_REPO || 'proverki-kb-data';
+const DRY_RUN = process.argv.includes('--dry-run');
 
 if (!GITHUB_TOKEN) {
-  console.error('GITHUB_TOKEN required');
+  console.error('GITHUB_TOKEN required (env or gh auth login)');
   process.exit(1);
 }
 
@@ -59,37 +67,6 @@ function yearFromFileName(name) {
   return m ? m[1] : String(new Date().getFullYear());
 }
 
-function assignMissingIds(rows, year) {
-  const header = rows[0].map(h => String(h || '').trim());
-  const colIdx = buildColIdx(header);
-  const idCol = colIdx.checkId ?? COL.checkId;
-  const deCol = colIdx.dateEntry ?? COL.dateEntry;
-  const yearSuffix = String(year).slice(-2).padStart(2, '0');
-
-  const data = rows.slice(1).filter(row => String(row[colIdx.dateCheck ?? COL.dateCheck] || '').trim());
-  let maxSeq = 0;
-
-  data.forEach(row => {
-    const id = String(row[idCol] || '').trim();
-    const m = id.match(/^(\d{4})(\d{2})$/);
-    if (m && m[2] === yearSuffix) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
-  });
-
-  const missing = data
-    .map((row, i) => ({ row, i: i + 1 }))
-    .filter(({ row }) => !String(row[idCol] || '').trim());
-
-  missing.sort((a, b) => toDateEntryNum(a.row[deCol]) - toDateEntryNum(b.row[deCol]));
-
-  missing.forEach(({ row }) => {
-    maxSeq += 1;
-    while (row.length <= idCol) row.push('');
-    row[idCol] = String(maxSeq).padStart(4, '0') + yearSuffix;
-  });
-
-  return rows;
-}
-
 async function migrateFile(fileName) {
   const meta = await ghGet(fileName);
   if (!meta || !meta.content) {
@@ -107,29 +84,34 @@ async function migrateFile(fileName) {
     rows = [COLUMNS.map(c => c.h)];
   }
 
-  const beforeHeader = rows[0].map(h => String(h || '').trim()).join('|');
   rows = ensureCheckIdColumn(rows);
-  rows = assignMissingIds(rows, year);
+  // Assign from current № BEFORE re-sort (№ changes after sort, ID must not)
+  rows = assignCheckIdsFromNum(rows, year, { overwrite: true });
   rows = sortAndRenumberSheet(rows);
 
-  const afterHeader = rows[0].map(h => String(h || '').trim()).join('|');
   const colIdx = buildColIdx(rows[0].map(h => String(h || '').trim()));
   const idCol = colIdx.checkId ?? COL.checkId;
+  const numCol = colIdx.num ?? COL.num;
+  const samples = rows.slice(1, 4).map(r => `№${r[numCol]}→${r[idCol]}`);
   const ids = rows.slice(1).map(r => String(r[idCol] || '').trim()).filter(Boolean);
+
+  if (DRY_RUN) {
+    console.log(`  DRY RUN: ${ids.length} IDs`, samples.join(', '));
+    return;
+  }
 
   const newWs = XLSX.utils.aoa_to_sheet(rows);
   newWs['!cols'] = ws['!cols'];
   wb.Sheets[wb.SheetNames[0]] = newWs;
   const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' }).toString('base64');
 
-  await ghPut(fileName, b64, meta.sha, `Migrate: add ID проверки column (${fileName})`);
-  console.log(`  OK: ${ids.length} IDs, header changed: ${beforeHeader !== afterHeader}`);
-  if (ids.length) console.log(`    first=${ids[0]} last=${ids[ids.length - 1]}`);
+  await ghPut(fileName, b64, meta.sha, `Migrate: ID проверки from № (${fileName})`);
+  console.log(`  OK: ${ids.length} IDs`, samples.length ? `e.g. ${samples.join(', ')}` : '');
 }
 
 (async () => {
   const files = await listExcelFiles();
-  console.log('Files:', files.length);
+  console.log('Files:', files.length, DRY_RUN ? '(dry-run)' : '');
   for (const f of files) {
     console.log(f);
     await migrateFile(f);
@@ -139,3 +121,4 @@ async function migrateFile(fileName) {
   console.error(e);
   process.exit(1);
 });
+
