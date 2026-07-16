@@ -4004,12 +4004,17 @@ function appendEmptyPassportRow(tbody, passportText) {
     updateBarriersCheckboxCounts();
   });
   tdSel.appendChild(cbSel);
+  tr.appendChild(tdSel);
   var tdName = document.createElement('td');
   tdName.className = 'methods-td methods-td-name';
   tdName.textContent = '—';
   tr.appendChild(tdName);
-  tr.appendChild(document.createElement('td')).className = 'methods-td methods-td-cb';
-  tr.appendChild(document.createElement('td')).className = 'methods-td methods-td-cb';
+  var tdPK = document.createElement('td');
+  tdPK.className = 'methods-td methods-td-cb';
+  tr.appendChild(tdPK);
+  var tdShow = document.createElement('td');
+  tdShow.className = 'methods-td methods-td-cb';
+  tr.appendChild(tdShow);
   tbody.appendChild(tr);
 }
 
