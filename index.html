@@ -1047,8 +1047,11 @@ html, body {
 .bpk-input-field {
   flex: 1; min-width: 0; height: 44px; border: 1.5px solid var(--border);
   border-radius: 10px; padding: 0 12px; font-size: 14px; background: #fff; outline: none;
+  -webkit-user-select: text; user-select: text; touch-action: manipulation;
 }
 .bpk-input-field:focus { border-color: var(--orange); }
+.is-ios .bpk-input-field { font-size: 16px; }
+#overlay-bpk-input .overlay-box { transition: none; transform: translateY(0); }
 .drum-wrap.bpk-passport-drum { height: 105px; }
 .drum-wrap.bpk-passport-drum::before,
 .drum-wrap.bpk-passport-drum::after { height: 35px; }
@@ -1445,7 +1448,7 @@ html, body {
   <div class="overlay-box">
     <div class="bpk-selected-passport" id="bpk-selected-passport" hidden></div>
     <div class="bpk-input-row">
-      <input class="bpk-input-field" id="bpk-input-field" type="text" autocomplete="off">
+      <input class="bpk-input-field" id="bpk-input-field" type="text" inputmode="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
       <button type="button" class="method-cancel-btn" onclick="closeBpkNameOverlay()">
         <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
@@ -2432,6 +2435,7 @@ function closeDetail() {
 var _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 if (!_isIOS) document.documentElement.classList.add('is-not-ios');
+else document.documentElement.classList.add('is-ios');
 if (window.visualViewport && !_isIOS) {
   function syncOverlayHeight() {
     var h = window.visualViewport.height + 'px';
@@ -2500,6 +2504,7 @@ window.addEventListener('DOMContentLoaded', function() {
   renderLobby();
   initDateDrum();
   initViolatorGroups();
+  initBpkInputIOSFix();
   setTodayDate();
   setTimeout(_unlockLobbyBanners, 400);
   loadFromServer(function() { _unlockLobbyBanners(); }); // independent of SW / push permission
@@ -4135,11 +4140,41 @@ function getFirstPassportInBarriersTable(year) {
 function applyBpkOverlayHeights(extra) {
   if (!_bpkChoiceOverlayH) return;
   var total = _bpkChoiceOverlayH + (extra || 0);
-  var h = total + 'px';
   var choiceBox = document.querySelector('#overlay-bpk-choice .overlay-box');
   var inputBox = document.querySelector('#overlay-bpk-input .overlay-box');
   if (choiceBox) choiceBox.style.height = _bpkChoiceOverlayH + 'px';
-  if (inputBox) inputBox.style.height = h;
+  if (inputBox) {
+    inputBox.style.height = '';
+    inputBox.style.minHeight = total + 'px';
+  }
+}
+
+function focusBpkInput(input) {
+  if (!input) return;
+  var delay = _isIOS ? 350 : 80;
+  setTimeout(function() {
+    input.removeAttribute('readonly');
+    input.focus({ preventScroll: false });
+    if (_isIOS) {
+      try { input.click(); } catch (e) {}
+      try {
+        var len = input.value.length;
+        input.setSelectionRange(len, len);
+      } catch (e2) {}
+    }
+  }, delay);
+}
+
+function initBpkInputIOSFix() {
+  var input = document.getElementById('bpk-input-field');
+  if (!input || input._bpkIosFix) return;
+  input._bpkIosFix = true;
+  if (!_isIOS) return;
+  input.addEventListener('touchend', function(e) {
+    e.stopPropagation();
+    input.removeAttribute('readonly');
+    input.focus({ preventScroll: false });
+  }, { passive: true });
 }
 
 function measureBpkChoiceOverlayHeight() {
@@ -4184,38 +4219,47 @@ function openBpkNameOverlay(mode, placeholder, passportLabel) {
   var labelEl = document.getElementById('bpk-selected-passport');
   input.value = '';
   input.placeholder = placeholder || '';
-  if (mode === 'barrier' && passportLabel) {
-    labelEl.textContent = passportLabel;
-    labelEl.hidden = false;
-    document.getElementById('overlay-bpk-input').classList.add('active');
-    requestAnimationFrame(function() {
-      var extra = labelEl.offsetHeight + 10;
-      applyBpkOverlayHeights(extra);
-      input.focus();
-    });
-  } else {
-    labelEl.hidden = true;
-    labelEl.textContent = '';
-    applyBpkOverlayHeights();
-    document.getElementById('overlay-bpk-input').classList.add('active');
-    setTimeout(function() { input.focus(); }, 80);
-  }
+  input.removeAttribute('readonly');
+  var showInput = function() {
+    if (mode === 'barrier' && passportLabel) {
+      labelEl.textContent = passportLabel;
+      labelEl.hidden = false;
+      document.getElementById('overlay-bpk-input').classList.add('active');
+      requestAnimationFrame(function() {
+        var extra = labelEl.offsetHeight + 10;
+        applyBpkOverlayHeights(extra);
+        focusBpkInput(input);
+      });
+    } else {
+      labelEl.hidden = true;
+      labelEl.textContent = '';
+      applyBpkOverlayHeights();
+      document.getElementById('overlay-bpk-input').classList.add('active');
+      focusBpkInput(input);
+    }
+  };
+  if (_isIOS) setTimeout(showInput, 50);
+  else showInput();
 }
 
 function closeBpkNameOverlay() {
   document.getElementById('overlay-bpk-input').classList.remove('active');
   var input = document.getElementById('bpk-input-field');
   var labelEl = document.getElementById('bpk-selected-passport');
+  var inputBox = document.querySelector('#overlay-bpk-input .overlay-box');
   input.value = '';
   input.blur();
   if (labelEl) { labelEl.hidden = true; labelEl.textContent = ''; }
+  if (inputBox) { inputBox.style.height = ''; inputBox.style.minHeight = ''; }
   _bpkNameMode = '';
   _bpkBarrierPassport = '';
 }
 
 function openBpkPassportNameOverlay() {
   closeBpkChoiceOverlay();
-  openBpkNameOverlay('passport', 'Название паспорта');
+  var open = function() { openBpkNameOverlay('passport', 'Название паспорта'); };
+  if (_isIOS) setTimeout(open, 100);
+  else open();
 }
 
 function resetBpkDrumOverlay() {
