@@ -736,7 +736,7 @@ html, body {
 .detail-val-red { background: rgba(192,57,43,0.15); }
 .detail-val-works-no { color: var(--red); font-weight: 700; }
 .detail-back {
-  display: flex; justify-content: center;
+  display: flex; justify-content: center; gap: 10px;
   padding: 10px 14px;
   padding-bottom: max(10px, env(safe-area-inset-bottom));
   flex-shrink: 0;
@@ -744,13 +744,30 @@ html, body {
 .detail-back-btn {
   background: var(--gray-btn-dark); color: #fff;
   border: none; cursor: pointer; border-radius: var(--btn-radius);
-  padding: 0 40px;
+  padding: 0 24px;
   height: 53px;
+  flex: 1;
+  max-width: calc((100vw - 38px) / 2);
   display: flex; align-items: center; justify-content: center;
   font-size: 15px; font-weight: 700;
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
 }
 .detail-back-btn:active { opacity: 0.8; }
+.detail-back-btn:disabled { opacity: 0.5; }
+.detail-share-btn {
+  background: var(--orange); color: #fff;
+  border: none; cursor: pointer; border-radius: var(--btn-radius);
+  padding: 0 24px;
+  height: 53px;
+  flex: 1;
+  max-width: calc((100vw - 38px) / 2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+}
+.detail-share-btn:active { opacity: 0.8; }
+.detail-share-btn:disabled { opacity: 0.5; }
+#detail-share-capture { background: var(--bg); }
 
 /* ===== PULL-TO-REFRESH ===== */
 #pull-indicator {
@@ -1451,11 +1468,14 @@ html, body {
 <!-- ===== ДЕТАЛЬНАЯ КАРТОЧКА ===== -->
 <div class="screen" id="screen-detail">
   <div class="detail-scroll" id="detail-scroll">
-    <div class="detail-title" id="detail-title">000126</div>
-    <div id="detail-body"></div>
+    <div id="detail-share-capture">
+      <div class="detail-title" id="detail-title">000126</div>
+      <div id="detail-body"></div>
+    </div>
   </div>
   <div class="detail-back">
-    <button class="detail-back-btn" onclick="closeDetail()">Назад</button>
+    <button type="button" class="detail-share-btn" id="detail-share-btn" onclick="shareDetailSnapshot()">Поделиться</button>
+    <button type="button" class="detail-back-btn" onclick="closeDetail()">Назад</button>
   </div>
 </div>
 
@@ -1787,6 +1807,7 @@ html, body {
   </div>
 </div>
 
+<script src="/html2canvas.min.js"></script>
 <script>
 'use strict';
 
@@ -6083,10 +6104,67 @@ function renderFindList(records) {
 
 // ===== DETAIL =====
 var detailRecordForEdit = null;
+var _detailShareRecord = null;
+
+function downloadBlob(blob, name) {
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(a.href); }, 2000);
+}
+
+async function shareDetailSnapshot() {
+  var cap = document.getElementById('detail-share-capture');
+  if (!cap) return;
+  if (typeof html2canvas !== 'function') {
+    alert('Снимок недоступен: библиотека не загружена');
+    return;
+  }
+  var btn = document.getElementById('detail-share-btn');
+  var label = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    var bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#eef1f6';
+    var canvas = await html2canvas(cap, {
+      backgroundColor: bg,
+      scale: Math.min(2, window.devicePixelRatio || 1.5),
+      useCORS: true,
+      logging: false,
+      onclone: function(doc) {
+        var clone = doc.getElementById('detail-share-capture');
+        if (clone) clone.style.padding = '8px 0';
+      }
+    });
+    var blob = await new Promise(function(resolve, reject) {
+      canvas.toBlob(function(b) { b ? resolve(b) : reject(new Error('PNG failed')); }, 'image/png', 0.92);
+    });
+    var id = (_detailShareRecord && _detailShareRecord.checkId) || 'proverka';
+    var file = new File([blob], 'proverka-' + id + '.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Проверка КБ ' + id });
+    } else if (navigator.share) {
+      await navigator.share({ title: 'Проверка КБ ' + id, text: checkIdLabel(_detailShareRecord) });
+    } else {
+      downloadBlob(blob, 'proverka-' + id + '.png');
+      alert('Сохранено как изображение');
+    }
+  } catch (e) {
+    if (e && e.name !== 'AbortError') {
+      console.warn('[share]', e);
+      alert('Не удалось поделиться');
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = label || 'Поделиться'; }
+  }
+}
 
 function openDetail(r, source) {
   detailSource = source || 'find';
   detailRecordForEdit = r;
+  _detailShareRecord = r;
   document.getElementById('detail-title').textContent = checkIdLabel(r);
   var body = document.getElementById('detail-body');
   var isFind = source === 'find';
