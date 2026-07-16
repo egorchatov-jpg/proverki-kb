@@ -1029,12 +1029,14 @@ html, body {
 .barrier-pk-label { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #666; white-space: nowrap; cursor: pointer; }
 .barrier-pk-label input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--orange); cursor: pointer; }
 
-/* ===== BARRIERS PK ADD OVERLAYS ===== */
-.bpk-choice-row { display: flex; gap: 10px; margin-top: 10px; }
+/* ===== BARRIERS PK: ADD PASSPORT / BARRIER ===== */
+.bpk-choice-row { display: flex; gap: 10px; margin-top: 8px; }
 .bpk-choice-row .overlay-btn { flex: 1; }
 .bpk-choice-cancel-row { justify-content: center !important; margin-top: 14px !important; }
-.bpk-choice-cancel-row .overlay-btn { flex: 0 0 auto !important; min-width: 58%; border-radius: 999px !important; }
-#overlay-bpk-input .overlay-box { padding: 14px; }
+.bpk-choice-cancel-row .overlay-btn {
+  flex: 0 0 auto !important; min-width: 58%; border-radius: 999px !important;
+}
+#overlay-bpk-input .overlay-box { padding: 14px 12px; }
 .bpk-input-row { display: flex; gap: 8px; align-items: center; width: 100%; }
 .bpk-input-field {
   flex: 1; min-width: 0; height: 44px; border: 1.5px solid var(--border);
@@ -1048,6 +1050,12 @@ html, body {
   font-size: 12px; font-weight: 500; white-space: normal; text-align: center;
   line-height: 1.25; overflow: hidden; padding: 2px 10px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+#overlay-drum .overlay-btns.bpk-drum-btns {
+  justify-content: flex-end;
+}
+#overlay-drum .overlay-btns.bpk-drum-btns .overlay-btn {
+  flex: 0 0 auto; min-width: 130px;
 }
 </style>
 </head>
@@ -1408,15 +1416,15 @@ html, body {
   </div>
 </div>
 
-<!-- ===== OVERLAY: БАРЬЕРЫ ПК — ВЫБОР ДЕЙСТВИЯ ===== -->
+<!-- ===== OVERLAY: БАРЬЕРЫ ПК — ВЫБОР ===== -->
 <div class="overlay" id="overlay-bpk-choice">
   <div class="overlay-box">
     <div class="bpk-choice-row">
-      <button class="overlay-btn overlay-btn-cancel" onclick="openBpkAddPassportInput()">Добавить паспорт</button>
-      <button class="overlay-btn overlay-btn-apply" onclick="openBpkAddBarrierDrum()">Добавить барьер</button>
+      <button type="button" class="overlay-btn overlay-btn-cancel" onclick="openBpkPassportNameOverlay()">Добавить паспорт</button>
+      <button type="button" class="overlay-btn overlay-btn-apply" onclick="openBpkBarrierPassportDrum()">Добавить барьер</button>
     </div>
     <div class="overlay-btns bpk-choice-cancel-row">
-      <button class="overlay-btn overlay-btn-cancel" onclick="closeBpkChoiceOverlay()">Отмена</button>
+      <button type="button" class="overlay-btn overlay-btn-cancel" onclick="closeBpkChoiceOverlay()">Отмена</button>
     </div>
   </div>
 </div>
@@ -1426,10 +1434,10 @@ html, body {
   <div class="overlay-box">
     <div class="bpk-input-row">
       <input class="bpk-input-field" id="bpk-input-field" type="text" autocomplete="off">
-      <button class="method-cancel-btn" onclick="closeBpkInputOverlay()">
+      <button type="button" class="method-cancel-btn" onclick="closeBpkNameOverlay()">
         <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
-      <button class="method-save-btn" onclick="applyBpkInputOverlay()">
+      <button type="button" class="method-save-btn" onclick="applyBpkNameOverlay()">
         <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><polyline points="4 12 9 17 20 6"/></svg>
       </button>
     </div>
@@ -1577,7 +1585,7 @@ html, body {
       <button class="method-sq-btn minus" id="barrier-btn-minus" onclick="deleteSelectedBarriers()" disabled>
         <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
-      <button class="method-sq-btn plus" onclick="showBpkAddChoice()">
+      <button class="method-sq-btn plus" onclick="openBpkAddChoiceOverlay()">
         <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
     </div>
@@ -3257,10 +3265,9 @@ function syncSettingsFromServer(callback) {
         }
         applyBarriersPKToConfig(data.barriersPK, appState.barriersConfig);
       }
-      if (data.barriersCustomPassports && !preferLocal) {
-        appState.barriersCustomPassports = data.barriersCustomPassports;
-      } else if (data.barriersCustomPassports && preferLocal) {
-        appState.barriersCustomPassports = Object.assign({}, data.barriersCustomPassports, appState.barriersCustomPassports || {});
+      if (data.barriersCustomPassports) {
+        if (!preferLocal) appState.barriersCustomPassports = data.barriersCustomPassports;
+        else appState.barriersCustomPassports = Object.assign({}, data.barriersCustomPassports, appState.barriersCustomPassports || {});
       }
       if (!preferLocal && data.settingsUpdatedAt) {
         appState.settingsUpdatedAt = data.settingsUpdatedAt;
@@ -3951,12 +3958,8 @@ function appendEmptyPassportRow(tbody, passportText) {
   tdName.className = 'methods-td methods-td-name';
   tdName.textContent = '—';
   tr.appendChild(tdName);
-  var tdPK = document.createElement('td');
-  tdPK.className = 'methods-td methods-td-cb';
-  tr.appendChild(tdPK);
-  var tdShow = document.createElement('td');
-  tdShow.className = 'methods-td methods-td-cb';
-  tr.appendChild(tdShow);
+  tr.appendChild(document.createElement('td')).className = 'methods-td methods-td-cb';
+  tr.appendChild(document.createElement('td')).className = 'methods-td methods-td-cb';
   tbody.appendChild(tr);
 }
 
@@ -4084,17 +4087,21 @@ function deleteSelectedBarriers() {
   markBarriersDirty();
 }
 
-var _bpkInputMode = '';
-var _bpkSelectedPassport = '';
+var _bpkNameMode = '';
+var _bpkBarrierPassport = '';
+
+function getBpkStandardPassports() {
+  return BARRIERS_PASSPORT_GROUPS.map(function(g) { return g.passport; });
+}
 
 function getCustomPassportsForYear(year) {
   return (appState.barriersCustomPassports && appState.barriersCustomPassports[year]) || [];
 }
 
-function getPassportsForYear(year) {
+function getAllPassportNamesForYear(year) {
   var seen = {}, out = [];
-  BARRIERS_PASSPORT_GROUPS.forEach(function(g) {
-    if (!seen[g.passport]) { seen[g.passport] = 1; out.push(g.passport); }
+  getBpkStandardPassports().forEach(function(p) {
+    if (!seen[p]) { seen[p] = 1; out.push(p); }
   });
   getCustomPassportsForYear(year).forEach(function(p) {
     if (p && !seen[p]) { seen[p] = 1; out.push(p); }
@@ -4105,7 +4112,7 @@ function getPassportsForYear(year) {
   return out;
 }
 
-function showBpkAddChoice() {
+function openBpkAddChoiceOverlay() {
   if (!_bpkYear) return;
   document.getElementById('overlay-bpk-choice').classList.add('active');
 }
@@ -4114,56 +4121,66 @@ function closeBpkChoiceOverlay() {
   document.getElementById('overlay-bpk-choice').classList.remove('active');
 }
 
-function openBpkAddPassportInput() {
-  closeBpkChoiceOverlay();
-  _bpkInputMode = 'passport';
-  _bpkSelectedPassport = '';
+function openBpkNameOverlay(mode, placeholder) {
+  _bpkNameMode = mode;
   var input = document.getElementById('bpk-input-field');
   input.value = '';
-  input.placeholder = 'Название паспорта';
+  input.placeholder = placeholder || '';
   document.getElementById('overlay-bpk-input').classList.add('active');
   setTimeout(function() { input.focus(); }, 80);
 }
 
-function openBpkAddBarrierDrum() {
-  closeBpkChoiceOverlay();
-  var passports = getPassportsForYear(_bpkYear);
-  if (!passports.length) return;
-  var cancelBtn = document.querySelector('#overlay-drum .overlay-btn-cancel');
-  var applyBtn = document.querySelector('#overlay-drum .overlay-btn-apply');
-  if (cancelBtn) cancelBtn.textContent = 'Отмена';
-  if (applyBtn) applyBtn.textContent = 'Далее';
-  openDrumOverlay('Выберите паспорт', [
-    { id: 'passport', items: passports, value: passports[0], fullWidth: true, widthFactor: 0.92, passportDrum: true }
-  ], function(d) {
-    _bpkSelectedPassport = d['passport'].getValue();
-    _bpkInputMode = 'barrier';
-    var input = document.getElementById('bpk-input-field');
-    input.value = '';
-    input.placeholder = 'Название барьера';
-    document.getElementById('overlay-bpk-input').classList.add('active');
-    setTimeout(function() { input.focus(); }, 80);
-  });
-  var wrap = document.querySelector('#overlay-drum .drum-wrap');
-  if (wrap) wrap.classList.add('bpk-passport-drum');
-}
-
-function closeBpkInputOverlay() {
+function closeBpkNameOverlay() {
   document.getElementById('overlay-bpk-input').classList.remove('active');
   var input = document.getElementById('bpk-input-field');
   input.value = '';
   input.blur();
-  _bpkInputMode = '';
-  _bpkSelectedPassport = '';
+  _bpkNameMode = '';
+  _bpkBarrierPassport = '';
 }
 
-function applyBpkInputOverlay() {
+function openBpkPassportNameOverlay() {
+  closeBpkChoiceOverlay();
+  openBpkNameOverlay('passport', 'Название паспорта');
+}
+
+function resetBpkDrumOverlay() {
+  var cancel = document.querySelector('#overlay-drum .overlay-btn-cancel');
+  var apply = document.querySelector('#overlay-drum .overlay-btn-apply');
+  var btns = document.querySelector('#overlay-drum .overlay-btns');
+  if (cancel) cancel.textContent = 'Отмена';
+  if (apply) apply.textContent = 'Применить';
+  if (btns) btns.classList.remove('bpk-drum-btns');
+  document.querySelectorAll('#overlay-drum .drum-wrap.bpk-passport-drum').forEach(function(w) {
+    w.classList.remove('bpk-passport-drum');
+  });
+}
+
+function openBpkBarrierPassportDrum() {
+  closeBpkChoiceOverlay();
+  var passports = getBpkStandardPassports();
+  if (!passports.length) return;
+  var cancelBtn = document.querySelector('#overlay-drum .overlay-btn-cancel');
+  var applyBtn = document.querySelector('#overlay-drum .overlay-btn-apply');
+  var btns = document.querySelector('#overlay-drum .overlay-btns');
+  if (cancelBtn) cancelBtn.textContent = 'Отмена';
+  if (applyBtn) applyBtn.textContent = 'Далее';
+  if (btns) btns.classList.add('bpk-drum-btns');
+  openDrumOverlay('Выберите паспорт', [
+    { id: 'passport', items: passports, value: passports[0], fullWidth: true, widthFactor: 0.94, passportDrum: true }
+  ], function(d) {
+    _bpkBarrierPassport = d['passport'].getValue();
+    openBpkNameOverlay('barrier', 'Название барьера');
+  });
+}
+
+function applyBpkNameOverlay() {
   var input = document.getElementById('bpk-input-field');
   var val = (input.value || '').trim();
   if (!val || !_bpkYear) return;
-  if (_bpkInputMode === 'passport') {
-    var passports = getPassportsForYear(_bpkYear);
-    if (passports.some(function(p) { return p.toLowerCase() === val.toLowerCase(); })) {
+  if (_bpkNameMode === 'passport') {
+    var all = getAllPassportNamesForYear(_bpkYear);
+    if (all.some(function(p) { return p.toLowerCase() === val.toLowerCase(); })) {
       alert('Паспорт с таким названием уже есть'); return;
     }
     if (!appState.barriersCustomPassports) appState.barriersCustomPassports = {};
@@ -4172,22 +4189,21 @@ function applyBpkInputOverlay() {
     saveState();
     renderBarriersTable(_bpkYear);
     markBarriersDirty();
-  } else if (_bpkInputMode === 'barrier' && _bpkSelectedPassport) {
+    closeBpkNameOverlay();
+    return;
+  }
+  if (_bpkNameMode === 'barrier' && _bpkBarrierPassport) {
     var name = val.toUpperCase();
     var list = getBarriersForYear(_bpkYear);
     if (list.some(function(b) { return b.name === name; })) {
       alert('Барьер с таким названием уже есть'); return;
     }
-    list.push({ name: name, passport: _bpkSelectedPassport, inPK: false, show: true });
-    if (appState.barriersCustomPassports && appState.barriersCustomPassports[_bpkYear]) {
-      appState.barriersCustomPassports[_bpkYear] = appState.barriersCustomPassports[_bpkYear]
-        .filter(function(p) { return p !== _bpkSelectedPassport; });
-    }
+    list.push({ name: name, passport: _bpkBarrierPassport, inPK: false, show: true });
     saveState();
     renderBarriersTable(_bpkYear);
     markBarriersDirty();
+    closeBpkNameOverlay();
   }
-  closeBpkInputOverlay();
 }
 
 function hideAddBarrierInput() {
@@ -5875,20 +5891,9 @@ function openDrumOverlay(title, drumConfigs, callback) {
   document.getElementById('overlay-drum').classList.add('active');
 }
 
-function resetDrumOverlayButtons() {
-  var cancel = document.querySelector('#overlay-drum .overlay-btn-cancel');
-  var apply = document.querySelector('#overlay-drum .overlay-btn-apply');
-  if (cancel) cancel.textContent = 'Отмена';
-  if (apply) apply.textContent = 'Применить';
-  document.querySelectorAll('#overlay-drum .drum-wrap.bpk-passport-drum').forEach(function(w) {
-    w.classList.remove('bpk-passport-drum');
-    w.style.height = '';
-  });
-}
-
 function closeDrum() {
   document.getElementById('overlay-drum').classList.remove('active');
-  resetDrumOverlayButtons();
+  if (typeof resetBpkDrumOverlay === 'function') resetBpkDrumOverlay();
 }
 
 function applyDrum() {
