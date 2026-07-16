@@ -1128,7 +1128,7 @@ html, body {
   </div>
   <div class="find-bottom">
     <div class="find-count" id="corr-list-count">0<br>нарушений</div>
-    <button class="find-bottom-btn find-btn-cancel" onclick="showScreen('screen-meropr-menu')">Назад</button>
+    <button class="find-bottom-btn find-btn-cancel" onclick="backFromCorrectiveList()">Назад</button>
     <div class="find-count" id="corr-entered-count">0<br>внесено</div>
   </div>
 </div>
@@ -1159,7 +1159,7 @@ html, body {
   </div>
   <div class="find-bottom">
     <div class="find-count" id="sokb-list-count">0<br>нарушений</div>
-    <button class="find-bottom-btn find-btn-cancel" onclick="showScreen('screen-meropr-menu')">Назад</button>
+    <button class="find-bottom-btn find-btn-cancel" onclick="backFromSokbList()">Назад</button>
     <div class="find-count" id="sokb-entered-count">0<br>оспариваний</div>
   </div>
 </div>
@@ -4298,12 +4298,21 @@ function isSokbListRecord(r) {
   return getSokbStatus(r) !== 'none';
 }
 
-function openSokb() {
+function resetSokbListFilters() {
   sokbListFilters = { dateFrom: '', dateTo: '', org: '', barrier: '', status: '' };
-  ['dateCheck','org','barrier','status'].forEach(function(k) {
+  ['dateCheck', 'org', 'barrier', 'status'].forEach(function(k) {
     var btn = document.getElementById('sfl-btn-' + k);
     if (btn) btn.classList.remove('active');
   });
+}
+
+function backFromSokbList() {
+  resetSokbListFilters();
+  showScreen('screen-meropr-menu');
+}
+
+function openSokb() {
+  resetSokbListFilters();
   renderSokbList();
   showScreen('screen-sokb-list');
 }
@@ -4840,12 +4849,21 @@ function getCorrectiveStatusCellClass(r) {
 }
 
 // ── Corrective list ────────────────────────────────────────────
-function openCorrectiveList() {
+function resetCorrectiveListFilters() {
   correctiveListFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '', status: '' };
-  ['dateCheck','method','org','barrier','status'].forEach(function(k) {
+  ['dateCheck', 'method', 'org', 'barrier', 'status'].forEach(function(k) {
     var btn = document.getElementById('cfl-btn-' + k);
     if (btn) btn.classList.remove('active');
   });
+}
+
+function backFromCorrectiveList() {
+  resetCorrectiveListFilters();
+  showScreen('screen-meropr-menu');
+}
+
+function openCorrectiveList() {
+  resetCorrectiveListFilters();
   renderCorrectiveList();
   showScreen('screen-corrective-list');
 }
