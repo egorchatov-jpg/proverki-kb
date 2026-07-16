@@ -1,28 +1,9 @@
 const XLSX = require('xlsx');
-const { sortAndRenumberSheet } = require('./excel-utils');
+const { sortAndRenumberSheet, COLUMNS, buildColIdx } = require('./excel-utils');
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'egorchatov-jpg';
 const GITHUB_REPO  = process.env.GITHUB_DATA_REPO || 'proverki-kb-data';
-
-// Must match COLUMNS in save.js
-const COLUMNS = [
-  { h: '№',                                       k: 'num'             },
-  { h: 'Дата проверки',                           k: 'dateCheck'       },
-  { h: 'Дата внесения проверки',                  k: 'dateEntry'       },
-  { h: 'Метод проверки',                          k: 'method'          },
-  { h: 'Проверку выполнил',                       k: 'inspector'       },
-  { h: 'Проверяемая организация',                 k: 'org'             },
-  { h: 'Проверяемый объект',                      k: 'obj'             },
-  { h: 'Куратор от заказчика',                    k: 'curator'         },
-  { h: 'Проверяемый барьер',                      k: 'barrier'         },
-  { h: 'Барьер в ПК',                             k: 'barrierInPK'     },
-  { h: 'Работоспособность барьера',               k: 'works'           },
-  { h: 'Нарушение допустил',                      k: 'violator'        },
-  { h: 'Описание нарушения',                      k: 'desc'            },
-  { h: 'Корректирующие мероприятия',              k: 'corrective'      },
-  { h: 'Оспаривание в СОКБ',                      k: 'contestMeasures' },
-];
 
 function ghApiUrl(fileName) {
   return `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(fileName)}`;
@@ -89,30 +70,6 @@ function excelCellToDateEntry(v) {
     return `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)}.${d.getUTCFullYear()}, ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
   }
   return normDateEntry(v);
-}
-
-function buildColIdx(header) {
-  const idx = {};
-  COLUMNS.forEach(c => {
-    const i = header.findIndex(h => String(h || '').trim() === c.h);
-    if (i >= 0) idx[c.k] = i;
-  });
-  // Fuzzy match for corrective column (typo "Корректирущие" etc.)
-  if (idx.corrective === undefined) {
-    const ci = header.findIndex(h => {
-      const lower = String(h || '').toLowerCase();
-      return lower.includes('корректиру') && lower.includes('мероприят') && !lower.includes('выполнение');
-    });
-    if (ci >= 0) idx.corrective = ci;
-  }
-  if (idx.contestMeasures === undefined) {
-    const ci = header.findIndex(h => {
-      const lower = String(h || '').toLowerCase();
-      return (lower.includes('оспаривание') || lower.includes('обоснование')) && lower.includes('сокб');
-    });
-    if (ci >= 0) idx.contestMeasures = ci;
-  }
-  return idx;
 }
 
 function rowFingerprint(row, colIdx) {
@@ -182,6 +139,7 @@ async function updateRecord(fileName, dateEntry, fields, fallback) {
     while (rows[rowIdx].length < header.length) rows[rowIdx].push('');
 
     Object.keys(fields).forEach(k => {
+      if (k === 'checkId') return; // ID never changes after creation
       const ci = colIdx[k];
       if (ci !== undefined) rows[rowIdx][ci] = fields[k];
     });

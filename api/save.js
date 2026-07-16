@@ -1,5 +1,5 @@
 const XLSX = require('xlsx');
-const { COLUMNS, sortAndRenumberSheet } = require('./excel-utils');
+const { COLUMNS, COL, buildColIdx, sortAndRenumberSheet, nextCheckId, ensureCheckIdColumn, assignMissingCheckIds } = require('./excel-utils');
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'egorchatov-jpg';
@@ -51,7 +51,7 @@ function buildEmptyWorkbook() {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([COLUMNS.map(c => c.h)]);
   ws['!cols'] = COLUMNS.map((_, i) => ({
-    wch: [4, 12, 18, 14, 18, 24, 24, 18, 20, 10, 20, 18, 40, 30, 30][i] || 15,
+    wch: [4, 12, 12, 18, 14, 18, 24, 24, 18, 20, 10, 20, 18, 40, 30, 30][i] || 15,
   }));
   XLSX.utils.book_append_sheet(wb, ws, 'Проверки');
   return wb;
@@ -73,28 +73,46 @@ async function appendRecord(fileName, record) {
     }
 
     const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    let rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    rows = ensureCheckIdColumn(rows);
+    const year = record.dateCheck
+      ? record.dateCheck.split('.')[2]
+      : String(new Date().getFullYear());
+    rows = assignMissingCheckIds(rows, year);
+    const header = rows.length ? rows[0].map(h => String(h || '').trim()) : COLUMNS.map(c => c.h);
+    const colIdx = buildColIdx(header);
 
-    // Dedup check: dateCheck(1)+method(3)+org(5)+obj(6)+barrier(8)+violator(11)+desc(12)
+    // Dedup check: dateCheck+method+org+obj+barrier+violator+desc
     const fp = [record.dateCheck, record.method, record.org, record.obj, record.barrier, record.violator, record.desc].join('|');
-    const isDupe = rows.slice(1).some(row =>
-      row[1] && [String(row[1]||''), String(row[3]||''), String(row[5]||''), String(row[6]||''), String(row[8]||''), String(row[11]||''), String(row[12]||'')].join('|') === fp
-    );
+    const isDupe = rows.slice(1).some(row => {
+      const dc = colIdx.dateCheck ?? COL.dateCheck;
+      if (!row[dc]) return false;
+      return [
+        String(row[colIdx.dateCheck ?? COL.dateCheck] || ''),
+        String(row[colIdx.method ?? COL.method] || ''),
+        String(row[colIdx.org ?? COL.org] || ''),
+        String(row[colIdx.obj ?? COL.obj] || ''),
+        String(row[colIdx.barrier ?? COL.barrier] || ''),
+        String(row[colIdx.violator ?? COL.violator] || ''),
+        String(row[colIdx.desc ?? COL.desc] || ''),
+      ].join('|') === fp;
+    });
     if (isDupe) {
       console.warn('[save] duplicate detected, skipping');
       return; // report success to client so it clears the retry queue
     }
 
-    // Append new row
-    XLSX.utils.sheet_add_aoa(ws, [COLUMNS.map(c => record[c.k] ?? '')], {
-      origin: { r: rows.length, c: 0 },
-    });
+    if (!record.checkId) {
+      record.checkId = nextCheckId(rows.slice(1), colIdx, year);
+    }
 
-    const allRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-    const sorted = sortAndRenumberSheet(allRows);
-    const idx = sorted.slice(1).findIndex(row =>
-      row[1] === (record.dateCheck || '') && row[2] === (record.dateEntry || '')
-    );
+    // Append new row
+    rows.push(COLUMNS.map(c => record[c.k] ?? ''));
+
+    const sorted = sortAndRenumberSheet(rows);
+    const sortedColIdx = buildColIdx(sorted[0].map(h => String(h || '').trim()));
+    const idCol = sortedColIdx.checkId ?? COL.checkId;
+    const idx = sorted.slice(1).findIndex(row => String(row[idCol] || '').trim() === String(record.checkId || '').trim());
     record.num = idx >= 0 ? idx + 1 : sorted.length - 1;
 
     const newWs = XLSX.utils.aoa_to_sheet(sorted);
@@ -105,7 +123,7 @@ async function appendRecord(fileName, record) {
     try {
       await ghPut(
         fileName, b64, existing ? existing.sha : undefined,
-        `Проверка №${record.num} — ${record.org || ''}`
+        `Проверка ${record.checkId || ('№' + record.num)} — ${record.org || ''}`
       );
       return; // success
     } catch (err) {
@@ -146,7 +164,7 @@ module.exports = async (req, res) => {
 
     // Push notifications are sent separately by the client via /api/notify,
     // so this function stays within Vercel's 10-second limit.
-    return res.status(200).json({ success: true, num: record.num, year });
+    return res.status(200).json({ success: true, num: record.num, year, checkId: record.checkId });
   } catch (err) {
     console.error('[save] error:', err.message);
     return res.status(500).json({ error: err.message });

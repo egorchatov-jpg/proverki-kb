@@ -1,5 +1,6 @@
 const COLUMNS = [
   { h: '№',                                       k: 'num'             },
+  { h: 'ID проверки',                             k: 'checkId'         },
   { h: 'Дата проверки',                           k: 'dateCheck'       },
   { h: 'Дата внесения проверки',                  k: 'dateEntry'       },
   { h: 'Метод проверки',                          k: 'method'          },
@@ -17,9 +18,9 @@ const COLUMNS = [
 ];
 
 const COL = {
-  num: 0, dateCheck: 1, dateEntry: 2, method: 3, inspector: 4, org: 5, obj: 6,
-  curator: 7, barrier: 8, barrierInPK: 9, works: 10, violator: 11, desc: 12,
-  corrective: 13, contestMeasures: 14,
+  num: 0, checkId: 1, dateCheck: 2, dateEntry: 3, method: 4, inspector: 5, org: 6, obj: 7,
+  curator: 8, barrier: 9, barrierInPK: 10, works: 11, violator: 12, desc: 13,
+  corrective: 14, contestMeasures: 15,
 };
 
 function pad2(n) { return String(n).padStart(2, '0'); }
@@ -130,6 +131,58 @@ function calcBarrierInPK(barriersConfig, year, barrierName) {
   return (entry && entry.inPK) ? 'Да' : 'Нет';
 }
 
+function nextCheckId(dataRows, colIdx, year) {
+  const yearSuffix = String(year).slice(-2).padStart(2, '0');
+  const idCol = colIdx.checkId ?? COL.checkId;
+  let maxSeq = 0;
+  for (const row of dataRows) {
+    const id = String(row[idCol] || '').trim();
+    const m = id.match(/^(\d{4})(\d{2})$/);
+    if (m && m[2] === yearSuffix) {
+      const seq = parseInt(m[1], 10);
+      if (seq > maxSeq) maxSeq = seq;
+    }
+  }
+  return String(maxSeq + 1).padStart(4, '0') + yearSuffix;
+}
+
+function ensureCheckIdColumn(rows) {
+  if (!rows.length) return [COLUMNS.map(c => c.h)];
+  const header = rows[0].map(h => String(h || '').trim());
+  if (header.includes('ID проверки')) return rows;
+  return rows.map((row, ri) => {
+    const r = [...row];
+    if (ri === 0) r.splice(1, 0, 'ID проверки');
+    else r.splice(1, 0, '');
+    return r;
+  });
+}
+
+function assignMissingCheckIds(rows, year) {
+  if (!rows.length) return rows;
+  const header = rows[0].map(h => String(h || '').trim());
+  const colIdx = buildColIdx(header);
+  const idCol = colIdx.checkId;
+  if (idCol === undefined) return rows;
+  const deCol = colIdx.dateEntry ?? COL.dateEntry;
+  const yearSuffix = String(year).slice(-2).padStart(2, '0');
+  const data = rows.slice(1);
+  let maxSeq = 0;
+  data.forEach(row => {
+    const id = String(row[idCol] || '').trim();
+    const m = id.match(/^(\d{4})(\d{2})$/);
+    if (m && m[2] === yearSuffix) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+  });
+  const missing = data.filter(row => !String(row[idCol] || '').trim());
+  missing.sort((a, b) => toDateEntryNum(a[deCol]) - toDateEntryNum(b[deCol]));
+  missing.forEach(row => {
+    maxSeq += 1;
+    while (row.length <= idCol) row.push('');
+    row[idCol] = String(maxSeq).padStart(4, '0') + yearSuffix;
+  });
+  return rows;
+}
+
 function applyBarrierInPK(rows, barriersConfig, defaultYear) {
   if (!rows.length || !barriersConfig) return rows;
   const header = rows[0];
@@ -161,4 +214,7 @@ module.exports = {
   sortAndRenumberSheet,
   applyBarrierInPK,
   calcBarrierInPK,
+  nextCheckId,
+  ensureCheckIdColumn,
+  assignMissingCheckIds,
 };

@@ -1451,7 +1451,7 @@ html, body {
 <!-- ===== ДЕТАЛЬНАЯ КАРТОЧКА ===== -->
 <div class="screen" id="screen-detail">
   <div class="detail-scroll" id="detail-scroll">
-    <div class="detail-title" id="detail-title">Проверка №1 2026</div>
+    <div class="detail-title" id="detail-title">000126</div>
     <div id="detail-body"></div>
   </div>
   <div class="detail-back">
@@ -1827,6 +1827,10 @@ function normalizeDbDates() {
 }
 
 // Sort by cmpRecords, then assign sequential numbers: oldest=1, newest=N
+function checkIdLabel(r) {
+  return (r && r.checkId) ? String(r.checkId) : '—';
+}
+
 function renumberDb() {
   appState.db.sort(cmpRecords);
   appState.db.forEach(function(r, i) { r.num = i + 1; });
@@ -1839,7 +1843,7 @@ var SYNC_QUEUE_KEY   = 'pkb-sync-queue';
 var UPDATE_QUEUE_KEY = 'pkb-update-queue';
 var SERVER_SHA_KEY   = 'pkb-server-shas';
 var DATA_VERSION_KEY = 'pkb-data-version';
-var CURRENT_DATA_VERSION = 'v9-excel-dates-migrated';
+var CURRENT_DATA_VERSION = 'v10-check-id';
 var VAPID_KEY_STORE = 'pkb-vapid-key';
 var swRegistration   = null;
 
@@ -2127,7 +2131,13 @@ function syncToServer(record) {
       var shas = getServerShas();
       delete shas['sha' + d.year];
       saveServerShas(shas);
-      console.log('[sync] сохранено на сервере №' + d.num + ' (' + d.year + ')');
+      var savedRec = appState.db.find(function(r) { return r.id === record.id || r.dateEntry === record.dateEntry; });
+      if (savedRec) {
+        if (d.checkId) savedRec.checkId = d.checkId;
+        if (d.num) savedRec.num = d.num;
+        saveState();
+      }
+      console.log('[sync] сохранено на сервере ' + (d.checkId || ('№' + d.num)) + ' (' + d.year + ')');
       // Push notifications sent via separate endpoint so /api/save stays within Vercel 10s limit.
       // senderEndpoint is included so the server can exclude this device from recipients.
       if (record.works === 'Нет') {
@@ -3497,7 +3507,7 @@ function openCardForEdit(r) {
   setDimmed('violator', r.works !== 'Нет');
   var titleEl = document.querySelector('#screen-card .card-title');
   if (titleEl) titleEl.textContent = 'Измените результат проведенной проверки';
-  setCardSubtitle('№' + (r.num || '?') + ' ' + (r.year || ''));
+  setCardSubtitle(checkIdLabel(r));
   updateValidation();
   showScreen('screen-card');
 }
@@ -3593,10 +3603,7 @@ function submitCard() {
   if (cardEditRecord) { submitCardEdit(); return; }
   cardData.id = Date.now();
   cardData.dateEntry = dateTimeStr();
-  // auto-number within year
   var year = cardData.dateCheck ? cardData.dateCheck.split('.')[2] : new Date().getFullYear();
-  var sameYear = appState.db.filter(function(r){ return r.year === year; });
-  cardData.num = sameYear.length + 1;
   cardData.year = year;
   // Барьер в ПК (auto) — проверяем по году даты проверки
 // barrierInPK uses barriersConfig (data preserved — only set on NEW records)
@@ -5124,7 +5131,7 @@ function openSokbEdit(r) {
   if (!sokbAttempts.length) sokbAttempts = [newEmptySokbAttempt()];
   var infoEl = document.getElementById('sokb-viol-info');
   infoEl.innerHTML =
-    '<div class="corr-info-line"><b>Проверка №' + esc(String(r.num||'?')) + ' ' + esc(String(r.year||'')) + '</b></div>' +
+    '<div class="corr-info-line"><b>' + esc(checkIdLabel(r)) + '</b></div>' +
     '<div class="corr-info-line">Дата: ' + esc(r.dateCheck||'') + ' | Метод: ' + esc(r.method||'') + '</div>' +
     '<div class="corr-info-line">Организация: ' + esc(r.org||'') + ' | Барьер: ' + esc(r.barrier||'') + '</div>' +
     (r.desc ? '<div class="corr-info-line corr-info-desc">Описание: ' + esc(r.desc) + '</div>' : '');
@@ -5701,7 +5708,7 @@ function openCorrectiveEdit(r) {
   if (!correctiveMeasures.length) correctiveMeasures = [newEmptyMeasure(1)];
   var infoEl = document.getElementById('corr-viol-info');
   infoEl.innerHTML =
-    '<div class="corr-info-line"><b>Проверка №' + esc(String(r.num||'?')) + ' ' + esc(String(r.year||'')) + '</b></div>' +
+    '<div class="corr-info-line"><b>' + esc(checkIdLabel(r)) + '</b></div>' +
     '<div class="corr-info-line">Дата: ' + esc(r.dateCheck||'') + ' | Метод: ' + esc(r.method||'') + '</div>' +
     '<div class="corr-info-line">Организация: ' + esc(r.org||'') + ' | Барьер: ' + esc(r.barrier||'') + '</div>' +
     (r.desc ? '<div class="corr-info-line corr-info-desc">Описание: ' + esc(r.desc) + '</div>' : '');
@@ -6080,7 +6087,7 @@ var detailRecordForEdit = null;
 function openDetail(r, source) {
   detailSource = source || 'find';
   detailRecordForEdit = r;
-  document.getElementById('detail-title').textContent = 'Проверка №' + (r.num || '?') + ' ' + (r.year || '');
+  document.getElementById('detail-title').textContent = checkIdLabel(r);
   var body = document.getElementById('detail-body');
   var isFind = source === 'find';
   var sokbSuccess = isSokbSuccessful(r);

@@ -6,6 +6,7 @@ const GITHUB_REPO  = process.env.GITHUB_DATA_REPO || 'proverki-kb-data';
 // Must match COLUMNS in save.js
 const COLUMN_DEFS = [
   { h: '№',                                       k: 'num'             },
+  { h: 'ID проверки',                             k: 'checkId'         },
   { h: 'Дата проверки',                           k: 'dateCheck'       },
   { h: 'Дата внесения проверки',                  k: 'dateEntry'       },
   { h: 'Метод проверки',                          k: 'method'          },
@@ -73,6 +74,7 @@ function headerToKey(h) {
   if (lower.includes('статус') && lower.includes('сокб')) return null;
   if (lower.includes('дата') && lower.includes('внесен')) return 'dateEntry';
   if (lower.includes('дата') && lower.includes('проверк')) return 'dateCheck';
+  if (lower.includes('id') && lower.includes('проверк')) return 'checkId';
   if (n === '№' || lower === 'no' || lower === 'n') return 'num';
 
   return null;
@@ -85,11 +87,23 @@ function buildColMap(headerRow) {
     if (k && keyToIdx[k] === undefined) keyToIdx[k] = i;
   });
 
-  // Positional fallback only for standard 16-column layout (no legacy extra columns)
-  if (headerRow.length <= 16) {
-    COLUMN_DEFS.forEach((c, i) => {
-      if (keyToIdx[c.k] === undefined) keyToIdx[c.k] = i;
-    });
+  const hasCheckId = keyToIdx.checkId !== undefined;
+  const LEGACY_POS = {
+    num: 0, dateCheck: 1, dateEntry: 2, method: 3, inspector: 4, org: 5, obj: 6,
+    curator: 7, barrier: 8, barrierInPK: 9, works: 10, violator: 11, desc: 12,
+    corrective: 13, contestMeasures: 14,
+  };
+
+  if (headerRow.length <= 17) {
+    if (hasCheckId) {
+      COLUMN_DEFS.forEach((c, i) => {
+        if (keyToIdx[c.k] === undefined) keyToIdx[c.k] = i;
+      });
+    } else {
+      Object.keys(LEGACY_POS).forEach(k => {
+        if (keyToIdx[k] === undefined) keyToIdx[k] = LEGACY_POS[k];
+      });
+    }
   }
 
   return keyToIdx;
