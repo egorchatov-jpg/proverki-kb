@@ -3282,9 +3282,10 @@ function syncSettingsFromServer(callback) {
         }
         applyBarriersPKToConfig(data.barriersPK, appState.barriersConfig);
       }
-      if (data.barriersCustomPassports) {
-        if (!preferLocal) appState.barriersCustomPassports = data.barriersCustomPassports;
-        else appState.barriersCustomPassports = Object.assign({}, data.barriersCustomPassports, appState.barriersCustomPassports || {});
+      if (!preferLocal) {
+        appState.barriersCustomPassports = data.barriersCustomPassports || {};
+      } else if (data.barriersCustomPassports) {
+        appState.barriersCustomPassports = Object.assign({}, data.barriersCustomPassports, appState.barriersCustomPassports || {});
       }
       if (!preferLocal && data.settingsUpdatedAt) {
         appState.settingsUpdatedAt = data.settingsUpdatedAt;
