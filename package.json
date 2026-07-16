@@ -2,7 +2,6 @@
   "name": "proverki-kb",
   "version": "1.0.0",
   "dependencies": {
-    "html2canvas": "^1.4.1",
     "web-push": "3.6.7",
     "xlsx": "0.18.5"
   },

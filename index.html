@@ -767,7 +767,6 @@ html, body {
 }
 .detail-share-btn:active { opacity: 0.8; }
 .detail-share-btn:disabled { opacity: 0.5; }
-#detail-share-capture { background: var(--bg); }
 
 /* ===== PULL-TO-REFRESH ===== */
 #pull-indicator {
@@ -1468,13 +1467,11 @@ html, body {
 <!-- ===== ДЕТАЛЬНАЯ КАРТОЧКА ===== -->
 <div class="screen" id="screen-detail">
   <div class="detail-scroll" id="detail-scroll">
-    <div id="detail-share-capture">
-      <div class="detail-title" id="detail-title">000126</div>
-      <div id="detail-body"></div>
-    </div>
+    <div class="detail-title" id="detail-title">000126</div>
+    <div id="detail-body"></div>
   </div>
   <div class="detail-back">
-    <button type="button" class="detail-share-btn" id="detail-share-btn" onclick="shareDetailSnapshot()">Поделиться</button>
+    <button type="button" class="detail-share-btn" id="detail-share-btn" onclick="shareDetailText()">Поделиться</button>
     <button type="button" class="detail-back-btn" onclick="closeDetail()">Назад</button>
   </div>
 </div>
@@ -1807,7 +1804,6 @@ html, body {
   </div>
 </div>
 
-<script src="/html2canvas.min.js"></script>
 <script>
 'use strict';
 
@@ -6106,55 +6102,67 @@ function renderFindList(records) {
 var detailRecordForEdit = null;
 var _detailShareRecord = null;
 
-function downloadBlob(blob, name) {
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(function() { URL.revokeObjectURL(a.href); }, 2000);
+function formatDetailShareText(r) {
+  if (!r) return '';
+  var lines = [
+    'Проверка КБ ' + checkIdLabel(r),
+    'Дата проверки: ' + (r.dateCheck || '—'),
+    'Метод: ' + (r.method || '—'),
+    'Организация: ' + (r.org || '—'),
+    'Объект: ' + (r.obj || '—'),
+    'Барьер: ' + (r.barrier || '—'),
+    'Работоспособность: ' + (r.works || '—')
+  ];
+  if (r.works === 'Нет' && r.violator) lines.push('Нарушение допустил: ' + r.violator);
+  if (r.desc) lines.push('Описание: ' + r.desc);
+  if (r.corrective) lines.push('Корректирующие мероприятия: ' + r.corrective);
+  if (r.contestMeasures) lines.push('Оспаривание в СОКБ: ' + r.contestMeasures);
+  return lines.join('\n');
 }
 
-async function shareDetailSnapshot() {
-  var cap = document.getElementById('detail-share-capture');
-  if (!cap) return;
-  if (typeof html2canvas !== 'function') {
-    alert('Снимок недоступен: библиотека не загружена');
-    return;
+function copyTextFallback(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text);
   }
+  return new Promise(function(resolve, reject) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      ok ? resolve() : reject(new Error('copy failed'));
+    } catch (e) { reject(e); }
+  });
+}
+
+async function shareDetailText() {
+  var r = _detailShareRecord;
+  var text = formatDetailShareText(r);
+  var title = 'Проверка КБ ' + checkIdLabel(r);
   var btn = document.getElementById('detail-share-btn');
   var label = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
   try {
-    var bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#eef1f6';
-    var canvas = await html2canvas(cap, {
-      backgroundColor: bg,
-      scale: Math.min(2, window.devicePixelRatio || 1.5),
-      useCORS: true,
-      logging: false,
-      onclone: function(doc) {
-        var clone = doc.getElementById('detail-share-capture');
-        if (clone) clone.style.padding = '8px 0';
-      }
-    });
-    var blob = await new Promise(function(resolve, reject) {
-      canvas.toBlob(function(b) { b ? resolve(b) : reject(new Error('PNG failed')); }, 'image/png', 0.92);
-    });
-    var id = (_detailShareRecord && _detailShareRecord.checkId) || 'proverka';
-    var file = new File([blob], 'proverka-' + id + '.png', { type: 'image/png' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'Проверка КБ ' + id });
-    } else if (navigator.share) {
-      await navigator.share({ title: 'Проверка КБ ' + id, text: checkIdLabel(_detailShareRecord) });
+    if (navigator.share) {
+      await navigator.share({ title: title, text: text });
     } else {
-      downloadBlob(blob, 'proverka-' + id + '.png');
-      alert('Сохранено как изображение');
+      await copyTextFallback(text);
+      alert('Скопировано в буфер обмена');
     }
   } catch (e) {
     if (e && e.name !== 'AbortError') {
       console.warn('[share]', e);
-      alert('Не удалось поделиться');
+      try {
+        await copyTextFallback(text);
+        alert('Скопировано в буфер обмена');
+      } catch (e2) {
+        alert('Не удалось поделиться');
+      }
     }
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = label || 'Поделиться'; }
