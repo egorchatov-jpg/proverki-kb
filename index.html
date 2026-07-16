@@ -2568,6 +2568,38 @@ function dateNumFromStr(s) {
   return p.length === 3 ? parseInt(p[2] + p[1] + p[0]) : 0;
 }
 
+var BARRIER_FILTER_PK = 'только ПК';
+var BARRIER_FILTER_NOT_PK = 'только не ПК';
+
+function isRecordBarrierInPK(r) {
+  var year = r.year || (r.dateCheck ? r.dateCheck.split('.')[2] : String(new Date().getFullYear()));
+  var barrier = r.barrier;
+  if (!barrier) return false;
+  var cfg = (appState.barriersConfig || {})[year];
+  if (cfg) {
+    var entry = cfg.filter(function(b) { return b.name === barrier; })[0];
+    return !!(entry && entry.inPK);
+  }
+  var legacy = (appState.barriersPK || {})[year] || [];
+  return legacy.indexOf(barrier) >= 0;
+}
+
+function matchBarrierFilter(r, filterVal) {
+  if (!filterVal) return true;
+  if (filterVal === BARRIER_FILTER_PK) return isRecordBarrierInPK(r);
+  if (filterVal === BARRIER_FILTER_NOT_PK) return !isRecordBarrierInPK(r);
+  return r.barrier === filterVal;
+}
+
+function buildBarrierDrumItems(names) {
+  var seen = {}, sorted = [];
+  (names || []).forEach(function(v) {
+    if (v && !seen[v]) { seen[v] = 1; sorted.push(v); }
+  });
+  sorted.sort(function(a, b) { return a.localeCompare(b, 'ru'); });
+  return [BARRIER_FILTER_PK, BARRIER_FILTER_NOT_PK].concat(sorted);
+}
+
 // Pool for filter overlay: apply all active filters except the column being edited
 function filterPoolForOverlay(recs, filters, openCol, statusFn) {
   return recs.filter(function(r) {
@@ -2579,7 +2611,7 @@ function filterPoolForOverlay(recs, filters, openCol, statusFn) {
     }
     if (openCol !== 'method' && filters.method && r.method !== filters.method) return false;
     if (openCol !== 'org' && filters.org && r.org !== filters.org) return false;
-    if (openCol !== 'barrier' && filters.barrier && r.barrier !== filters.barrier) return false;
+    if (openCol !== 'barrier' && filters.barrier && !matchBarrierFilter(r, filters.barrier)) return false;
     if (openCol !== 'status' && filters.status && statusFn && statusFn(r) !== filters.status) return false;
     return true;
   });
@@ -2603,7 +2635,7 @@ function applyFindFilters() {
     return dateOk
         && (!findFilters.method  || r.method  === findFilters.method)
         && (!findFilters.org     || r.org     === findFilters.org)
-        && (!findFilters.barrier || r.barrier === findFilters.barrier);
+        && matchBarrierFilter(r, findFilters.barrier);
   });
   renderFindList(recs);
   updateFilterIcons();
@@ -2678,7 +2710,7 @@ function openFindFilter(col) {
     },
     barrier: {
       title: 'Фильтр: проверяемый барьер',
-      items: sortAlpha(unique(all.map(function(r) { return r.barrier; }))),
+      items: buildBarrierDrumItems(unique(all.map(function(r) { return r.barrier; }))),
       drumCfg: function(items) { return [{ id: 'barrier', items: items, value: findFilters.barrier || items[0], minWidth: 200 }]; }
     }
   };
@@ -4236,7 +4268,7 @@ function renderSokbList() {
     violations = violations.filter(function(r) { var n = dateNumFromStr(r.dateCheck); return n >= cfrom && n <= cto; });
   }
   if (f.org)     violations = violations.filter(function(r) { return r.org     === f.org; });
-  if (f.barrier) violations = violations.filter(function(r) { return r.barrier === f.barrier; });
+  if (f.barrier) violations = violations.filter(function(r) { return matchBarrierFilter(r, f.barrier); });
   if (f.status)  violations = violations.filter(function(r) { return getSokbStatus(r) === f.status; });
   violations = sortByDateCheckAsc(violations);
   var tbody = document.getElementById('sokb-list-tbody');
@@ -4346,7 +4378,9 @@ function openSokbFilter(col) {
     return;
   }
 
-  var items = uniqSort(all.map(function(r) { return r[col]; }));
+  var items = col === 'barrier'
+    ? buildBarrierDrumItems(all.map(function(r) { return r.barrier; }))
+    : uniqSort(all.map(function(r) { return r[col]; }));
   if (!items.length) return;
   var cfg;
   if (col === 'org') {
@@ -4744,7 +4778,7 @@ function renderCorrectiveList() {
   }
   if (f.method)    violations = violations.filter(function(r) { return r.method    === f.method; });
   if (f.org)       violations = violations.filter(function(r) { return r.org       === f.org; });
-  if (f.barrier)   violations = violations.filter(function(r) { return r.barrier   === f.barrier; });
+  if (f.barrier)   violations = violations.filter(function(r) { return matchBarrierFilter(r, f.barrier); });
   if (f.status) {
     violations = violations.filter(function(r) { return getCorrectiveStatus(r) === f.status; });
   }
@@ -4862,7 +4896,9 @@ function openCorrFilter(col) {
   }
 
   // ── OTHER COLUMNS — only present values ───────────────────────
-  var items = uniqSort(all.map(function(r) { return r[col]; }));
+  var items = col === 'barrier'
+    ? buildBarrierDrumItems(all.map(function(r) { return r.barrier; }))
+    : uniqSort(all.map(function(r) { return r[col]; }));
   if (col === 'method') items = sortMethodsForDrum(items);
   if (!items.length) return;
   var cfg;
