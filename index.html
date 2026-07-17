@@ -1789,32 +1789,20 @@ var SYNC_QUEUE_KEY   = 'pkb-sync-queue';
 var UPDATE_QUEUE_KEY = 'pkb-update-queue';
 var SERVER_SHA_KEY   = 'pkb-server-shas';
 var DATA_VERSION_KEY = 'pkb-data-version';
-var CURRENT_DATA_VERSION = 'v12-no-pii-fields';
+var CURRENT_DATA_VERSION = 'v13-no-pii-runtime';
 
-function stripPiiRecord(r) {
-  if (!r) return r;
-  r.inspector = '';
-  r.curator = '';
-  r.violator = '';
-  return r;
-}
-
-function stripPiiFromState() {
-  (appState.db || []).forEach(stripPiiRecord);
+// One-time cleanup for devices that cached PII before fields were removed from UI.
+function migrateLocalPiiOnce() {
+  (appState.db || []).forEach(function(r) {
+    if (!r) return;
+    r.inspector = '';
+    r.curator = '';
+    r.violator = '';
+  });
   if (appState.autocomplete) {
     delete appState.autocomplete.inspector;
     delete appState.autocomplete.curator;
   }
-  try {
-    getSyncQueue().forEach(stripPiiRecord);
-    getUpdateQueue().forEach(function(item) {
-      if (item && item.fields) {
-        item.fields.inspector = '';
-        item.fields.curator = '';
-        item.fields.violator = '';
-      }
-    });
-  } catch (_) {}
 }
 var VAPID_KEY_STORE = 'pkb-vapid-key';
 var swRegistration   = null;
@@ -2225,7 +2213,6 @@ function loadFromServer(onDone) {
       appState.db = mergeWithQueue(d.records);
       appState.db = applyPendingUpdates(appState.db);
       purgeSyncedUpdates(appState.db);
-      stripPiiFromState();
       normalizeDbDates();
       renumberDb();
       saveState();
@@ -2539,13 +2526,19 @@ function _showPushPromptOrFinish() {
 
 // ===== INIT =====
 window.addEventListener('DOMContentLoaded', function() {
+  var needDataMigration = false;
   try {
-    if (localStorage.getItem(DATA_VERSION_KEY) !== CURRENT_DATA_VERSION) {
+    needDataMigration = localStorage.getItem(DATA_VERSION_KEY) !== CURRENT_DATA_VERSION;
+    if (needDataMigration) {
       localStorage.removeItem(SERVER_SHA_KEY);
       localStorage.setItem(DATA_VERSION_KEY, CURRENT_DATA_VERSION);
     }
   } catch(e) {}
   loadState();
+  if (needDataMigration) {
+    migrateLocalPiiOnce();
+    saveState();
+  }
   renderLobby();
   initDateDrum();
   initBpkInputIOSFix();
@@ -2597,7 +2590,6 @@ function loadState() {
       appState.passwords     = parsed.passwords     || getDefaultPasswords();
       appState.usedPasswords = parsed.usedPasswords || getDefaultUsedPasswords();
       appState.settingsUpdatedAt = parsed.settingsUpdatedAt || 0;
-      stripPiiFromState();
       normalizeDbDates();
       renumberDb();
     } else {
@@ -3462,7 +3454,6 @@ function openCardForEdit(r) {
     works: r.works || '',
     desc: r.desc || ''
   };
-  stripPiiRecord(cardData);
   setCardVal('date', r.dateCheck || '—', !r.dateCheck);
   setCardVal('method', r.method || 'Выбрать', !r.method);
   setCardVal('org', r.org || 'Выбрать', !r.org);
@@ -3581,7 +3572,6 @@ function submitCard() {
   appState.db.push(cardData);
   renumberDb();
   saveState();
-  stripPiiRecord(cardData);
   syncToServer(Object.assign({}, cardData)); // fire-and-forget sync to server Excel
   document.getElementById('success-overlay').classList.add('active');
 }
