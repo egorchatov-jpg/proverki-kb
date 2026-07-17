@@ -220,7 +220,7 @@ html, body {
   align-items: center; justify-content: center;
   padding: 24px 20px; gap: 0;
 }
-.pin-role { font-size: 18px; font-weight: 700; color: var(--red); text-align: center; margin-bottom: 10px; }
+.pin-role { display: none; }
 .pin-title { font-size: 18px; font-weight: 700; margin-bottom: 28px; color: #1a2035; text-align: center; }
 .pin-dots { display: flex; gap: 16px; margin-bottom: 32px; }
 .pin-dot {
@@ -2434,7 +2434,6 @@ var DEFAULT_ORGS = [
 ];
 
 var appState = {
-  pinUnlocked: false,
   db: [],          // массив записей проверок
   orgs: [],        // список организаций (из настроек)
   barriers: [],    // список барьеров (из настроек)
@@ -2548,9 +2547,14 @@ window.addEventListener('DOMContentLoaded', function() {
   setInterval(function() {
     if (hasPendingSync()) retryAllQueues();
   }, 30000);
+  window.addEventListener('pagehide', clearSessionAccess);
   document.addEventListener('visibilitychange', function() {
-    if (document.hidden && isSettingsDirty()) syncSettingsToServer();
+    if (document.hidden) {
+      if (isSettingsDirty()) syncSettingsToServer();
+      clearSessionAccess();
+    }
     if (!document.hidden) {
+      enforceLobbyIfNoSession();
       renderLobby();
       loadFromServer();
       clearNotificationsAndBadge();
@@ -2647,32 +2651,23 @@ function goLobby() {
   if (lc) lc.scrollTop = 0;
 }
 
-function openProverki()  { showScreen('screen-proverki-menu'); }
-function openMeropr() { showScreen('screen-meropr-menu'); }
-function openStat()      { /* TODO */ alert('Раздел «Статистика» — в разработке'); }
+function openProverki() {
+  gateAccess('inspector', function() { showScreen('screen-proverki-menu'); });
+}
+function openMeropr() {
+  gateAccess('inspector', function() { showScreen('screen-meropr-menu'); });
+}
+function openStat() {
+  gateAccess('inspector', function() { alert('Раздел «Статистика» — в разработке'); });
+}
 function openSettings() {
-  if (_settingsUnlocked) {
+  gateAccess('admin', function() {
     syncSettingsFromServer(function() { showScreen('screen-settings'); });
-    return;
-  }
-  pinMode = 'settings';
-  var pinEl2 = document.getElementById('screen-pin');
-  pinEl2.classList.add('screen-pin--dark');
-  pinEl2.classList.remove('screen-pin--navy');
-  setPinRole('Доступ администратора');
-  resetPin();
-  showScreen('screen-pin');
+  });
 }
 
 function openPin() {
-  if (appState.pinUnlocked) { openCard(); return; }
-  pinMode = 'card';
-  var pinEl3 = document.getElementById('screen-pin');
-  pinEl3.classList.remove('screen-pin--dark');
-  pinEl3.classList.remove('screen-pin--navy');
-  setPinRole('Доступ проверяющего');
-  resetPin();
-  showScreen('screen-pin');
+  gateAccess('inspector', openCard);
 }
 
 var findFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '' };
@@ -2946,15 +2941,93 @@ function renderLobby() {
           '</div>' +
         '</div>' +
         '<div class="violation-card-body">' + esc(r.desc || '') + '</div>';
-      card.onclick = function() { openDetail(r, 'lobby'); };
+      card.onclick = function() {
+        gateAccess('inspector', function() { openDetail(r, 'lobby'); });
+      };
       content.insertBefore(card, content.querySelector('.violations-banner').nextSibling);
     });
   }
 }
 
+// ===== SESSION ACCESS (in-memory; cleared when app goes to background) =====
+var _sessionAccess = { inspector: false, admin: false, superuser: false, orgs: {} };
+var _pinPending = null;
+var _pinReturnScreen = 'screen-lobby';
+
+function clearSessionAccess() {
+  _sessionAccess = { inspector: false, admin: false, superuser: false, orgs: {} };
+  _settingsUnlocked = false;
+  _currentRole = null;
+  _correctiveUnlocked = false;
+  _sokbUnlocked = false;
+  _pinPending = null;
+}
+
+function hasAccess(level, org) {
+  if (_sessionAccess.superuser || _sessionAccess.admin) return true;
+  if (level === 'inspector' && _sessionAccess.inspector) return true;
+  if (level === 'org' && org && _sessionAccess.orgs[org]) return true;
+  return false;
+}
+
+function grantPinAccess(pin) {
+  var pw = getPw();
+  if (pin === SUPERUSER_PIN) {
+    _sessionAccess.superuser = true;
+    _sessionAccess.admin = true;
+    _sessionAccess.inspector = true;
+    _currentRole = 'superuser';
+    _settingsUnlocked = true;
+    return true;
+  }
+  if (pin === pw.admin) {
+    _sessionAccess.admin = true;
+    _sessionAccess.inspector = true;
+    _currentRole = 'admin';
+    _settingsUnlocked = true;
+    return true;
+  }
+  if (pin === pw.inspector) {
+    _sessionAccess.inspector = true;
+    return true;
+  }
+  var orgs = pw.orgs || {};
+  for (var orgName in orgs) {
+    if (orgs[orgName] && pin === orgs[orgName]) {
+      _sessionAccess.orgs[orgName] = true;
+      _sessionAccess.inspector = true;
+      return true;
+    }
+  }
+  return false;
+}
+
+function showGatePin(returnScreen) {
+  pinMode = 'gate';
+  _pinReturnScreen = returnScreen || 'screen-lobby';
+  var pinEl = document.getElementById('screen-pin');
+  pinEl.classList.remove('screen-pin--dark', 'screen-pin--navy');
+  setPinRole('');
+  resetPin();
+  showScreen('screen-pin');
+}
+
+function gateAccess(level, fn, org) {
+  if (hasAccess(level, org)) { fn(); return; }
+  _pinPending = { fn: fn, level: level, org: org || null };
+  var active = document.querySelector('.screen.active');
+  showGatePin(active ? active.id : 'screen-lobby');
+}
+
+function enforceLobbyIfNoSession() {
+  if (_sessionAccess.inspector || _sessionAccess.admin || _sessionAccess.superuser) return;
+  var active = document.querySelector('.screen.active');
+  if (active && active.id !== 'screen-lobby' && active.id !== 'screen-pin') goLobby();
+}
+
 // ===== PIN =====
 var pinValue = '';
-var pinMode = 'card'; // 'card' | 'settings' | 'admin-update' | 'corrective' | 'sokb' | 'record-edit'
+var pinMode = 'gate'; // 'gate' | 'admin-update' | 'corrective' | 'sokb' | 'record-edit'
 
 /* ---- Superuser PIN — hardcoded, never stored in localStorage or server ---- */
 var SUPERUSER_PIN = '2003';
@@ -3010,13 +3083,18 @@ function clearPinThemeDelayed() {
 }
 
 function pinGoBack() {
+  if (pinMode === 'gate') {
+    _pinPending = null;
+    showScreen(_pinReturnScreen || 'screen-lobby');
+    return;
+  }
   if (pinMode === 'admin-update') { pinMode = 'settings'; showScreen('screen-passwords'); return; }
   if (pinMode === 'corrective' || pinMode === 'sokb' || pinMode === 'record-edit') {
     showScreen('screen-detail');
     clearPinThemeDelayed();
     return;
   }
-  showScreen(pinMode === 'settings' ? 'screen-lobby' : 'screen-proverki-menu');
+  showScreen('screen-lobby');
 }
 
 function pinPress(d) {
@@ -3041,6 +3119,30 @@ function updatePinDots() {
 
 function checkPin() {
   var pw = getPw();
+
+  if (pinMode === 'gate') {
+    if (grantPinAccess(pinValue)) {
+      var pending = _pinPending;
+      _pinPending = null;
+      resetPin();
+      if (pending && hasAccess(pending.level, pending.org)) {
+        pending.fn();
+      } else if (pending) {
+        document.getElementById('pin-error').textContent = 'Недостаточно прав';
+        _pinPending = pending;
+        pinValue = '';
+        updatePinDots();
+        return;
+      } else {
+        showScreen(_pinReturnScreen || 'screen-lobby');
+      }
+    } else {
+      document.getElementById('pin-error').textContent = 'Неверный пароль';
+      pinValue = '';
+      updatePinDots();
+    }
+    return;
+  }
 
   // ---- record-edit mode: admin/superuser PIN only ----
   if (pinMode === 'record-edit') {
@@ -3117,31 +3219,9 @@ function checkPin() {
     return;
   }
 
-  // ---- settings mode ----
-  if (pinMode === 'settings') {
-    var role = (pinValue === SUPERUSER_PIN) ? 'superuser'
-             : (pinValue === pw.admin)      ? 'admin'
-             : null;
-    if (role) {
-      _currentRole = role;
-      _settingsUnlocked = true;
-      syncSettingsFromServer(function() { showScreen('screen-settings'); });
-    } else {
-      document.getElementById('pin-error').textContent = 'Неверный пароль';
-      pinValue = '';
-      updatePinDots();
-    }
-  } else {
-    // card mode — superuser / admin / inspector all allowed
-    if (pinValue === SUPERUSER_PIN || pinValue === pw.admin || pinValue === pw.inspector) {
-      appState.pinUnlocked = true;
-      openCard();
-    } else {
-      document.getElementById('pin-error').textContent = 'Неверный пароль';
-      pinValue = '';
-      updatePinDots();
-    }
-  }
+  document.getElementById('pin-error').textContent = 'Неверный пароль';
+  pinValue = '';
+  updatePinDots();
 }
 
 // ===== SETTINGS SYNC =====
@@ -6036,7 +6116,7 @@ var detailRecordForEdit = null;
 function openDetail(r, source) {
   detailSource = source || 'find';
   detailRecordForEdit = r;
-  document.getElementById('detail-title').textContent = checkIdLabel(r);
+  document.getElementById('detail-title').textContent = 'Проверка ' + checkIdLabel(r);
   var body = document.getElementById('detail-body');
   var isFind = source === 'find';
   var sokbSuccess = isSokbSuccessful(r);
