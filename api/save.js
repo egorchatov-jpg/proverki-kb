@@ -82,8 +82,8 @@ async function appendRecord(fileName, record) {
     const header = rows.length ? rows[0].map(h => String(h || '').trim()) : COLUMNS.map(c => c.h);
     const colIdx = buildColIdx(header);
 
-    // Dedup check: dateCheck+method+org+obj+barrier+violator+desc
-    const fp = [record.dateCheck, record.method, record.org, record.obj, record.barrier, record.violator, record.desc].join('|');
+    // Dedup check: dateCheck+method+org+obj+barrier+desc
+    const fp = [record.dateCheck, record.method, record.org, record.obj, record.barrier, record.desc].join('|');
     const isDupe = rows.slice(1).some(row => {
       const dc = colIdx.dateCheck ?? COL.dateCheck;
       if (!row[dc]) return false;
@@ -93,7 +93,6 @@ async function appendRecord(fileName, record) {
         String(row[colIdx.org ?? COL.org] || ''),
         String(row[colIdx.obj ?? COL.obj] || ''),
         String(row[colIdx.barrier ?? COL.barrier] || ''),
-        String(row[colIdx.violator ?? COL.violator] || ''),
         String(row[colIdx.desc ?? COL.desc] || ''),
       ].join('|') === fp;
     });

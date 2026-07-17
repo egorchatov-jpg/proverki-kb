@@ -1374,13 +1374,6 @@ html, body {
       </div>
 
       <div class="field-wrap">
-        <div class="field-label" id="lbl-inspector">Проверку выполнил</div>
-        <div class="field-cell dimmed" id="cell-inspector" onclick="openInspectorOverlay()">
-          <span class="placeholder" id="val-inspector">—</span>
-        </div>
-      </div>
-
-      <div class="field-wrap">
         <div class="field-label">Проверяемая организация</div>
         <div class="field-cell" id="cell-org" onclick="openDrumOrg()">
           <span class="placeholder" id="val-org">Выбрать</span>
@@ -1391,13 +1384,6 @@ html, body {
         <div class="field-label">Проверяемый объект</div>
         <div class="field-cell" id="cell-obj" onclick="openTextOverlay('obj','Введите проверяемый объект / участок / производственную площадку','val-obj',false)">
           <span class="placeholder" id="val-obj">—</span>
-        </div>
-      </div>
-
-      <div class="field-wrap">
-        <div class="field-label">Куратор от заказчика</div>
-        <div class="field-cell" id="cell-curator" onclick="openCuratorOverlay()">
-          <span class="placeholder" id="val-curator">—</span>
         </div>
       </div>
 
@@ -1419,13 +1405,6 @@ html, body {
         <div class="field-label dimmed" id="lbl-desc">Описание нарушения</div>
         <div class="field-cell tall dimmed" id="cell-desc" onclick="openDescOverlay()">
           <span class="placeholder" id="val-desc">—</span>
-        </div>
-      </div>
-
-      <div class="field-wrap">
-        <div class="field-label dimmed" id="lbl-violator">Нарушение допустил</div>
-        <div class="field-cell tall dimmed" id="cell-violator" onclick="openViolatorOverlay()">
-          <span class="placeholder" id="val-violator">—</span>
         </div>
       </div>
 
@@ -1543,61 +1522,6 @@ html, body {
     <div class="overlay-btns">
       <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-desc')">Отмена</button>
       <button class="overlay-btn overlay-btn-apply" onclick="applyDesc()">Применить</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== OVERLAY: НАРУШЕНИЕ ДОПУСТИЛ ===== -->
-<div class="overlay" id="overlay-violator">
-  <div class="overlay-box">
-    <div class="overlay-title">Введите кто допустил нарушение</div>
-    <div class="violator-groups" id="violator-groups"></div>
-    <div class="overlay-btns">
-      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-violator')">Отмена</button>
-      <button class="overlay-btn overlay-btn-apply" onclick="applyViolator()">Применить</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== CURATOR OVERLAY ===== -->
-<div class="overlay" id="overlay-curator">
-  <div class="overlay-box">
-    <div class="overlay-title">Введите куратора от заказчика</div>
-    <div class="violator-groups">
-      <div class="violator-group-inputs">
-        <div class="violator-name-row">
-          <input class="violator-input" id="c-name" type="text" placeholder="Имя" autocomplete="off" oninput="updateCuratorApplyBtn()">
-          <input class="violator-input" id="c-last" type="text" placeholder="1-я буква фамилии" autocomplete="off" oninput="updateCuratorApplyBtn()">
-        </div>
-        <input class="violator-input" id="c-dept" type="text" placeholder="Департамент" autocomplete="off" oninput="updateCuratorApplyBtn()">
-      </div>
-      <div class="violator-validation" id="curator-validation"></div>
-    </div>
-    <div class="overlay-btns">
-      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-curator')">Отмена</button>
-      <button class="overlay-btn overlay-btn-apply" id="curator-apply-btn" onclick="applyCurator()">Применить</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== INSPECTOR OVERLAY ===== -->
-<div class="overlay" id="overlay-inspector">
-  <div class="overlay-box">
-    <div class="overlay-title">Введите кто выполнил проверку</div>
-    <div class="violator-groups">
-      <div class="violator-group-inputs">
-        <div class="violator-name-row">
-          <input class="violator-input" id="i-name" type="text" placeholder="Имя" autocomplete="off" oninput="updateInspectorApplyBtn()">
-          <input class="violator-input" id="i-last" type="text" placeholder="1-я буква фамилии" autocomplete="off" oninput="updateInspectorApplyBtn()">
-        </div>
-        <input class="violator-input" id="i-dept" type="text" placeholder="Департамент" autocomplete="off" oninput="updateInspectorApplyBtn()">
-        <input class="violator-input" id="i-org" type="text" placeholder="Организация" autocomplete="off" oninput="updateInspectorApplyBtn()">
-      </div>
-      <div class="violator-validation" id="inspector-validation"></div>
-    </div>
-    <div class="overlay-btns">
-      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-inspector')">Отмена</button>
-      <button class="overlay-btn overlay-btn-apply" id="inspector-apply-btn" onclick="applyInspector()">Применить</button>
     </div>
   </div>
 </div>
@@ -1865,7 +1789,33 @@ var SYNC_QUEUE_KEY   = 'pkb-sync-queue';
 var UPDATE_QUEUE_KEY = 'pkb-update-queue';
 var SERVER_SHA_KEY   = 'pkb-server-shas';
 var DATA_VERSION_KEY = 'pkb-data-version';
-var CURRENT_DATA_VERSION = 'v11-check-id-from-num';
+var CURRENT_DATA_VERSION = 'v12-no-pii-fields';
+
+function stripPiiRecord(r) {
+  if (!r) return r;
+  r.inspector = '';
+  r.curator = '';
+  r.violator = '';
+  return r;
+}
+
+function stripPiiFromState() {
+  (appState.db || []).forEach(stripPiiRecord);
+  if (appState.autocomplete) {
+    delete appState.autocomplete.inspector;
+    delete appState.autocomplete.curator;
+  }
+  try {
+    getSyncQueue().forEach(stripPiiRecord);
+    getUpdateQueue().forEach(function(item) {
+      if (item && item.fields) {
+        item.fields.inspector = '';
+        item.fields.curator = '';
+        item.fields.violator = '';
+      }
+    });
+  } catch (_) {}
+}
 var VAPID_KEY_STORE = 'pkb-vapid-key';
 var swRegistration   = null;
 
@@ -2201,17 +2151,17 @@ function mergeWithQueue(serverRecords) {
   // Build fingerprint map from server data (dateCheck+org+barrier+method)
   var fps = {};
   serverRecords.forEach(function(r) {
-    fps[[r.dateCheck, r.method, r.org, r.obj, r.barrier, r.violator, r.desc].join('|')] = true;
+    fps[[r.dateCheck, r.method, r.org, r.obj, r.barrier, r.desc].join('|')] = true;
   });
   // Records already on server — remove from queue to prevent duplicate re-sync
   queue.forEach(function(r) {
-    if (fps[[r.dateCheck, r.method, r.org, r.obj, r.barrier, r.violator, r.desc].join('|')]) {
+    if (fps[[r.dateCheck, r.method, r.org, r.obj, r.barrier, r.desc].join('|')]) {
       removeFromSyncQueue(r.id);
     }
   });
   // Only append genuinely unsynced records
   var unsynced = queue.filter(function(r) {
-    return !fps[[r.dateCheck, r.method, r.org, r.obj, r.barrier, r.violator, r.desc].join('|')];
+    return !fps[[r.dateCheck, r.method, r.org, r.obj, r.barrier, r.desc].join('|')];
   });
   var merged = serverRecords.concat(unsynced).filter(function(r) { return r.dateCheck && r.dateCheck.trim(); });
   merged.forEach(function(r) { if (r.dateCheck) r.dateCheck = normalizeDateStr(r.dateCheck); });
@@ -2275,6 +2225,7 @@ function loadFromServer(onDone) {
       appState.db = mergeWithQueue(d.records);
       appState.db = applyPendingUpdates(appState.db);
       purgeSyncedUpdates(appState.db);
+      stripPiiFromState();
       normalizeDbDates();
       renumberDb();
       saveState();
@@ -2597,7 +2548,6 @@ window.addEventListener('DOMContentLoaded', function() {
   loadState();
   renderLobby();
   initDateDrum();
-  initViolatorGroups();
   initBpkInputIOSFix();
   setTodayDate();
   setTimeout(_unlockLobbyBanners, 400);
@@ -2647,6 +2597,7 @@ function loadState() {
       appState.passwords     = parsed.passwords     || getDefaultPasswords();
       appState.usedPasswords = parsed.usedPasswords || getDefaultUsedPasswords();
       appState.settingsUpdatedAt = parsed.settingsUpdatedAt || 0;
+      stripPiiFromState();
       normalizeDbDates();
       renumberDb();
     } else {
@@ -3505,28 +3456,21 @@ function openCardForEdit(r) {
   cardData = {
     dateCheck: r.dateCheck || '',
     method: r.method || '',
-    inspector: r.inspector || '',
     org: r.org || '',
     obj: r.obj || '',
-    curator: r.curator || '',
     barrier: r.barrier || '',
     works: r.works || '',
-    desc: r.desc || '',
-    violator: r.violator || ''
+    desc: r.desc || ''
   };
+  stripPiiRecord(cardData);
   setCardVal('date', r.dateCheck || '—', !r.dateCheck);
   setCardVal('method', r.method || 'Выбрать', !r.method);
-  setCardVal('inspector', r.inspector || '—', !r.inspector);
   setCardVal('org', r.org || 'Выбрать', !r.org);
   setCardVal('obj', r.obj || '—', !r.obj);
-  setCardVal('curator', r.curator || '—', !r.curator);
   setCardVal('barrier', r.barrier || 'Выбрать', !r.barrier);
   setWorksCellDisplay(r.works || 'Выбрать');
   setCardVal('desc', r.desc || '—', !r.desc);
-  setCardVal('violator', r.violator || '—', !r.violator);
-  setDimmed('inspector', false);
   setDimmed('desc', r.works !== 'Нет');
-  setDimmed('violator', r.works !== 'Нет');
   var titleEl = document.querySelector('#screen-card .card-title');
   if (titleEl) titleEl.textContent = 'Измените результат проведенной проверки';
   setCardSubtitle(checkIdLabel(r));
@@ -3554,14 +3498,12 @@ function resetCard() {
   if (titleEl) titleEl.textContent = 'Внесите результат проведенной проверки';
   setCardSubtitle('');
   setTodayDate();
-  ['method','inspector','org','obj','curator','barrier','works','desc','violator'].forEach(function(k) {
+  ['method','org','obj','barrier','works','desc'].forEach(function(k) {
     var el = document.getElementById('val-' + k);
     if (el) { el.textContent = k === 'method' || k === 'org' || k === 'barrier' || k === 'works' ? 'Выбрать' : '—'; }
   });
   setWorksCellDisplay('Выбрать');
-  setDimmed('inspector', true);
   setDimmed('desc', true);
-  setDimmed('violator', true);
   updateValidation();
 }
 
@@ -3573,8 +3515,8 @@ function setDimmed(key, dimmed) {
 }
 
 function updateValidation() {
-  var required = ['dateCheck','method','org','obj','curator','barrier','works'];
-  if (cardData.works === 'Нет') { required.push('desc','violator'); }
+  var required = ['dateCheck','method','org','obj','barrier','works'];
+  if (cardData.works === 'Нет') { required.push('desc'); }
   var ok = required.every(function(k) { return cardData[k] && cardData[k].trim && cardData[k].trim() !== '' || (cardData[k] && typeof cardData[k] === 'string' && cardData[k] !== ''); });
   var el = document.getElementById('card-validation');
   var btn = document.getElementById('btn-submit');
@@ -3597,20 +3539,18 @@ function submitCardEdit() {
   var fields = {
     dateCheck: cardData.dateCheck,
     method: cardData.method,
-    inspector: cardData.inspector || '',
+    inspector: '',
     org: cardData.org,
     obj: cardData.obj,
-    curator: cardData.curator,
+    curator: '',
     barrier: cardData.barrier,
     works: cardData.works,
-    violator: cardData.violator || '',
+    violator: '',
     desc: cardData.desc || '',
     barrierInPK: calcBarrierInPK(cardData.barrier, checkYear)
   };
   if (checkYear !== year) r.year = checkYear;
   saveRecordFieldUpdate(r.dateEntry, year, fields);
-  saveAutocomplete('inspector', cardData.inspector);
-  saveAutocomplete('curator', cardData.curator);
   cardEditRecord = null;
   var titleEl = document.querySelector('#screen-card .card-title');
   if (titleEl) titleEl.textContent = 'Внесите результат проведенной проверки';
@@ -3641,10 +3581,8 @@ function submitCard() {
   appState.db.push(cardData);
   renumberDb();
   saveState();
+  stripPiiRecord(cardData);
   syncToServer(Object.assign({}, cardData)); // fire-and-forget sync to server Excel
-  // save autocomplete
-  saveAutocomplete('inspector', cardData.inspector);
-  saveAutocomplete('curator', cardData.curator);
   document.getElementById('success-overlay').classList.add('active');
 }
 
@@ -6151,14 +6089,11 @@ function openDetail(r, source) {
     row('Дата проверки', r.dateCheck, '', isFind) +
     row('Дата внесения проверки', r.dateEntry, '', isFind) +
     row('Метод проверки', r.method, '', isFind) +
-    row('Проверку выполнил', r.inspector, '', isFind) +
     row('Проверяемая организация', r.org, '', isFind) +
     row('Проверяемый объект', r.obj, '', isFind) +
-    row('Куратор от заказчика', r.curator, '', isFind) +
     row('Проверяемый барьер', r.barrier, '', isFind) +
     row('Барьер в ПК', r.barrierInPK, '', isFind) +
     row('Работоспособность барьера', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', isFind) +
-    (showViolBlock ? row('Нарушение допустил', r.violator, '', isFind) : '') +
     (showViolationDesc ? block('Описание нарушения', r.desc, isFind) : '') +
     corrBlock +
     contestBlock;
@@ -6363,13 +6298,6 @@ function openDrumMethod() {
     cardData.method = d['method'].getValue();
     document.getElementById('val-method').textContent = cardData.method;
     document.getElementById('val-method').classList.remove('placeholder');
-    var isLocked = (cardData.method === 'ОСИР' || cardData.method === 'ЦРПО');
-    if (cardEditRecord) {
-      setDimmed('inspector', false);
-    } else {
-      setDimmed('inspector', isLocked);
-      if (isLocked) { cardData.inspector = ''; document.getElementById('val-inspector').textContent = '—'; }
-    }
     updateValidation();
   });
 }
@@ -6426,62 +6354,12 @@ function openDrumWorks() {
     setWorksCellDisplay(cardData.works);
     var broken = cardData.works === 'Нет';
     setDimmed('desc', !broken);
-    setDimmed('violator', !broken);
     if (!broken) {
-      cardData.desc = ''; cardData.violator = '';
+      cardData.desc = '';
       document.getElementById('val-desc').textContent = '—';
-      document.getElementById('val-violator').textContent = '—';
     }
     updateValidation();
   });
-}
-
-// Проверку выполнил
-function updateInspectorApplyBtn() {
-  var name = (document.getElementById('i-name').value || '').trim();
-  var last = (document.getElementById('i-last').value || '').trim();
-  var dept = (document.getElementById('i-dept').value || '').trim();
-  var org  = (document.getElementById('i-org').value  || '').trim();
-  var allFilled = !!(name && last && dept && org);
-  var btn = document.getElementById('inspector-apply-btn');
-  if (btn) btn.disabled = !allFilled;
-  var msg = document.getElementById('inspector-validation');
-  if (msg) {
-    msg.textContent = allFilled ? 'Заполнены все поля' : 'Заполнены не все поля';
-    msg.style.color = allFilled ? '#27ae60' : '#c0392b';
-  }
-}
-
-function openInspectorOverlay() {
-  var name = '', last = '', dept = '', org = '';
-  if (cardData.inspector) {
-    // Expected format: "Имя Ф., Департамент, Организация"
-    var parts = cardData.inspector.split(', ');
-    var namePart = parts[0] || '';
-    dept = parts[1] || '';
-    org  = parts.slice(2).join(', ') || '';
-    var spaceIdx = namePart.lastIndexOf(' ');
-    name = spaceIdx >= 0 ? namePart.slice(0, spaceIdx).trim() : namePart;
-    last = spaceIdx >= 0 ? namePart.slice(spaceIdx + 1).replace('.', '').trim() : '';
-  }
-  document.getElementById('i-name').value = name;
-  document.getElementById('i-last').value = last;
-  document.getElementById('i-dept').value = dept;
-  document.getElementById('i-org').value  = org;
-  updateInspectorApplyBtn();
-  document.getElementById('overlay-inspector').classList.add('active');
-}
-
-function applyInspector() {
-  var name = capFirst(document.getElementById('i-name').value);
-  var last = capFirst(document.getElementById('i-last').value);
-  var dept = (document.getElementById('i-dept').value || '').trim();
-  var org  = (document.getElementById('i-org').value  || '').trim();
-  cardData.inspector = name + (last ? ' ' + last[0] + '.' : '') +
-    (dept ? ', ' + dept : '') + (org ? ', ' + org : '');
-  document.getElementById('val-inspector').textContent = cardData.inspector || '—';
-  closeOverlay('overlay-inspector');
-  updateValidation();
 }
 
 // Text overlays
@@ -6544,184 +6422,7 @@ function applyDesc() {
   updateValidation();
 }
 
-// Нарушение допустил
-var violatorCount = 1;
 
-function capFirst(s) { s = (s || '').trim(); return s ? s[0].toUpperCase() + s.slice(1) : ''; }
-
-function getViolatorData() {
-  var data = [];
-  for (var i = 1; i <= violatorCount; i++) {
-    data.push({
-      name: ((document.getElementById('v-name-' + i) || {}).value || ''),
-      last: ((document.getElementById('v-last-' + i) || {}).value || ''),
-      pos:  ((document.getElementById('v-pos-'  + i) || {}).value || '')
-    });
-  }
-  return data;
-}
-
-function updateViolatorApplyBtn() {
-  var allFilled = true;
-  for (var i = 1; i <= violatorCount; i++) {
-    var name = ((document.getElementById('v-name-' + i) || {}).value || '').trim();
-    var last = ((document.getElementById('v-last-' + i) || {}).value || '').trim();
-    var pos  = ((document.getElementById('v-pos-'  + i) || {}).value || '').trim();
-    if (!name || !last || !pos) { allFilled = false; break; }
-  }
-  var btn = document.querySelector('#overlay-violator .overlay-btn-apply');
-  if (btn) btn.disabled = !allFilled;
-  var msg = document.getElementById('violator-validation');
-  if (msg) {
-    msg.textContent = allFilled ? 'Заполнены все поля' : 'Заполнены не все поля';
-    msg.style.color = allFilled ? '#27ae60' : '#c0392b';
-  }
-}
-
-function renderViolatorGroups(prefill) {
-  var DEL_ICON = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M22 10.5h-6m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z"/></svg>';
-  var ADD_ICON = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z"/></svg>';
-  var container = document.getElementById('violator-groups');
-  container.innerHTML = '';
-  for (var i = 1; i <= violatorCount; i++) {
-    var vd = (prefill && prefill[i-1]) || {};
-    var grp = document.createElement('div');
-    grp.className = 'violator-group';
-    grp.innerHTML =
-      '<div class="violator-group-label">' + i + '</div>' +
-      '<div class="violator-group-inputs">' +
-        '<div class="violator-name-row">' +
-          '<input class="violator-input" id="v-name-' + i + '" type="text" placeholder="Имя" autocomplete="off">' +
-          '<input class="violator-input" id="v-last-' + i + '" type="text" placeholder="1-я буква фамилии" autocomplete="off">' +
-        '</div>' +
-        '<input class="violator-input" id="v-pos-' + i + '" type="text" placeholder="Должность" autocomplete="off">' +
-      '</div>';
-    container.appendChild(grp);
-    if (vd.name) document.getElementById('v-name-' + i).value = vd.name;
-    if (vd.last) document.getElementById('v-last-' + i).value = vd.last;
-    if (vd.pos)  document.getElementById('v-pos-'  + i).value = vd.pos;
-  }
-  var ctrlRow = document.createElement('div');
-  ctrlRow.className = 'violator-ctrl-row';
-  var delBtn = document.createElement('button');
-  delBtn.className = 'violator-ctrl-btn del';
-  delBtn.innerHTML = DEL_ICON;
-  delBtn.disabled = violatorCount <= 1;
-  delBtn.onclick = removeViolator;
-  var addBtn = document.createElement('button');
-  addBtn.className = 'violator-ctrl-btn add';
-  addBtn.innerHTML = ADD_ICON;
-  addBtn.disabled = violatorCount >= 5;
-  addBtn.onclick = addViolator;
-  ctrlRow.appendChild(delBtn);
-  ctrlRow.appendChild(addBtn);
-  container.appendChild(ctrlRow);
-  var validMsg = document.createElement('div');
-  validMsg.className = 'violator-validation';
-  validMsg.id = 'violator-validation';
-  container.appendChild(validMsg);
-  container.querySelectorAll('.violator-input').forEach(function(inp) {
-    inp.addEventListener('input', updateViolatorApplyBtn);
-  });
-  updateViolatorApplyBtn();
-}
-
-function addViolator() {
-  if (violatorCount >= 5) return;
-  var data = getViolatorData();
-  violatorCount++;
-  renderViolatorGroups(data);
-}
-
-function removeViolator() {
-  if (violatorCount <= 1) return;
-  var data = getViolatorData();
-  data.pop();
-  violatorCount--;
-  renderViolatorGroups(data);
-}
-
-function initViolatorGroups() {
-  violatorCount = 1;
-  renderViolatorGroups([]);
-}
-
-function openViolatorOverlay() {
-  violatorCount = 1;
-  var prefill = [];
-  if (cardData.violator) {
-    var parts = cardData.violator.split(';').map(function(s){ return s.trim(); }).filter(Boolean);
-    prefill = parts.map(function(p) {
-      var lastComma = p.lastIndexOf(', ');
-      var namePart = lastComma >= 0 ? p.slice(0, lastComma).trim() : p.trim();
-      var pos = lastComma >= 0 ? p.slice(lastComma + 2).trim() : '';
-      var spaceIdx = namePart.lastIndexOf(' ');
-      var name = spaceIdx >= 0 ? namePart.slice(0, spaceIdx).trim() : namePart;
-      var last = spaceIdx >= 0 ? namePart.slice(spaceIdx + 1).replace('.', '').trim() : '';
-      return { name: name, last: last, pos: pos };
-    });
-    if (prefill.length > 0) violatorCount = prefill.length;
-  }
-  renderViolatorGroups(prefill);
-  document.getElementById('overlay-violator').classList.add('active');
-}
-
-function applyViolator() {
-  var parts = [];
-  for (var i = 1; i <= violatorCount; i++) {
-    var name = capFirst(document.getElementById('v-name-' + i).value);
-    var last = capFirst(document.getElementById('v-last-' + i).value);
-    var pos  = (document.getElementById('v-pos-'  + i).value || '').trim();
-    if (!name && !last && !pos) continue;
-    parts.push(name + (last ? ' ' + last[0] + '.' : '') + ', ' + pos);
-  }
-  cardData.violator = parts.join('; ');
-  document.getElementById('val-violator').textContent = cardData.violator || '—';
-  closeOverlay('overlay-violator');
-  updateValidation();
-}
-
-// Куратор от заказчика
-function updateCuratorApplyBtn() {
-  var name = (document.getElementById('c-name').value || '').trim();
-  var last = (document.getElementById('c-last').value || '').trim();
-  var dept = (document.getElementById('c-dept').value || '').trim();
-  var allFilled = !!(name && last && dept);
-  var btn = document.getElementById('curator-apply-btn');
-  if (btn) btn.disabled = !allFilled;
-  var msg = document.getElementById('curator-validation');
-  if (msg) {
-    msg.textContent = allFilled ? 'Заполнены все поля' : 'Заполнены не все поля';
-    msg.style.color = allFilled ? '#27ae60' : '#c0392b';
-  }
-}
-
-function openCuratorOverlay() {
-  var name = '', last = '', dept = '';
-  if (cardData.curator) {
-    var lastComma = cardData.curator.lastIndexOf(', ');
-    var namePart = lastComma >= 0 ? cardData.curator.slice(0, lastComma).trim() : cardData.curator.trim();
-    dept = lastComma >= 0 ? cardData.curator.slice(lastComma + 2).trim() : '';
-    var spaceIdx = namePart.lastIndexOf(' ');
-    name = spaceIdx >= 0 ? namePart.slice(0, spaceIdx).trim() : namePart;
-    last = spaceIdx >= 0 ? namePart.slice(spaceIdx + 1).replace('.', '').trim() : '';
-  }
-  document.getElementById('c-name').value = name;
-  document.getElementById('c-last').value = last;
-  document.getElementById('c-dept').value = dept;
-  updateCuratorApplyBtn();
-  document.getElementById('overlay-curator').classList.add('active');
-}
-
-function applyCurator() {
-  var name = capFirst(document.getElementById('c-name').value);
-  var last = capFirst(document.getElementById('c-last').value);
-  var dept = (document.getElementById('c-dept').value || '').trim();
-  cardData.curator = name + (last ? ' ' + last[0] + '.' : '') + (dept ? ', ' + dept : '');
-  document.getElementById('val-curator').textContent = cardData.curator || '—';
-  closeOverlay('overlay-curator');
-  updateValidation();
-}
 
 function closeOverlay(id) { document.getElementById(id).classList.remove('active'); }
 
