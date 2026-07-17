@@ -2652,22 +2652,22 @@ function goLobby() {
 }
 
 function openProverki() {
-  gateAccess('inspector', function() { showScreen('screen-proverki-menu'); });
+  gateAccess('session', function() { showScreen('screen-proverki-menu'); });
 }
 function openMeropr() {
-  gateAccess('inspector', function() { showScreen('screen-meropr-menu'); });
+  gateAccess('session', function() { showScreen('screen-meropr-menu'); });
 }
 function openStat() {
-  gateAccess('inspector', function() { alert('Раздел «Статистика» — в разработке'); });
+  gateAccess('session', function() { alert('Раздел «Статистика» — в разработке'); });
 }
 function openSettings() {
-  gateAccess('admin', function() {
+  gateAccess('settings', function() {
     syncSettingsFromServer(function() { showScreen('screen-settings'); });
   });
 }
 
 function openPin() {
-  gateAccess('inspector', openCard);
+  gateAccess('new-check', openCard);
 }
 
 var findFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '' };
@@ -2942,7 +2942,7 @@ function renderLobby() {
         '</div>' +
         '<div class="violation-card-body">' + esc(r.desc || '') + '</div>';
       card.onclick = function() {
-        gateAccess('inspector', function() { openDetail(r, 'lobby'); });
+        gateAccess('session', function() { openDetail(r, 'lobby'); });
       };
       content.insertBefore(card, content.querySelector('.violations-banner').nextSibling);
     });
@@ -2951,51 +2951,86 @@ function renderLobby() {
 
 // ===== SESSION ACCESS (in-memory; cleared when app goes to background) =====
 var _sessionAccess = { inspector: false, admin: false, superuser: false, orgs: {} };
+var _sessionRole = null;
 var _pinPending = null;
 var _pinReturnScreen = 'screen-lobby';
 
 function clearSessionAccess() {
   _sessionAccess = { inspector: false, admin: false, superuser: false, orgs: {} };
-  _settingsUnlocked = false;
-  _currentRole = null;
-  _correctiveUnlocked = false;
-  _sokbUnlocked = false;
+  _sessionRole = null;
   _pinPending = null;
 }
 
-function hasAccess(level, org) {
-  if (_sessionAccess.superuser || _sessionAccess.admin) return true;
-  if (level === 'inspector' && _sessionAccess.inspector) return true;
-  if (level === 'org' && org && _sessionAccess.orgs[org]) return true;
+function hasAnyOrgSession() {
+  var o = _sessionAccess.orgs || {};
+  for (var k in o) { if (o[k]) return true; }
   return false;
+}
+
+function hasSession() {
+  return _sessionAccess.superuser || _sessionAccess.admin || _sessionAccess.inspector || hasAnyOrgSession();
+}
+
+function canAccessSettings() {
+  return _sessionAccess.superuser || _sessionAccess.admin;
+}
+
+function canEnterNewCheck() {
+  return _sessionAccess.superuser || _sessionAccess.admin || _sessionAccess.inspector;
+}
+
+function canEditRecord() {
+  return _sessionAccess.superuser || _sessionAccess.admin;
+}
+
+function canEditSokb() {
+  return _sessionAccess.superuser || _sessionAccess.admin;
+}
+
+function canEditCorrective(orgName) {
+  if (_sessionAccess.superuser || _sessionAccess.admin) return true;
+  return !!(orgName && _sessionAccess.orgs && _sessionAccess.orgs[orgName]);
+}
+
+function canChangeAdminPassword() {
+  return _sessionAccess.superuser;
+}
+
+function checkPermission(perm, ctx) {
+  switch (perm) {
+    case 'session': return hasSession();
+    case 'settings': return canAccessSettings();
+    case 'new-check': return canEnterNewCheck();
+    case 'record-edit': return canEditRecord();
+    case 'sokb-edit': return canEditSokb();
+    case 'corrective-edit': return canEditCorrective(ctx);
+    default: return false;
+  }
 }
 
 function grantPinAccess(pin) {
   var pw = getPw();
   if (pin === SUPERUSER_PIN) {
-    _sessionAccess.superuser = true;
-    _sessionAccess.admin = true;
-    _sessionAccess.inspector = true;
-    _currentRole = 'superuser';
-    _settingsUnlocked = true;
+    _sessionAccess = { superuser: true, admin: true, inspector: true, orgs: {} };
+    _sessionRole = 'superuser';
     return true;
   }
   if (pin === pw.admin) {
-    _sessionAccess.admin = true;
-    _sessionAccess.inspector = true;
-    _currentRole = 'admin';
-    _settingsUnlocked = true;
+    _sessionAccess = { superuser: false, admin: true, inspector: true, orgs: {} };
+    _sessionRole = 'admin';
     return true;
   }
   if (pin === pw.inspector) {
-    _sessionAccess.inspector = true;
+    _sessionAccess = { superuser: false, admin: false, inspector: true, orgs: {} };
+    _sessionRole = 'inspector';
     return true;
   }
   var orgs = pw.orgs || {};
   for (var orgName in orgs) {
     if (orgs[orgName] && pin === orgs[orgName]) {
+      _sessionAccess = { superuser: false, admin: false, inspector: false, orgs: {} };
       _sessionAccess.orgs[orgName] = true;
-      _sessionAccess.inspector = true;
+      _sessionRole = 'org';
       return true;
     }
   }
@@ -3012,22 +3047,26 @@ function showGatePin(returnScreen) {
   showScreen('screen-pin');
 }
 
-function gateAccess(level, fn, org) {
-  if (hasAccess(level, org)) { fn(); return; }
-  _pinPending = { fn: fn, level: level, org: org || null };
+function gateAccess(perm, fn, ctx) {
+  if (checkPermission(perm, ctx)) { fn(); return; }
+  if (hasSession()) {
+    alert('Недостаточно прав');
+    return;
+  }
+  _pinPending = { fn: fn, perm: perm, ctx: ctx != null ? ctx : null };
   var active = document.querySelector('.screen.active');
   showGatePin(active ? active.id : 'screen-lobby');
 }
 
 function enforceLobbyIfNoSession() {
-  if (_sessionAccess.inspector || _sessionAccess.admin || _sessionAccess.superuser) return;
+  if (hasSession()) return;
   var active = document.querySelector('.screen.active');
   if (active && active.id !== 'screen-lobby' && active.id !== 'screen-pin') goLobby();
 }
 
 // ===== PIN =====
 var pinValue = '';
-var pinMode = 'gate'; // 'gate' | 'admin-update' | 'corrective' | 'sokb' | 'record-edit'
+var pinMode = 'gate';
 
 /* ---- Superuser PIN — hardcoded, never stored in localStorage or server ---- */
 var SUPERUSER_PIN = '2003';
@@ -3083,18 +3122,8 @@ function clearPinThemeDelayed() {
 }
 
 function pinGoBack() {
-  if (pinMode === 'gate') {
-    _pinPending = null;
-    showScreen(_pinReturnScreen || 'screen-lobby');
-    return;
-  }
-  if (pinMode === 'admin-update') { pinMode = 'settings'; showScreen('screen-passwords'); return; }
-  if (pinMode === 'corrective' || pinMode === 'sokb' || pinMode === 'record-edit') {
-    showScreen('screen-detail');
-    clearPinThemeDelayed();
-    return;
-  }
-  showScreen('screen-lobby');
+  _pinPending = null;
+  showScreen(_pinReturnScreen || 'screen-lobby');
 }
 
 function pinPress(d) {
@@ -3120,108 +3149,26 @@ function updatePinDots() {
 function checkPin() {
   var pw = getPw();
 
-  if (pinMode === 'gate') {
-    if (grantPinAccess(pinValue)) {
-      var pending = _pinPending;
-      _pinPending = null;
-      resetPin();
-      if (pending && hasAccess(pending.level, pending.org)) {
-        pending.fn();
-      } else if (pending) {
-        document.getElementById('pin-error').textContent = 'Недостаточно прав';
-        _pinPending = pending;
-        pinValue = '';
-        updatePinDots();
-        return;
-      } else {
-        showScreen(_pinReturnScreen || 'screen-lobby');
-      }
-    } else {
-      document.getElementById('pin-error').textContent = 'Неверный пароль';
+  if (grantPinAccess(pinValue)) {
+    var pending = _pinPending;
+    _pinPending = null;
+    resetPin();
+    if (pending && checkPermission(pending.perm, pending.ctx)) {
+      pending.fn();
+    } else if (pending) {
+      document.getElementById('pin-error').textContent = 'Недостаточно прав';
+      _pinPending = pending;
       pinValue = '';
       updatePinDots();
-    }
-    return;
-  }
-
-  // ---- record-edit mode: admin/superuser PIN only ----
-  if (pinMode === 'record-edit') {
-    if (pinValue === SUPERUSER_PIN || pinValue === pw.admin) {
-      resetPin();
-      openCardForEdit(detailRecordForEdit);
-      clearPinThemeDelayed();
+      return;
     } else {
-      document.getElementById('pin-error').textContent = 'Неверный пароль';
-      pinValue = '';
-      updatePinDots();
+      showScreen(_pinReturnScreen || 'screen-lobby');
     }
-    return;
+  } else {
+    document.getElementById('pin-error').textContent = 'Неверный пароль';
+    pinValue = '';
+    updatePinDots();
   }
-
-  // ---- sokb mode: admin/superuser PIN only ----
-  if (pinMode === 'sokb') {
-    var pwS = getPw();
-    if (pinValue === SUPERUSER_PIN || pinValue === pwS.admin) {
-      _sokbUnlocked = true;
-      _sokbSavedText = (detailRecordForEdit && detailRecordForEdit.contestMeasures) ? detailRecordForEdit.contestMeasures : '';
-      resetPin();
-      var recS = detailRecordForEdit;
-      showScreen('screen-sokb-edit');
-      openSokbEdit(recS);
-      setTimeout(function() {
-        var pe = document.getElementById('screen-pin');
-        pe.classList.remove('screen-pin--navy');
-        pe.classList.remove('screen-pin--dark');
-      }, 280);
-    } else {
-      document.getElementById('pin-error').textContent = 'Неверный пароль';
-      pinValue = '';
-      updatePinDots();
-    }
-    return;
-  }
-
-  // ---- corrective mode: org/admin/superuser PIN ----
-  if (pinMode === 'corrective') {
-    var pw2 = getPw();
-    var orgPwC = (pw2.orgs && detailRecordForEdit) ? (pw2.orgs[detailRecordForEdit.org] || '') : '';
-    if (pinValue === SUPERUSER_PIN || pinValue === pw2.admin || (orgPwC && pinValue === orgPwC)) {
-      _correctiveUnlocked = true;
-      _correctiveSavedText = (detailRecordForEdit && detailRecordForEdit.corrective) ? detailRecordForEdit.corrective : '';
-      resetPin();
-      var recToEdit = detailRecordForEdit;
-      showScreen('screen-corrective-edit');
-      openCorrectiveEdit(recToEdit);
-      setTimeout(function() { document.getElementById('screen-pin').classList.remove('screen-pin--navy'); }, 280);
-    } else {
-      document.getElementById('pin-error').textContent = 'Неверный пароль';
-      pinValue = '';
-      updatePinDots();
-    }
-    return;
-  }
-
-  // ---- admin-update mode: require superuser PIN to update admin password ----
-  if (pinMode === 'admin-update') {
-    if (pinValue === SUPERUSER_PIN) {
-      var newAdminPw = generateUniquePassword();
-      if (newAdminPw) { appState.passwords.admin = newAdminPw; saveState(); }
-      resetPin();
-      pinMode = 'settings';
-      showScreen('screen-passwords');
-      renderPasswordsScreen();
-      markPasswordsDirty();
-    } else {
-      document.getElementById('pin-error').textContent = 'Неверный пароль суперпользователя';
-      pinValue = '';
-      updatePinDots();
-    }
-    return;
-  }
-
-  document.getElementById('pin-error').textContent = 'Неверный пароль';
-  pinValue = '';
-  updatePinDots();
 }
 
 // ===== SETTINGS SYNC =====
@@ -3491,13 +3438,8 @@ function openCard() {
 }
 
 function openRecordEditPIN() {
-  pinMode = 'record-edit';
-  var pinEl = document.getElementById('screen-pin');
-  pinEl.classList.remove('screen-pin--navy');
-  pinEl.classList.add('screen-pin--dark');
-  setPinRole('Доступ администратора');
-  resetPin();
-  showScreen('screen-pin');
+  if (!canEditRecord()) return;
+  openCardForEdit(detailRecordForEdit);
 }
 
 function calcBarrierInPK(barrier, year) {
@@ -3722,8 +3664,6 @@ function downloadExcel(year, btn) {
 
 // ===== BARRIERS PK =====
 var _bpkYear = null; // year currently being edited
-var _settingsUnlocked = false; // true after settings PIN entered in this session
-var _currentRole = null;        // 'superuser' | 'admin' — set on successful settings PIN
 var _settingsSnap = {};
 
 function settingsBackBtn(screenId) {
@@ -4838,13 +4778,13 @@ function renderPasswordsScreen() {
     return row;
   }
 
-  // Администратор — requires superuser PIN confirmation
   body.appendChild(makePwRow('Администратор', pw.admin, function() {
-    pinMode = 'admin-update';
-    document.getElementById('screen-pin').classList.add('screen-pin--dark');
-    setPinRole('Доступ суперпользователя');
-    resetPin();
-    showScreen('screen-pin');
+    if (!canChangeAdminPassword()) {
+      alert('Смена пароля администратора доступна только суперпользователю');
+      return;
+    }
+    var newAdminPw = generateUniquePassword();
+    if (newAdminPw) { pw.admin = newAdminPw; saveState(); renderPasswordsScreen(); markPasswordsDirty(); }
   }, 'admin'));
 
   // Проверяющий
@@ -4878,7 +4818,6 @@ function renderPasswordsScreen() {
 
 var correctiveRecord    = null;
 var correctiveMeasures  = [];
-var _correctiveUnlocked = false;
 var _correctiveSavedText = '';
 var _corrDeletedAllInSession = false;
 var correctiveListFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '', status: '' };
@@ -4887,7 +4826,6 @@ var correctiveListFilters = { dateFrom: '', dateTo: '', method: '', org: '', bar
 
 var sokbRecord         = null;
 var sokbAttempts       = [];
-var _sokbUnlocked      = false;
 var _sokbSavedText     = '';
 var sokbListFilters    = { dateFrom: '', dateTo: '', org: '', barrier: '', status: '' };
 
@@ -5134,20 +5072,11 @@ function openSokbFilter(col) {
 }
 
 function openSokbPIN() {
-  if (_sokbUnlocked) {
-    var r = detailRecordForEdit;
-    _sokbSavedText = r.contestMeasures || '';
-    showScreen('screen-sokb-edit');
-    openSokbEdit(r);
-    return;
-  }
-  var pinEl = document.getElementById('screen-pin');
-  pinEl.classList.remove('screen-pin--navy');
-  pinEl.classList.add('screen-pin--dark');
-  pinMode = 'sokb';
-  setPinRole('Доступ администратора');
-  resetPin();
-  showScreen('screen-pin');
+  if (!canEditSokb()) return;
+  var r = detailRecordForEdit;
+  _sokbSavedText = r.contestMeasures || '';
+  showScreen('screen-sokb-edit');
+  openSokbEdit(r);
 }
 
 function newEmptySokbAttempt() {
@@ -5665,21 +5594,11 @@ function openCorrFilter(col) {
 
 // ── Corrective PIN ─────────────────────────────────────────────
 function openCorrectivePIN() {
-  if (_correctiveUnlocked) {
-    // Session already unlocked — go directly to edit
-    var r = detailRecordForEdit;
-    _correctiveSavedText = r.corrective || '';
-    showScreen('screen-corrective-edit');
-    openCorrectiveEdit(r);
-    return;
-  }
-  var pinEl = document.getElementById('screen-pin');
-  pinEl.classList.remove('screen-pin--dark');
-  pinEl.classList.add('screen-pin--navy');
-  pinMode = 'corrective';
-  setPinRole('Доступ проверяемой организации');
-  resetPin();
-  showScreen('screen-pin');
+  var r = detailRecordForEdit;
+  if (!canEditCorrective(r && r.org)) return;
+  _correctiveSavedText = r.corrective || '';
+  showScreen('screen-corrective-edit');
+  openCorrectiveEdit(r);
 }
 
 // ── Corrective edit ────────────────────────────────────────────
@@ -6118,7 +6037,9 @@ function openDetail(r, source) {
   detailRecordForEdit = r;
   document.getElementById('detail-title').textContent = 'Проверка ' + checkIdLabel(r);
   var body = document.getElementById('detail-body');
-  var isFind = source === 'find';
+  var editRecord = canEditRecord();
+  var editCorr = canEditCorrective(r.org);
+  var editSokb = canEditSokb();
   var sokbSuccess = isSokbSuccessful(r);
   var isNonWorking = r.works === 'Нет';
   var showViolBlock = isNonWorking && !sokbSuccess;
@@ -6139,7 +6060,7 @@ function openDetail(r, source) {
   var worksVal = r.works === 'Нет' ? '<span style="color:var(--red);font-weight:700">Нет</span>' : (r.works || '—');
   var corrBlock = '';
   if (showViolBlock && source !== 'lobby') {
-    corrBlock = source === 'corrective'
+    corrBlock = editCorr
       ? '<div class="detail-block detail-block-navy" onclick="openCorrectivePIN()">' +
           '<div class="detail-block-label">Корректирующие мероприятия</div>' +
           '<div class="detail-block-val">' + esc(r.corrective || 'Внесите') + '</div>' +
@@ -6148,7 +6069,7 @@ function openDetail(r, source) {
   }
   var contestBlock = '';
   if (showContest) {
-    contestBlock = source === 'sokb'
+    contestBlock = editSokb
       ? '<div class="detail-block detail-block-navy" onclick="openSokbPIN()">' +
           '<div class="detail-block-label">Оспаривание в СОКБ</div>' +
           '<div class="detail-block-val">' + esc(r.contestMeasures || 'Внесите') + '</div>' +
@@ -6156,15 +6077,15 @@ function openDetail(r, source) {
       : block('Оспаривание в СОКБ', r.contestMeasures, false);
   }
   body.innerHTML =
-    row('Дата проверки', r.dateCheck, '', isFind) +
-    row('Дата внесения проверки', r.dateEntry, '', isFind) +
-    row('Метод проверки', r.method, '', isFind) +
-    row('Проверяемая организация', r.org, '', isFind) +
-    row('Проверяемый объект', r.obj, '', isFind) +
-    row('Проверяемый барьер', r.barrier, '', isFind) +
-    row('Барьер в ПК', r.barrierInPK, '', isFind) +
-    row('Работоспособность барьера', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', isFind) +
-    (showViolationDesc ? block('Описание нарушения', r.desc, isFind) : '') +
+    row('Дата проверки', r.dateCheck, '', editRecord) +
+    row('Дата внесения проверки', r.dateEntry, '', editRecord) +
+    row('Метод проверки', r.method, '', editRecord) +
+    row('Проверяемая организация', r.org, '', editRecord) +
+    row('Проверяемый объект', r.obj, '', editRecord) +
+    row('Проверяемый барьер', r.barrier, '', editRecord) +
+    row('Барьер в ПК', r.barrierInPK, '', editRecord) +
+    row('Работоспособность барьера', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', editRecord) +
+    (showViolationDesc ? block('Описание нарушения', r.desc, editRecord) : '') +
     corrBlock +
     contestBlock;
   document.getElementById('detail-scroll').scrollTop = 0;
