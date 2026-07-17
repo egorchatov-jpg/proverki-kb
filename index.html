@@ -3485,7 +3485,7 @@ function openCardForEdit(r) {
   setCardVal('desc', r.desc || '—', !r.desc);
   setDimmed('desc', r.works !== 'Нет');
   var titleEl = document.querySelector('#screen-card .card-title');
-  if (titleEl) titleEl.textContent = 'Измените результат проведенной проверки';
+  if (titleEl) titleEl.textContent = 'Измените проведенную проверку';
   setCardSubtitle(checkIdLabel(r));
   updateValidation();
   showScreen('screen-card');
