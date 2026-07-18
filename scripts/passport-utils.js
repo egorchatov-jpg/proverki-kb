@@ -150,6 +150,35 @@ function imagesNearRow(byCell, savedMap, row, cols, depth) {
   return out;
 }
 
+function parseAppendix11Sheet(ws, savedMap) {
+  const byCell = collectSheetImages(ws);
+  const title = cellText(ws.getCell(1, 1));
+  const sections = [];
+  let current = null;
+
+  for (let r = 2; r <= ws.rowCount; r++) {
+    const text = cellText(ws.getCell(r, 1));
+    if (!text) continue;
+    const images = resolveImages(byCell[imageCellKey(r, 1)], savedMap);
+
+    if (/^[A-ZА-ЯЁ]/.test(text) && !/^\d/.test(text)) {
+      current = { heading: text, items: [] };
+      sections.push(current);
+      continue;
+    }
+
+    if (/^\d/.test(text)) {
+      if (!current) {
+        current = { heading: '', items: [] };
+        sections.push(current);
+      }
+      current.items.push({ text: text, images: images });
+    }
+  }
+
+  return { layout: 'criteriaList', title: title, sections: sections };
+}
+
 function parseTwoColGallery(ws, wb, savedMap) {
   const byCell = collectSheetImages(ws);
   const title = cellText(ws.getCell(1, 2)) || cellText(ws.getCell(1, 1));
@@ -282,6 +311,7 @@ module.exports = {
   parseBarriersSheet,
   collectSheetImages,
   saveWorkbookImages,
+  parseAppendix11Sheet,
   parseTwoColGallery,
   parseFlowSheet,
   parseNumberedList,

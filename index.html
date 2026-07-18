@@ -977,6 +977,18 @@ html, body {
   border-radius: 10px; background: #fff;
   box-shadow: 0 1px 6px rgba(26, 32, 53, 0.12);
 }
+.passport-appendix-criteria-text {
+  font-size: 13px; line-height: 1.45; color: #1a2035;
+  margin-bottom: 8px; white-space: pre-wrap; word-break: break-word;
+}
+.passport-appendix-criteria-item { margin-bottom: 16px; }
+.passport-appendix-img-wrap-plain {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.passport-appendix-img-plain {
+  width: 100%; max-width: 100%; height: auto; display: block;
+  border: none; border-radius: 0; box-shadow: none; background: transparent;
+}
 .passport-appendix-note {
   font-size: 12px; line-height: 1.4; color: #1a2035;
   margin: 6px 0 10px; white-space: pre-wrap;
@@ -4375,7 +4387,7 @@ var PASSPORT_ID_BY_LABEL = {
   'Паспорт ГАЗ 01.': 'gaz-01',
   'Паспорт ГРУЗ 01.': 'gruz-01'
 };
-var PASSPORT_JSON_VERSION = 'v4';
+var PASSPORT_JSON_VERSION = 'v5';
 var _passportCache = {};
 var _passportActive = null;
 var _passportChecklistIdx = null;
@@ -4563,13 +4575,13 @@ function findPassportAppendix(data, id) {
   return list[+id - 1] || null;
 }
 
-function appendPassportImages(parent, images) {
+function appendPassportImages(parent, images, plain) {
   if (!images || !images.length) return;
   var wrap = document.createElement('div');
-  wrap.className = 'passport-appendix-img-wrap';
+  wrap.className = plain ? 'passport-appendix-img-wrap-plain' : 'passport-appendix-img-wrap';
   images.forEach(function(src) {
     var img = document.createElement('img');
-    img.className = 'passport-appendix-img';
+    img.className = plain ? 'passport-appendix-img-plain' : 'passport-appendix-img';
     img.src = '/' + src.replace(/^\/+/, '');
     img.alt = '';
     img.loading = 'lazy';
@@ -4649,6 +4661,35 @@ function renderPassportAppendixContent(bodyEl, content) {
       ex.textContent = a2.exceptions.col1 || a2.exceptions.col2;
       bodyEl.appendChild(ex);
     }
+    return;
+  }
+  if (content.layout === 'criteriaList') {
+    if (content.title) {
+      var ct = document.createElement('div');
+      ct.className = 'passport-appendix-banner';
+      ct.textContent = content.title;
+      bodyEl.appendChild(ct);
+    }
+    (content.sections || []).forEach(function(sec) {
+      if (sec.heading) {
+        var sh2 = document.createElement('div');
+        sh2.className = 'passport-appendix-section-title';
+        sh2.textContent = sec.heading;
+        bodyEl.appendChild(sh2);
+      }
+      (sec.items || []).forEach(function(item) {
+        var block = document.createElement('div');
+        block.className = 'passport-appendix-criteria-item';
+        if (item.text) {
+          var tx2 = document.createElement('div');
+          tx2.className = 'passport-appendix-criteria-text';
+          tx2.textContent = item.text;
+          block.appendChild(tx2);
+        }
+        appendPassportImages(block, item.images, true);
+        bodyEl.appendChild(block);
+      });
+    });
     return;
   }
   if (content.layout === 'twoColGallery') {
