@@ -429,6 +429,37 @@ function parseAppendix12Sheet(ws, savedMap) {
   return { layout: 'excelGrid', colCount: maxCol, rows: rows };
 }
 
+function parseAppendix21Sheet(ws) {
+  const merge = buildMergeMap(ws);
+  const maxCol = 2;
+  const rows = [];
+
+  for (let r = 2; r <= ws.rowCount; r++) {
+    const cells = [];
+    for (let c = 1; c <= maxCol; c++) {
+      if (merge.covered.has(r + ':' + c)) continue;
+      const master = merge.masters[r + ':' + c];
+      const cell = ws.getCell(r, c);
+      const text = cellText(cell);
+      if (!text) continue;
+      const isHeader = r === 2;
+      cells.push({
+        colspan: master ? master.colspan : 1,
+        rowspan: master ? master.rowspan : 1,
+        text: text,
+        images: [],
+        style: isHeader ? 'header-yellow' : (c === 1 ? 'num' : 'white'),
+        bold: !!(cell.font && cell.font.bold) || isHeader,
+        align: isHeader ? 'center' : (c === 1 ? 'center' : 'left'),
+        valign: isHeader ? 'middle' : (c === 1 ? 'middle' : 'top'),
+      });
+    }
+    if (cells.length) rows.push({ cells: cells });
+  }
+
+  return { layout: 'excelGrid', colCount: maxCol, gridKind: 'numTable', rows: rows };
+}
+
 function parseTableSheet(ws, headerRows, dataStartRow) {
   const title = cellText(ws.getCell(1, 2)) || cellText(ws.getCell(1, 1));
   const maxCol = ws.columnCount;
@@ -457,6 +488,7 @@ module.exports = {
   saveWorkbookImages,
   parseAppendix11Sheet,
   parseAppendix12Sheet,
+  parseAppendix21Sheet,
   parseTwoColGallery,
   parseFlowSheet,
   parseNumberedList,

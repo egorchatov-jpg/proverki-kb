@@ -49,7 +49,7 @@ const IMG_URL = 'passports/gruz-01/img/';
       id: '2.1',
       label: 'Приложение 2.1.',
       sheet: 'Приложение 2.1.',
-      content: u.parseNumberedList(wb.getWorksheet('Приложение 2.1.')),
+      content: u.parseAppendix21Sheet(wb.getWorksheet('Приложение 2.1.')),
     },
     {
       id: '5.1',

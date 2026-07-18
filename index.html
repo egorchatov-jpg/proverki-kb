@@ -1034,6 +1034,14 @@ html, body {
 }
 .passport-excel-grid-cell--note { background: #f2f2f2; text-align: center; }
 .passport-excel-grid-cell--white { background: #fff; }
+.passport-excel-grid-cell--header-yellow {
+  background: #ff8028; color: #000; font-weight: 700; text-align: center;
+}
+.passport-excel-grid-cell--num {
+  background: #fff; text-align: center; vertical-align: middle;
+}
+.passport-excel-grid--numtable col:first-child { width: 10%; }
+.passport-excel-grid--numtable col:nth-child(2) { width: 90%; }
 .passport-excel-grid-text { white-space: pre-wrap; word-break: break-word; }
 .passport-excel-grid-cell .passport-excel-images { justify-content: center; margin-top: 4px; }
 .passport-excel-images-grid {
@@ -4472,8 +4480,8 @@ var PASSPORT_ID_BY_LABEL = {
   'Паспорт ГАЗ 01.': 'gaz-01',
   'Паспорт ГРУЗ 01.': 'gruz-01'
 };
-var APP_BUILD = 'pkb-v185';
-var PASSPORT_JSON_VERSION = 'v10';
+var APP_BUILD = 'pkb-v186';
+var PASSPORT_JSON_VERSION = 'v11';
 var _passportCache = {};
 try {
   var _pv = localStorage.getItem('pkb-passport-ver');
@@ -4777,7 +4785,7 @@ function renderPassportAppendixContent(bodyEl, content) {
   }
   if (content.layout === 'excelGrid') {
     var table = document.createElement('table');
-    table.className = 'passport-excel-grid';
+    table.className = 'passport-excel-grid' + (content.gridKind === 'numTable' ? ' passport-excel-grid--numtable' : '');
     var cg = document.createElement('colgroup');
     for (var ci = 0; ci < (content.colCount || 3); ci++) {
       cg.appendChild(document.createElement('col'));
