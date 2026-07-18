@@ -11,6 +11,7 @@ const SRC = 'C:/Users/egorc/KBBKSSPD/ПАСПОРТА КАРКАСЫ БЕЗОП�
 const OUT = path.join(__dirname, '../passports/gruz-01.json');
 const IMG_DIR = path.join(__dirname, '../passports/gruz-01/img');
 const IMG_URL = 'passports/gruz-01/img/';
+const APP12_IMG_SCRIPT = path.join(__dirname, 'build-appendix-12-image.js');
 
 (async function() {
   const wb = new ExcelJS.Workbook();
@@ -18,14 +19,16 @@ const IMG_URL = 'passports/gruz-01/img/';
   const ws = wb.getWorksheet('Барьеры ГРУЗ');
   const parsed = u.parseBarriersSheet(ws);
 
+  require('child_process').execSync('node "' + APP12_IMG_SCRIPT + '"', { stdio: 'inherit' });
+
   if (fs.existsSync(IMG_DIR)) {
     fs.readdirSync(IMG_DIR).forEach(function(f) {
-      fs.unlinkSync(path.join(IMG_DIR, f));
+      if (f !== 'appendix-12.png') fs.unlinkSync(path.join(IMG_DIR, f));
     });
   }
 
   const allImageIds = new Set();
-  ['Приложение 1.1.', 'Приложение 1.2.'].forEach(function(name) {
+  ['Приложение 1.1.'].forEach(function(name) {
     const sh = wb.getWorksheet(name);
     if (!sh) return;
     sh.getImages().forEach(function(img) { allImageIds.add(img.imageId); });
@@ -43,7 +46,10 @@ const IMG_URL = 'passports/gruz-01/img/';
       id: '1.2',
       label: 'Приложение 1.2.',
       sheet: 'Приложение 1.2.',
-      content: u.parseAppendix12Sheet(wb.getWorksheet('Приложение 1.2.'), savedMap),
+      content: {
+        layout: 'imagePage',
+        images: [IMG_URL + 'appendix-12.png'],
+      },
     },
     {
       id: '2.1',
