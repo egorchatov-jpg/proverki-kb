@@ -43,7 +43,7 @@ const IMG_URL = 'passports/gruz-01/img/';
       id: '1.2',
       label: 'Приложение 1.2.',
       sheet: 'Приложение 1.2.',
-      content: u.parseFlowSheet(wb.getWorksheet('Приложение 1.2.'), wb, savedMap, 4),
+      content: u.parseAppendix12Sheet(wb.getWorksheet('Приложение 1.2.'), savedMap),
     },
     {
       id: '2.1',

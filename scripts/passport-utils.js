@@ -300,6 +300,135 @@ function parseNumberedList(ws) {
   return { layout: 'numberedList', title: title, heading: heading, items: items };
 }
 
+function colLettersToNum(letters) {
+  let n = 0;
+  for (let i = 0; i < letters.length; i++) {
+    n = n * 26 + (letters.charCodeAt(i) - 64);
+  }
+  return n;
+}
+
+function parseMergeRange(range) {
+  const m = /^([A-Z]+)(\d+):([A-Z]+)(\d+)$/.exec(range);
+  if (!m) return null;
+  return {
+    r1: parseInt(m[2], 10),
+    c1: colLettersToNum(m[1]),
+    r2: parseInt(m[4], 10),
+    c2: colLettersToNum(m[3]),
+  };
+}
+
+function buildMergeMap(ws) {
+  const masters = {};
+  const covered = new Set();
+  (ws.model.merges || []).forEach(function(range) {
+    const m = parseMergeRange(range);
+    if (!m) return;
+    masters[m.r1 + ':' + m.c1] = {
+      rowspan: m.r2 - m.r1 + 1,
+      colspan: m.c2 - m.c1 + 1,
+      r1: m.r1, c1: m.c1, r2: m.r2, c2: m.c2,
+    };
+    for (let r = m.r1; r <= m.r2; r++) {
+      for (let c = m.c1; c <= m.c2; c++) {
+        if (r !== m.r1 || c !== m.c1) covered.add(r + ':' + c);
+      }
+    }
+  });
+  return { masters: masters, covered: covered };
+}
+
+function cellFontColor(cell) {
+  const c = cell.font && cell.font.color;
+  if (!c || !c.argb) return null;
+  return '#' + c.argb.slice(2).toLowerCase();
+}
+
+function cellStyleKind12(cell, text, col) {
+  const f = cell.fill;
+  if (!f || f.type !== 'pattern' || !f.fgColor) return 'white';
+  const fg = f.fgColor;
+  if (fg.theme === 5) return 'orange';
+  if (fg.theme === 4) {
+    if (/^Шаг 1\./.test(text || '')) return 'step-light';
+    return 'step';
+  }
+  if (fg.theme === 2) return 'note';
+  if (fg.theme === 0 && fg.tint != null && fg.tint < 0) {
+    if (col === 1 && /Условие расчета/i.test(text || '')) return 'sidebar';
+    return 'note';
+  }
+  if (fg.theme === 0 && col === 1) return 'sidebar';
+  return 'white';
+}
+
+function imagesInRange(byCell, savedMap, r1, c1, r2, c2) {
+  const list = [];
+  for (let r = r1; r <= r2; r++) {
+    for (let c = c1; c <= c2; c++) {
+      const ids = byCell[imageCellKey(r, c)];
+      if (!ids) continue;
+      ids.forEach(function(id) {
+        list.push({ r: r, c: c, id: id });
+      });
+    }
+  }
+  list.sort(function(a, b) { return a.r - b.r || a.c - b.c; });
+  const seen = new Set();
+  const out = [];
+  list.forEach(function(item) {
+    if (seen.has(item.id)) return;
+    seen.add(item.id);
+    const url = savedMap[item.id];
+    if (url) out.push(url);
+  });
+  return out;
+}
+
+function parseAppendix12Sheet(ws, savedMap) {
+  const byCell = collectSheetImages(ws);
+  const merge = buildMergeMap(ws);
+  const maxCol = 3;
+  const startRow = 2;
+  const rows = [];
+
+  for (let r = startRow; r <= ws.rowCount; r++) {
+    const cells = [];
+    for (let c = 1; c <= maxCol; c++) {
+      if (merge.covered.has(r + ':' + c)) continue;
+      const master = merge.masters[r + ':' + c];
+      const r2 = master ? master.r2 : r;
+      const c2 = master ? master.c2 : c;
+      const cell = ws.getCell(r, c);
+      const text = cellText(cell);
+      const images = imagesInRange(byCell, savedMap, r, c, r2, c2);
+      const rowspan = master ? master.rowspan : 1;
+      const colspan = master ? master.colspan : 1;
+      if (!text && !images.length && rowspan === 1 && colspan === 1) continue;
+
+      const alignment = cell.alignment || {};
+      let align = alignment.horizontal || 'left';
+      if (/^ЗГ\s*[×x]\s*/.test(text || '')) align = 'center';
+      cells.push({
+        colspan: colspan,
+        rowspan: rowspan,
+        text: text,
+        images: images,
+        imagesGrid: images.length >= 6,
+        style: cellStyleKind12(cell, text, c),
+        bold: !!(cell.font && cell.font.bold),
+        color: cellStyleKind12(cell, text, c) === 'sidebar' ? '#0070c0' : cellFontColor(cell),
+        align: align,
+        valign: alignment.vertical || (cellStyleKind12(cell, text, c) === 'sidebar' ? 'middle' : 'top'),
+      });
+    }
+    if (cells.length) rows.push({ cells: cells });
+  }
+
+  return { layout: 'excelGrid', colCount: maxCol, rows: rows };
+}
+
 function parseTableSheet(ws, headerRows, dataStartRow) {
   const title = cellText(ws.getCell(1, 2)) || cellText(ws.getCell(1, 1));
   const maxCol = ws.columnCount;
@@ -327,6 +456,7 @@ module.exports = {
   collectSheetImages,
   saveWorkbookImages,
   parseAppendix11Sheet,
+  parseAppendix12Sheet,
   parseTwoColGallery,
   parseFlowSheet,
   parseNumberedList,

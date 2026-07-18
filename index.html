@@ -1015,6 +1015,32 @@ html, body {
 }
 .passport-excel-images .passport-excel-img { max-width: calc(50% - 1px); }
 .passport-excel-images .passport-excel-img:only-child { max-width: 100%; }
+.passport-excel-grid {
+  width: 100%; border-collapse: collapse; border: 1px solid #000;
+  font-size: 12px; line-height: 1.35; color: #000; table-layout: fixed;
+}
+.passport-excel-grid col:first-child { width: 24%; }
+.passport-excel-grid col:nth-child(2) { width: 38%; }
+.passport-excel-grid col:nth-child(3) { width: 38%; }
+.passport-excel-grid-cell {
+  border: 1px solid #000; padding: 4px 5px; vertical-align: top;
+}
+.passport-excel-grid-cell--orange { background: #ffc000; color: #000; }
+.passport-excel-grid-cell--step-light { background: #deeaf6; color: #0070c0; }
+.passport-excel-grid-cell--step { background: #bdd7ee; color: #0070c0; }
+.passport-excel-grid-cell--sidebar {
+  background: #d9d9d9; color: #0070c0; text-align: center;
+  vertical-align: middle; font-weight: 700; font-size: 14px;
+}
+.passport-excel-grid-cell--note { background: #f2f2f2; text-align: center; }
+.passport-excel-grid-cell--white { background: #fff; }
+.passport-excel-grid-text { white-space: pre-wrap; word-break: break-word; }
+.passport-excel-grid-cell .passport-excel-images { justify-content: center; margin-top: 4px; }
+.passport-excel-images-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  justify-items: center; align-items: start;
+}
+.passport-excel-images-grid .passport-excel-img { max-width: 100%; width: 100%; }
 .passport-appendix-img-wrap-plain {
   display: flex; flex-direction: column; gap: 8px;
 }
@@ -4446,8 +4472,8 @@ var PASSPORT_ID_BY_LABEL = {
   'Паспорт ГАЗ 01.': 'gaz-01',
   'Паспорт ГРУЗ 01.': 'gruz-01'
 };
-var APP_BUILD = 'pkb-v184';
-var PASSPORT_JSON_VERSION = 'v9';
+var APP_BUILD = 'pkb-v185';
+var PASSPORT_JSON_VERSION = 'v10';
 var _passportCache = {};
 try {
   var _pv = localStorage.getItem('pkb-passport-ver');
@@ -4642,10 +4668,10 @@ function findPassportAppendix(data, id) {
   return list[+id - 1] || null;
 }
 
-function appendPassportExcelImages(parent, images) {
+function appendPassportExcelImages(parent, images, grid) {
   if (!images || !images.length) return;
   var wrap = document.createElement('div');
-  wrap.className = 'passport-excel-images';
+  wrap.className = grid ? 'passport-excel-images passport-excel-images-grid' : 'passport-excel-images';
   var ver = PASSPORT_JSON_VERSION;
   images.forEach(function(src) {
     var img = document.createElement('img');
@@ -4747,6 +4773,39 @@ function renderPassportAppendixContent(bodyEl, content) {
       ex.textContent = a2.exceptions.col1 || a2.exceptions.col2;
       bodyEl.appendChild(ex);
     }
+    return;
+  }
+  if (content.layout === 'excelGrid') {
+    var table = document.createElement('table');
+    table.className = 'passport-excel-grid';
+    var cg = document.createElement('colgroup');
+    for (var ci = 0; ci < (content.colCount || 3); ci++) {
+      cg.appendChild(document.createElement('col'));
+    }
+    table.appendChild(cg);
+    (content.rows || []).forEach(function(row) {
+      var tr = document.createElement('tr');
+      (row.cells || []).forEach(function(cell) {
+        var td = document.createElement('td');
+        td.className = 'passport-excel-grid-cell passport-excel-grid-cell--' + (cell.style || 'white');
+        if (cell.colspan > 1) td.colSpan = cell.colspan;
+        if (cell.rowspan > 1) td.rowSpan = cell.rowspan;
+        if (cell.align) td.style.textAlign = cell.align;
+        if (cell.valign) td.style.verticalAlign = cell.valign;
+        if (cell.bold) td.style.fontWeight = '700';
+        if (cell.color) td.style.color = cell.color;
+        if (cell.text) {
+          var gtx = document.createElement('div');
+          gtx.className = 'passport-excel-grid-text';
+          gtx.textContent = cell.text;
+          td.appendChild(gtx);
+        }
+        appendPassportExcelImages(td, cell.images, cell.imagesGrid);
+        tr.appendChild(td);
+      });
+      table.appendChild(tr);
+    });
+    bodyEl.appendChild(table);
     return;
   }
   if (content.layout === 'excelColumn') {
