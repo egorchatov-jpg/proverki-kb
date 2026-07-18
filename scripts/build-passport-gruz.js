@@ -23,7 +23,7 @@ const APP12_IMG_SCRIPT = path.join(__dirname, 'build-appendix-12-image.js');
 
   if (fs.existsSync(IMG_DIR)) {
     fs.readdirSync(IMG_DIR).forEach(function(f) {
-      if (f !== 'appendix-12.png') fs.unlinkSync(path.join(IMG_DIR, f));
+      if (f !== 'appendix-12.jpg') fs.unlinkSync(path.join(IMG_DIR, f));
     });
   }
 
@@ -48,7 +48,7 @@ const APP12_IMG_SCRIPT = path.join(__dirname, 'build-appendix-12-image.js');
       sheet: 'Приложение 1.2.',
       content: {
         layout: 'imagePage',
-        images: [IMG_URL + 'appendix-12.png'],
+        images: [IMG_URL + 'appendix-12.jpg'],
       },
     },
     {

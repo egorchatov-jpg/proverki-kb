@@ -933,6 +933,34 @@ html, body {
   display: block; margin: 0; padding: 0; border: none;
   border-radius: 0; box-sizing: border-box;
 }
+.passport-appendix-page-img--zoomable { cursor: zoom-in; -webkit-tap-highlight-color: transparent; }
+.passport-image-viewer {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0, 0, 0, 0.94);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.passport-image-viewer.active { opacity: 1; pointer-events: all; }
+.is-win .passport-image-viewer { left: 28.333%; right: 28.333%; }
+.passport-image-viewer-close {
+  position: absolute; top: max(10px, env(safe-area-inset-top)); right: 10px; z-index: 2;
+  width: 42px; height: 42px; border: none; border-radius: 21px;
+  background: rgba(255, 255, 255, 0.18); color: #fff;
+  font-size: 30px; line-height: 1; cursor: pointer;
+}
+.passport-image-viewer-close:active { opacity: 0.75; }
+.passport-image-viewer-stage {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; touch-action: none;
+}
+.passport-image-viewer-stage img {
+  max-width: 100%; max-height: 100%;
+  transform-origin: center center;
+  will-change: transform;
+  user-select: none; -webkit-user-select: none;
+  -webkit-user-drag: none; pointer-events: none;
+}
 .passport-appendix-list-title {
   font-size: 15px; font-weight: 700; color: #1a2035;
   margin-bottom: 10px; line-height: 1.4;
@@ -2120,6 +2148,13 @@ html, body {
 </div>
 
 <!-- ===== SUCCESS OVERLAY ===== -->
+<div class="passport-image-viewer" id="overlay-passport-image" onclick="passportImageViewerBackdropClick(event)">
+  <button type="button" class="passport-image-viewer-close" onclick="closePassportImageViewer()" aria-label="Закрыть">&times;</button>
+  <div class="passport-image-viewer-stage" id="passport-image-viewer-stage">
+    <img id="passport-image-viewer-img" alt="">
+  </div>
+</div>
+
 <div class="success-overlay" id="success-overlay">
   <div class="success-box">
     <div id="sync-indicator" style="margin-bottom:24px;text-align:center;"></div>
@@ -2641,6 +2676,7 @@ function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
   if (!scr || PULL_OFF.indexOf(scr.id) >= 0) return false;
   if (document.querySelector('.overlay.active')) return false;
+  if (document.getElementById('overlay-passport-image').classList.contains('active')) return false;
   if (document.getElementById('success-overlay').classList.contains('active')) return false;
   return true;
 }
@@ -2949,6 +2985,7 @@ function ensureAppBuildFresh() {
 
 window.addEventListener('DOMContentLoaded', function() {
   ensureAppBuildFresh();
+  initPassportImageViewer();
   var needDataMigration = false;
   try {
     needDataMigration = localStorage.getItem(DATA_VERSION_KEY) !== CURRENT_DATA_VERSION;
@@ -4491,8 +4528,8 @@ var PASSPORT_ID_BY_LABEL = {
   'Паспорт ГАЗ 01.': 'gaz-01',
   'Паспорт ГРУЗ 01.': 'gruz-01'
 };
-var APP_BUILD = 'pkb-v189';
-var PASSPORT_JSON_VERSION = 'v14';
+var APP_BUILD = 'pkb-v190';
+var PASSPORT_JSON_VERSION = 'v15';
 var _passportCache = {};
 try {
   var _pv = localStorage.getItem('pkb-passport-ver');
@@ -4687,6 +4724,125 @@ function findPassportAppendix(data, id) {
   return list[+id - 1] || null;
 }
 
+function openPassportImageViewer(src) {
+  var overlay = document.getElementById('overlay-passport-image');
+  var img = document.getElementById('passport-image-viewer-img');
+  if (!overlay || !img) return;
+  img.src = src;
+  if (window._passportImageViewerReset) window._passportImageViewerReset();
+  overlay.classList.add('active');
+}
+
+function closePassportImageViewer() {
+  var overlay = document.getElementById('overlay-passport-image');
+  if (overlay) overlay.classList.remove('active');
+}
+
+function passportImageViewerBackdropClick(e) {
+  if (e.target.id === 'overlay-passport-image' || e.target.id === 'passport-image-viewer-stage') {
+    closePassportImageViewer();
+  }
+}
+
+function initPassportImageViewer() {
+  var stage = document.getElementById('passport-image-viewer-stage');
+  if (!stage || stage._pvBound) return;
+  stage._pvBound = true;
+  var state = {
+    scale: 1, tx: 0, ty: 0, lastScale: 1,
+    startDist: 0, panStart: null, lastTap: 0
+  };
+
+  function applyPassportImageViewerTransform() {
+    var img = document.getElementById('passport-image-viewer-img');
+    if (!img) return;
+    img.style.transform = 'translate3d(' + state.tx + 'px,' + state.ty + 'px,0) scale(' + state.scale + ')';
+  }
+
+  window._passportImageViewerReset = function() {
+    state.scale = 1;
+    state.tx = 0;
+    state.ty = 0;
+    state.lastScale = 1;
+    applyPassportImageViewerTransform();
+  };
+
+  function touchDist(a, b) {
+    var dx = b.clientX - a.clientX;
+    var dy = b.clientY - a.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  stage.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 2) {
+      state.startDist = touchDist(e.touches[0], e.touches[1]);
+      state.lastScale = state.scale;
+      state.panStart = null;
+      return;
+    }
+    if (e.touches.length === 1) {
+      var now = Date.now();
+      if (now - state.lastTap < 280) {
+        if (state.scale > 1.01) {
+          state.scale = 1;
+          state.tx = 0;
+          state.ty = 0;
+        } else {
+          state.scale = 2.5;
+        }
+        state.lastScale = state.scale;
+        applyPassportImageViewerTransform();
+      }
+      state.lastTap = now;
+      if (state.scale > 1) {
+        state.panStart = {
+          x: e.touches[0].clientX - state.tx,
+          y: e.touches[0].clientY - state.ty
+        };
+      }
+    }
+  }, { passive: true });
+
+  stage.addEventListener('touchmove', function(e) {
+    if (e.touches.length === 2 && state.startDist > 0) {
+      e.preventDefault();
+      var d = touchDist(e.touches[0], e.touches[1]);
+      state.scale = Math.min(5, Math.max(1, state.lastScale * (d / state.startDist)));
+      if (state.scale <= 1.01) {
+        state.scale = 1;
+        state.tx = 0;
+        state.ty = 0;
+      }
+      applyPassportImageViewerTransform();
+      return;
+    }
+    if (e.touches.length === 1 && state.panStart && state.scale > 1) {
+      e.preventDefault();
+      state.tx = e.touches[0].clientX - state.panStart.x;
+      state.ty = e.touches[0].clientY - state.panStart.y;
+      applyPassportImageViewerTransform();
+    }
+  }, { passive: false });
+
+  stage.addEventListener('touchend', function() {
+    state.startDist = 0;
+    state.panStart = null;
+    state.lastScale = state.scale;
+  });
+
+  stage.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    state.scale = Math.min(5, Math.max(1, state.scale + (e.deltaY > 0 ? -0.12 : 0.12)));
+    if (state.scale <= 1.01) {
+      state.scale = 1;
+      state.tx = 0;
+      state.ty = 0;
+    }
+    state.lastScale = state.scale;
+    applyPassportImageViewerTransform();
+  }, { passive: false });
+}
+
 function appendPassportExcelImages(parent, images, mode) {
   if (!images || !images.length) return;
   var wrap = document.createElement('div');
@@ -4825,12 +4981,14 @@ function renderPassportAppendixContent(bodyEl, content) {
     var ver = PASSPORT_JSON_VERSION;
     (content.images || []).forEach(function(src) {
       var img = document.createElement('img');
-      img.className = 'passport-appendix-page-img';
+      img.className = 'passport-appendix-page-img passport-appendix-page-img--zoomable';
       var path = '/' + src.replace(/^\/+/, '');
-      img.src = path + (path.indexOf('?') >= 0 ? '&' : '?') + 'v=' + ver;
+      var fullSrc = path + (path.indexOf('?') >= 0 ? '&' : '?') + 'v=' + ver;
+      img.src = fullSrc;
       img.alt = '';
       img.loading = 'lazy';
       img.decoding = 'async';
+      img.onclick = function() { openPassportImageViewer(fullSrc); };
       page.appendChild(img);
     });
     bodyEl.appendChild(page);
