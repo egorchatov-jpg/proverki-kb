@@ -982,18 +982,39 @@ html, body {
   margin-bottom: 8px; white-space: pre-wrap; word-break: break-word;
 }
 .passport-appendix-criteria-item { margin-bottom: 16px; }
-.passport-appendix-excel-block { margin-bottom: 0; }
-.passport-appendix-excel-text {
-  font-size: 13px; line-height: 1.3; color: #1a2035;
+.passport-excel-sheet {
+  border: 1px solid #000; background: #fff;
+  font-size: 13px; line-height: 1.3; color: #000;
+}
+.passport-excel-row {
+  border-bottom: 1px solid #000; padding: 3px 4px;
+}
+.passport-excel-row:last-child { border-bottom: none; }
+.passport-excel-row--title {
+  background: #ffc000; font-weight: 700; text-align: center;
+}
+.passport-excel-row--section {
+  background: #d9d9d9; font-weight: 700; text-align: center;
+}
+.passport-excel-row--item { background: #fff; }
+.passport-excel-text {
   white-space: pre-wrap; word-break: break-word;
 }
-.passport-appendix-excel-block .passport-appendix-img-wrap-plain {
+.passport-excel-text-after {
+  white-space: pre-wrap; word-break: break-word;
+  font-size: 10px; line-height: 1.25; margin-top: 2px;
+}
+.passport-excel-images {
   display: flex; flex-direction: row; flex-wrap: wrap;
-  gap: 2px; margin-top: 2px; justify-content: flex-start;
+  justify-content: center; align-items: center; gap: 2px; margin: 2px 0;
 }
-.passport-appendix-excel-block .passport-appendix-img-plain {
-  width: auto; max-width: 100%; flex: 0 1 auto;
+.passport-excel-img {
+  max-width: 100%; height: auto; display: block;
+  border: none; border-radius: 0; box-shadow: none; background: transparent;
+  flex: 1 1 auto;
 }
+.passport-excel-images .passport-excel-img { max-width: calc(50% - 1px); }
+.passport-excel-images .passport-excel-img:only-child { max-width: 100%; }
 .passport-appendix-img-wrap-plain {
   display: flex; flex-direction: column; gap: 8px;
 }
@@ -4425,8 +4446,8 @@ var PASSPORT_ID_BY_LABEL = {
   'Паспорт ГАЗ 01.': 'gaz-01',
   'Паспорт ГРУЗ 01.': 'gruz-01'
 };
-var APP_BUILD = 'pkb-v183';
-var PASSPORT_JSON_VERSION = 'v8';
+var APP_BUILD = 'pkb-v184';
+var PASSPORT_JSON_VERSION = 'v9';
 var _passportCache = {};
 try {
   var _pv = localStorage.getItem('pkb-passport-ver');
@@ -4621,6 +4642,23 @@ function findPassportAppendix(data, id) {
   return list[+id - 1] || null;
 }
 
+function appendPassportExcelImages(parent, images) {
+  if (!images || !images.length) return;
+  var wrap = document.createElement('div');
+  wrap.className = 'passport-excel-images';
+  var ver = PASSPORT_JSON_VERSION;
+  images.forEach(function(src) {
+    var img = document.createElement('img');
+    img.className = 'passport-excel-img';
+    var path = '/' + src.replace(/^\/+/, '');
+    img.src = path + (path.indexOf('?') >= 0 ? '&' : '?') + 'v=' + ver;
+    img.alt = '';
+    img.loading = 'lazy';
+    wrap.appendChild(img);
+  });
+  parent.appendChild(wrap);
+}
+
 function appendPassportImages(parent, images, plain) {
   if (!images || !images.length) return;
   var wrap = document.createElement('div');
@@ -4712,20 +4750,27 @@ function renderPassportAppendixContent(bodyEl, content) {
     return;
   }
   if (content.layout === 'excelColumn') {
+    var sheet = document.createElement('div');
+    sheet.className = 'passport-excel-sheet';
     (content.rows || []).forEach(function(row) {
       var block = document.createElement('div');
-      block.className = 'passport-appendix-excel-block';
+      block.className = 'passport-excel-row passport-excel-row--' + (row.kind || 'item');
       if (row.text) {
         var tx = document.createElement('div');
-        tx.className = 'passport-appendix-excel-text';
-        if (row.bold) tx.style.fontWeight = '700';
-        if (row.align === 'center') tx.style.textAlign = 'center';
+        tx.className = 'passport-excel-text';
         tx.textContent = row.text;
         block.appendChild(tx);
       }
-      appendPassportImages(block, row.images, true);
-      bodyEl.appendChild(block);
+      appendPassportExcelImages(block, row.images);
+      if (row.textAfter) {
+        var ta = document.createElement('div');
+        ta.className = 'passport-excel-text-after';
+        ta.textContent = row.textAfter;
+        block.appendChild(ta);
+      }
+      sheet.appendChild(block);
     });
+    bodyEl.appendChild(sheet);
     return;
   }
   if (content.layout === 'criteriaList') {

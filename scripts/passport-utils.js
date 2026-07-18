@@ -150,22 +150,44 @@ function imagesNearRow(byCell, savedMap, row, cols, depth) {
   return out;
 }
 
+function cellFillKind(cell) {
+  const f = cell.fill;
+  if (!f || f.type !== 'pattern' || !f.fgColor) return 'item';
+  if (f.fgColor.argb && f.fgColor.argb.toUpperCase().endsWith('FFC000')) return 'title';
+  if (f.fgColor.theme === 0) return 'section';
+  return 'item';
+}
+
+function parseCellTextParts(cell) {
+  const v = cell.value;
+  if (!v || !v.richText || v.richText.length < 2) {
+    const text = cellText(cell);
+    return { text: text, textAfter: '' };
+  }
+  const first = normalizeSpacing(v.richText[0].text || '').replace(/\n+$/, '');
+  const rest = normalizeSpacing(
+    v.richText.slice(1).map(function(r) { return r.text || ''; }).join('')
+  );
+  const small = v.richText.slice(1).some(function(r) { return r.font && r.font.size && r.font.size < 10; });
+  return { text: first, textAfter: rest, textAfterSmall: small };
+}
+
 function parseAppendix11Sheet(ws, savedMap) {
   const byCell = collectSheetImages(ws);
   const rows = [];
 
   for (let r = 1; r <= ws.rowCount; r++) {
     const cell = ws.getCell(r, 1);
-    const text = cellText(cell);
+    const parts = parseCellTextParts(cell);
     const images = resolveImages(byCell[imageCellKey(r, 1)], savedMap);
-    if (!text && !images.length) continue;
-    const font = cell.font || {};
-    const alignment = cell.alignment || {};
+    if (!parts.text && !parts.textAfter && !images.length) continue;
+    const kind = cellFillKind(cell);
     rows.push({
-      text: text,
+      kind: kind,
+      text: parts.text,
+      textAfter: parts.textAfter,
+      textAfterSmall: !!parts.textAfterSmall,
       images: images,
-      bold: !!font.bold,
-      align: alignment.horizontal || 'left',
     });
   }
 
