@@ -256,6 +256,8 @@ html, body {
   transition: opacity 0.15s;
 }
 .pin-back-btn:active { opacity: 0.8; }
+.pin-locked .pin-grid { pointer-events: none; opacity: 0.5; }
+.pin-locked .pin-dot { pointer-events: none; }
 
 /* Dark variant for settings PIN */
 .screen-pin--dark .pin-dot  { border-color: #222; }
@@ -2958,6 +2960,7 @@ function registerSW() {
 
 // ===== SCREENS =====
 function showScreen(id) {
+  var prev = document.querySelector('.screen.active');
   document.querySelectorAll('.screen').forEach(function(s) {
     s.classList.remove('active');
   });
@@ -2967,6 +2970,7 @@ function showScreen(id) {
     return false;
   }
   el.classList.add('active');
+  if (prev && prev.id === 'screen-pin' && id !== 'screen-pin') setPinInputLocked(false);
   return true;
 }
 
@@ -3394,6 +3398,13 @@ function enforceLobbyIfNoSession() {
 // ===== PIN =====
 var pinValue = '';
 var pinMode = 'gate';
+var _pinLocked = false;
+
+function setPinInputLocked(locked) {
+  _pinLocked = !!locked;
+  var pinEl = document.getElementById('screen-pin');
+  if (pinEl) pinEl.classList.toggle('pin-locked', _pinLocked);
+}
 
 /* ---- Superuser PIN — hardcoded, never stored in localStorage or server ---- */
 var SUPERUSER_PIN = '2003';
@@ -3438,6 +3449,7 @@ function resetPin() {
   pinValue = '';
   updatePinDots();
   document.getElementById('pin-error').textContent = '';
+  setPinInputLocked(false);
 }
 
 function clearPinThemeDelayed() {
@@ -3450,19 +3462,22 @@ function clearPinThemeDelayed() {
 
 function pinGoBack() {
   _pinPending = null;
+  resetPin();
   showScreen(_pinReturnScreen || 'screen-lobby');
 }
 
 function pinPress(d) {
-  if (pinValue.length >= 4) return;
+  if (_pinLocked || pinValue.length >= 4) return;
   pinValue += d;
   updatePinDots();
   if (pinValue.length === 4) {
+    setPinInputLocked(true);
     setTimeout(checkPin, 120);
   }
 }
 
 function pinDel() {
+  if (_pinLocked) return;
   pinValue = pinValue.slice(0, -1);
   updatePinDots();
 }
@@ -3479,22 +3494,24 @@ function checkPin() {
   if (grantPinAccess(pinValue)) {
     var pending = _pinPending;
     _pinPending = null;
-    resetPin();
+    pinValue = '';
+    updatePinDots();
     if (pending && checkPermission(pending.perm, pending.ctx)) {
       pending.fn();
     } else if (pending) {
       document.getElementById('pin-error').textContent = 'Недостаточно прав';
       _pinPending = pending;
-      pinValue = '';
-      updatePinDots();
+      setPinInputLocked(false);
       return;
     } else {
+      setPinInputLocked(false);
       showScreen(_pinReturnScreen || 'screen-lobby');
     }
   } else {
     document.getElementById('pin-error').textContent = 'Неверный пароль';
     pinValue = '';
     updatePinDots();
+    setPinInputLocked(false);
   }
 }
 
