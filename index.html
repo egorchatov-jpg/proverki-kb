@@ -3116,6 +3116,14 @@ function registerSW() {
       swRegistration = reg;
       subscribeToPush(reg);
       reg.update();
+      if (reg.active) prefetchPassportAssets();
+      reg.addEventListener('updatefound', function() {
+        var nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', function() {
+          if (nw.state === 'activated') prefetchPassportAssets();
+        });
+      });
     }).catch(function(){});
   }
 }
@@ -4542,7 +4550,7 @@ var PASSPORT_ID_BY_LABEL = {
   'Паспорт РВ 01.': 'rv-01',
   'Паспорт ЭЛБ 01.': 'elb-01'
 };
-var APP_BUILD = 'pkb-v201';
+var APP_BUILD = 'pkb-v202';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -4555,6 +4563,23 @@ try {
 var _passportActive = null;
 var _passportChecklistIdx = null;
 var _passportChecklistResizeBound = false;
+
+function prefetchPassportAssets() {
+  if (!navigator.onLine) return;
+  Object.keys(PASSPORT_ID_BY_LABEL).forEach(function(label) {
+    var id = PASSPORT_ID_BY_LABEL[label];
+    if (!id) return;
+    loadPassportJson(id).then(function(data) {
+      getPassportAppendixList(data).forEach(function(app) {
+        var imgs = (app.content && app.content.images) || [];
+        imgs.forEach(function(src) {
+          var path = '/' + src.replace(/^\/+/, '');
+          fetch(path + '?v=' + PASSPORT_JSON_VERSION).catch(function() {});
+        });
+      });
+    }).catch(function() {});
+  });
+}
 
 function loadPassportJson(id, force) {
   var cacheKey = id + ':' + PASSPORT_JSON_VERSION;
