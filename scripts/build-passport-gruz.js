@@ -18,6 +18,12 @@ const IMG_URL = 'passports/gruz-01/img/';
   const ws = wb.getWorksheet('Барьеры ГРУЗ');
   const parsed = u.parseBarriersSheet(ws);
 
+  if (fs.existsSync(IMG_DIR)) {
+    fs.readdirSync(IMG_DIR).forEach(function(f) {
+      fs.unlinkSync(path.join(IMG_DIR, f));
+    });
+  }
+
   const allImageIds = new Set();
   ['Приложение 1.1.', 'Приложение 1.2.'].forEach(function(name) {
     const sh = wb.getWorksheet(name);

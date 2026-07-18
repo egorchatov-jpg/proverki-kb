@@ -982,6 +982,14 @@ html, body {
   margin-bottom: 8px; white-space: pre-wrap; word-break: break-word;
 }
 .passport-appendix-criteria-item { margin-bottom: 16px; }
+.passport-appendix-excel-block { margin-bottom: 0; }
+.passport-appendix-excel-text {
+  font-size: 13px; line-height: 1.3; color: #1a2035;
+  white-space: pre-wrap; word-break: break-word;
+}
+.passport-appendix-excel-block .passport-appendix-img-wrap-plain {
+  margin-top: 4px; gap: 4px;
+}
 .passport-appendix-img-wrap-plain {
   display: flex; flex-direction: column; gap: 8px;
 }
@@ -4387,7 +4395,7 @@ var PASSPORT_ID_BY_LABEL = {
   'Паспорт ГАЗ 01.': 'gaz-01',
   'Паспорт ГРУЗ 01.': 'gruz-01'
 };
-var PASSPORT_JSON_VERSION = 'v6';
+var PASSPORT_JSON_VERSION = 'v7';
 var _passportCache = {};
 var _passportActive = null;
 var _passportChecklistIdx = null;
@@ -4663,6 +4671,21 @@ function renderPassportAppendixContent(bodyEl, content) {
       ex.textContent = a2.exceptions.col1 || a2.exceptions.col2;
       bodyEl.appendChild(ex);
     }
+    return;
+  }
+  if (content.layout === 'excelColumn') {
+    (content.rows || []).forEach(function(row) {
+      var block = document.createElement('div');
+      block.className = 'passport-appendix-excel-block';
+      if (row.text) {
+        var tx = document.createElement('div');
+        tx.className = 'passport-appendix-excel-text';
+        tx.textContent = row.text;
+        block.appendChild(tx);
+      }
+      appendPassportImages(block, row.images, true);
+      bodyEl.appendChild(block);
+    });
     return;
   }
   if (content.layout === 'criteriaList') {
