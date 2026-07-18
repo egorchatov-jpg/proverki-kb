@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'pkb-static-v205';
-const API_CACHE = 'pkb-api-v205';
+const STATIC_CACHE = 'pkb-static-v206';
+const API_CACHE = 'pkb-api-v206';
 
 const SHELL_PRECACHE = [
   '/',
