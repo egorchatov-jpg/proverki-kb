@@ -2547,14 +2547,21 @@ window.addEventListener('DOMContentLoaded', function() {
   setInterval(function() {
     if (hasPendingSync()) retryAllQueues();
   }, 30000);
-  window.addEventListener('pagehide', clearSessionAccess);
   document.addEventListener('visibilitychange', function() {
     if (document.hidden) {
       if (isSettingsDirty()) syncSettingsToServer();
-      clearSessionAccess();
+      var activeScr = document.querySelector('.screen.active');
+      if (activeScr && activeScr.id && activeScr.id !== 'screen-pin') {
+        try { sessionStorage.setItem('pkb-active-screen', activeScr.id); } catch (_) {}
+      }
     }
     if (!document.hidden) {
-      enforceLobbyIfNoSession();
+      try {
+        var savedScr = sessionStorage.getItem('pkb-active-screen');
+        if (hasSession() && savedScr && document.getElementById(savedScr)) {
+          showScreen(savedScr);
+        }
+      } catch (_) {}
       renderLobby();
       loadFromServer();
       clearNotificationsAndBadge();
@@ -2959,6 +2966,7 @@ function clearSessionAccess() {
   _sessionAccess = { inspector: false, admin: false, superuser: false, orgs: {} };
   _sessionRole = null;
   _pinPending = null;
+  try { sessionStorage.removeItem('pkb-active-screen'); } catch (_) {}
 }
 
 function hasAnyOrgSession() {
@@ -3689,6 +3697,31 @@ function snapBarriersYearList() {
   return getBarriersForYear(_bpkYear).map(function(b) {
     return { name: b.name, passport: b.passport || '', inPK: !!b.inPK, show: b.show !== false };
   });
+}
+
+function sortBarriersAlphabeticallyInPassports(year) {
+  var list = getBarriersForYear(year);
+  var byPassport = {};
+  list.forEach(function(b) {
+    var p = b.passport || '';
+    if (!byPassport[p]) byPassport[p] = [];
+    byPassport[p].push(b);
+  });
+  var sorted = [];
+  var seen = {};
+  getPassportRenderOrder(year).forEach(function(p) {
+    seen[p] = true;
+    var items = (byPassport[p] || []).slice();
+    items.sort(function(a, b) { return a.name.localeCompare(b.name, 'ru', { sensitivity: 'base' }); });
+    items.forEach(function(b) { sorted.push(b); });
+  });
+  Object.keys(byPassport).forEach(function(p) {
+    if (seen[p]) return;
+    var items = byPassport[p].slice();
+    items.sort(function(a, b) { return a.name.localeCompare(b.name, 'ru', { sensitivity: 'base' }); });
+    items.forEach(function(b) { sorted.push(b); });
+  });
+  appState.barriersConfig[year] = sorted;
 }
 
 function snapMethodsList() {
@@ -4456,7 +4489,7 @@ function applyBpkNameOverlay() {
     return;
   }
   if (_bpkNameMode === 'barrier' && _bpkBarrierPassport) {
-    var name = val.toUpperCase();
+    var name = val;
     var list = getBarriersForYear(_bpkYear);
     if (list.some(function(b) { return b.name === name; })) {
       alert('Барьер с таким названием уже есть'); return;
@@ -4465,6 +4498,7 @@ function applyBpkNameOverlay() {
     saveState();
     renderBarriersTable(_bpkYear);
     markBarriersDirty();
+    setSettingsBackLabel('screen-barriers-list', true);
     closeBpkNameOverlay();
   }
 }
@@ -4480,6 +4514,7 @@ function hideAddBarrierInput() {
 function backFromBarriersList() {
   var wasDirty = _settingsSnap.barriers !== JSON.stringify(snapBarriersYearList());
   if (_bpkYear) {
+    sortBarriersAlphabeticallyInPassports(_bpkYear);
     saveState();
     takeSettingsSnap('barriers', snapBarriersYearList());
     setSettingsBackLabel('screen-barriers-list', false);
