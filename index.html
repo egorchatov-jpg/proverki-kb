@@ -951,6 +951,62 @@ html, body {
   margin-top: 14px; font-size: 13px; line-height: 1.45; color: #1a2035;
   white-space: pre-wrap;
 }
+.passport-appendix-section-title {
+  font-size: 14px; font-weight: 700; color: #1a2035; text-align: center;
+  margin: 14px 0 10px; line-height: 1.35;
+}
+.passport-appendix-two-col {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-bottom: 12px;
+}
+.passport-appendix-card {
+  background: #f4f7fb; border-radius: 12px; padding: 10px;
+  box-shadow: 0 1px 4px rgba(26, 32, 53, 0.08);
+  display: flex; flex-direction: column; gap: 8px; min-width: 0;
+}
+.passport-appendix-card-text {
+  font-size: 12px; line-height: 1.4; color: #1a2035; white-space: pre-wrap; word-break: break-word;
+}
+.passport-appendix-img-wrap {
+  display: flex; flex-direction: column; gap: 8px; align-items: center;
+}
+.passport-appendix-img {
+  width: 100%; max-width: 100%; height: auto;
+  border-radius: 10px; background: #fff;
+  box-shadow: 0 1px 6px rgba(26, 32, 53, 0.12);
+}
+.passport-appendix-note {
+  font-size: 12px; line-height: 1.4; color: #1a2035;
+  margin: 6px 0 10px; white-space: pre-wrap;
+}
+.passport-appendix-flow-row {
+  display: grid; gap: 8px; margin-bottom: 10px;
+}
+.passport-appendix-flow-row.cols-2 { grid-template-columns: 1fr 1fr; }
+.passport-appendix-flow-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.passport-appendix-flow-row.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.passport-appendix-flow-cell {
+  background: #f4f7fb; border-radius: 12px; padding: 10px;
+  font-size: 12px; line-height: 1.4; color: #1a2035; white-space: pre-wrap; word-break: break-word;
+  min-width: 0;
+}
+.passport-appendix-banner {
+  background: #e3ecf8; border-radius: 12px; padding: 12px;
+  font-size: 13px; font-weight: 600; line-height: 1.35; color: #1a2035;
+  text-align: center; margin-bottom: 10px; white-space: pre-wrap;
+}
+.passport-appendix-numbered { margin: 0; padding: 0 0 0 18px; }
+.passport-appendix-numbered li {
+  font-size: 13px; line-height: 1.45; color: #1a2035;
+  margin-bottom: 10px; white-space: pre-wrap; word-break: break-word;
+}
+.passport-appendix-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 520px) {
+  .passport-appendix-two-col,
+  .passport-appendix-flow-row.cols-2,
+  .passport-appendix-flow-row.cols-3,
+  .passport-appendix-flow-row.cols-4 { grid-template-columns: 1fr; }
+}
 .passport-checklist-scroll {
   flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
   width: 100%;
@@ -4299,7 +4355,8 @@ function renderPassportsList(year) {
 }
 
 var PASSPORT_ID_BY_LABEL = {
-  'Паспорт ГАЗ 01.': 'gaz-01'
+  'Паспорт ГАЗ 01.': 'gaz-01',
+  'Паспорт ГРУЗ 01.': 'gruz-01'
 };
 var PASSPORT_JSON_VERSION = 'v4';
 var _passportCache = {};
@@ -4391,12 +4448,12 @@ function renderPassportDetailScreen() {
     row.appendChild(mubBtn);
     bodyEl.appendChild(row);
   });
-  ['Приложение 1', 'Приложение 2'].forEach(function(caption, i) {
+  getPassportAppendixList(data).forEach(function(app, i) {
     var appBtn = document.createElement('button');
     appBtn.type = 'button';
     appBtn.className = 'passport-appendix-btn';
-    appBtn.textContent = caption;
-    appBtn.onclick = function() { openPassportAppendix(i + 1); };
+    appBtn.textContent = app.label || ('Приложение ' + (i + 1));
+    appBtn.onclick = function() { openPassportAppendix(app.id); };
     bodyEl.appendChild(appBtn);
   });
 }
@@ -4473,20 +4530,59 @@ function openPassportMub(barrierIdx) {
   showScreen('screen-passport-mub');
 }
 
-function openPassportAppendix(num) {
-  if (!_passportActive || !_passportActive.data) return;
-  var data = _passportActive.data;
-  var titleEl = document.getElementById('passport-appendix-title');
-  var bodyEl = document.getElementById('passport-appendix-body');
-  if (!bodyEl) return;
-  bodyEl.innerHTML = '';
-  if (num === 1) {
-    var a1 = data.appendix1 || {};
-    if (titleEl) titleEl.textContent = 'Приложение 1';
-    var t = document.createElement('div');
-    t.className = 'passport-appendix-list-title';
-    t.textContent = a1.title || 'Перечень замкнутых пространств:';
-    bodyEl.appendChild(t);
+function getPassportAppendixList(data) {
+  if (data.appendices && data.appendices.length) return data.appendices;
+  var legacy = [];
+  if (data.appendix1) legacy.push({ id: '1', label: 'Приложение 1', content: { layout: 'gazList1', data: data.appendix1 } });
+  if (data.appendix2) legacy.push({ id: '2', label: 'Приложение 2', content: { layout: 'gazTable2', data: data.appendix2 } });
+  return legacy;
+}
+
+function findPassportAppendix(data, id) {
+  var list = getPassportAppendixList(data);
+  for (var i = 0; i < list.length; i++) {
+    if (String(list[i].id) === String(id)) return list[i];
+  }
+  return list[+id - 1] || null;
+}
+
+function appendPassportImages(parent, images) {
+  if (!images || !images.length) return;
+  var wrap = document.createElement('div');
+  wrap.className = 'passport-appendix-img-wrap';
+  images.forEach(function(src) {
+    var img = document.createElement('img');
+    img.className = 'passport-appendix-img';
+    img.src = '/' + src.replace(/^\/+/, '');
+    img.alt = '';
+    img.loading = 'lazy';
+    wrap.appendChild(img);
+  });
+  parent.appendChild(wrap);
+}
+
+function renderPassportAppendixCard(parent, cell) {
+  if (!cell) return;
+  var card = document.createElement('div');
+  card.className = 'passport-appendix-card';
+  if (cell.text) {
+    var tx = document.createElement('div');
+    tx.className = 'passport-appendix-card-text';
+    tx.textContent = cell.text;
+    card.appendChild(tx);
+  }
+  appendPassportImages(card, cell.images);
+  parent.appendChild(card);
+}
+
+function renderPassportAppendixContent(bodyEl, content) {
+  if (!content) return;
+  if (content.layout === 'gazList1') {
+    var a1 = content.data || {};
+    var t1 = document.createElement('div');
+    t1.className = 'passport-appendix-list-title';
+    t1.textContent = a1.title || '';
+    bodyEl.appendChild(t1);
     if (a1.items && a1.items.length) {
       var ol = document.createElement('ol');
       ol.className = 'passport-appendix-list';
@@ -4503,17 +4599,18 @@ function openPassportAppendix(num) {
       fn.textContent = a1.footnote;
       bodyEl.appendChild(fn);
     }
-  } else if (num === 2) {
-    var a2 = data.appendix2 || {};
-    if (titleEl) titleEl.textContent = a2.title || 'Приложение 2';
+    return;
+  }
+  if (content.layout === 'gazTable2') {
+    var a2 = content.data || {};
     var table = document.createElement('table');
     table.className = 'passport-appendix-table';
     var thead = document.createElement('thead');
     var hr = document.createElement('tr');
     var h1 = document.createElement('th');
-    h1.textContent = (a2.header && a2.header.col1) || 'вид СИЗОД';
+    h1.textContent = (a2.header && a2.header.col1) || '';
     var h2 = document.createElement('th');
-    h2.textContent = (a2.header && a2.header.col2) || 'положение наготове';
+    h2.textContent = (a2.header && a2.header.col2) || '';
     hr.appendChild(h1); hr.appendChild(h2);
     thead.appendChild(hr);
     table.appendChild(thead);
@@ -4535,7 +4632,140 @@ function openPassportAppendix(num) {
       ex.textContent = a2.exceptions.col1 || a2.exceptions.col2;
       bodyEl.appendChild(ex);
     }
+    return;
   }
+  if (content.layout === 'twoColGallery') {
+    if (content.heading) {
+      var dh = document.createElement('div');
+      dh.className = 'passport-appendix-banner';
+      dh.textContent = content.heading;
+      bodyEl.appendChild(dh);
+    }
+    (content.sections || []).forEach(function(sec) {
+      if (sec.heading) {
+        var sh = document.createElement('div');
+        sh.className = 'passport-appendix-section-title';
+        sh.textContent = sec.heading;
+        bodyEl.appendChild(sh);
+      }
+      (sec.pairs || []).forEach(function(pair) {
+        var grid = document.createElement('div');
+        grid.className = 'passport-appendix-two-col';
+        renderPassportAppendixCard(grid, pair.left);
+        renderPassportAppendixCard(grid, pair.right);
+        bodyEl.appendChild(grid);
+      });
+      (sec.notes || []).forEach(function(note) {
+        var nd = document.createElement('div');
+        nd.className = 'passport-appendix-note';
+        nd.textContent = note.text || '';
+        bodyEl.appendChild(nd);
+        appendPassportImages(bodyEl, note.images);
+      });
+    });
+    return;
+  }
+  if (content.layout === 'flow') {
+    (content.blocks || []).forEach(function(block) {
+      if (block.type === 'subtitle') {
+        var st = document.createElement('div');
+        st.className = 'passport-appendix-list-title';
+        st.textContent = block.text || '';
+        bodyEl.appendChild(st);
+        appendPassportImages(bodyEl, block.images);
+        return;
+      }
+      if (block.type === 'banner') {
+        var bn = document.createElement('div');
+        bn.className = 'passport-appendix-banner';
+        bn.textContent = block.text || '';
+        bodyEl.appendChild(bn);
+        appendPassportImages(bodyEl, block.images);
+        return;
+      }
+      if (block.type === 'row') {
+        var cols = (content.maxCol || 4);
+        var row = document.createElement('div');
+        row.className = 'passport-appendix-flow-row cols-' + Math.min(cols, 4);
+        var cellMap = {};
+        (block.cells || []).forEach(function(c) { cellMap[c.col] = c.text; });
+        for (var ci = 1; ci <= cols; ci++) {
+          var fc = document.createElement('div');
+          fc.className = 'passport-appendix-flow-cell';
+          fc.textContent = cellMap[ci] || '';
+          if (block.images && block.images[ci]) appendPassportImages(fc, block.images[ci]);
+          row.appendChild(fc);
+        }
+        bodyEl.appendChild(row);
+      }
+    });
+    return;
+  }
+  if (content.layout === 'numberedList') {
+    if (content.heading) {
+      var hd = document.createElement('div');
+      hd.className = 'passport-appendix-banner';
+      hd.textContent = content.heading;
+      bodyEl.appendChild(hd);
+    }
+    var ol2 = document.createElement('ol');
+    ol2.className = 'passport-appendix-numbered';
+    (content.items || []).forEach(function(item) {
+      var li2 = document.createElement('li');
+      li2.textContent = (item.num ? item.num + ' ' : '') + (item.text || '');
+      ol2.appendChild(li2);
+    });
+    bodyEl.appendChild(ol2);
+    return;
+  }
+  if (content.layout === 'table') {
+    var wrap = document.createElement('div');
+    wrap.className = 'passport-appendix-table-wrap';
+    var tbl = document.createElement('table');
+    tbl.className = 'passport-appendix-table';
+    if (content.headers && content.headers.length) {
+      var th = document.createElement('thead');
+      content.headers.forEach(function(hrow) {
+        var trh = document.createElement('tr');
+        hrow.forEach(function(h) {
+          var thc = document.createElement('th');
+          thc.textContent = h;
+          trh.appendChild(thc);
+        });
+        th.appendChild(trh);
+      });
+      tbl.appendChild(th);
+    }
+    var tb = document.createElement('tbody');
+    (content.rows || []).forEach(function(r) {
+      var trb = document.createElement('tr');
+      r.forEach(function(cell) {
+        var td = document.createElement('td');
+        td.textContent = cell || '';
+        trb.appendChild(td);
+      });
+      tb.appendChild(trb);
+    });
+    tbl.appendChild(tb);
+    wrap.appendChild(tbl);
+    bodyEl.appendChild(wrap);
+  }
+}
+
+function openPassportAppendix(id) {
+  if (!_passportActive || !_passportActive.data) return;
+  var data = _passportActive.data;
+  var app = findPassportAppendix(data, id);
+  if (!app) return;
+  var titleEl = document.getElementById('passport-appendix-title');
+  var bodyEl = document.getElementById('passport-appendix-body');
+  if (!bodyEl) return;
+  bodyEl.innerHTML = '';
+  var content = app.content || {};
+  if (titleEl) titleEl.textContent = app.label || content.title || ('Приложение ' + app.id);
+  renderPassportAppendixContent(bodyEl, content);
+  var scrollEl = document.getElementById('passport-appendix-body');
+  if (scrollEl) scrollEl.scrollTop = 0;
   showScreen('screen-passport-appendix');
 }
 
