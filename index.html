@@ -1193,6 +1193,22 @@ html, body {
   margin-bottom: 10px; white-space: pre-wrap; word-break: break-word;
 }
 .passport-checklist-question:last-child { margin-bottom: 0; }
+.passport-appendix-link {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.passport-criterion-label .passport-appendix-link {
+  color: #fff;
+  text-decoration-color: rgba(255, 255, 255, 0.95);
+}
+.passport-checklist-question .passport-appendix-link {
+  color: #0d47a1;
+  text-decoration-color: #0d47a1;
+  font-weight: 600;
+}
 .restore-point-btn {
   width: 100%; padding: 16px 20px;
   background: var(--gray-btn); color: #fff;
@@ -4570,7 +4586,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v203';
+var APP_BUILD = 'pkb-v205';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -4583,6 +4599,7 @@ try {
 var _passportActive = null;
 var _passportChecklistIdx = null;
 var _passportChecklistResizeBound = false;
+var _passportAppendixReturnScreen = 'screen-passport-detail';
 
 function prefetchPassportAssets() {
   fetch('/passports/manifest.json?v=' + APP_BUILD)
@@ -4706,7 +4723,7 @@ function renderPassportDetailScreen() {
     appBtn.type = 'button';
     appBtn.className = 'passport-appendix-btn';
     appBtn.textContent = app.label || ('Приложение ' + (i + 1));
-    bindUiTap(appBtn, function() { openPassportAppendix(app.id); });
+    bindUiTap(appBtn, function() { openPassportAppendix(app.id, 'screen-passport-detail'); });
     bodyEl.appendChild(appBtn);
   });
 }
@@ -4744,14 +4761,15 @@ function renderPassportChecklistScreen(barrier) {
     block.className = 'passport-criterion-block';
     var label = document.createElement('div');
     label.className = 'passport-criterion-label';
-    label.textContent = crit.label || '';
+    fillPassportTextWithAppendixLinks(label, crit.label || '', getPassportAppendixIdSet(data));
     block.appendChild(label);
     var qWrap = document.createElement('div');
     qWrap.className = 'passport-checklist-questions';
+    var appendixIdSet = getPassportAppendixIdSet(data);
     (crit.questions || []).forEach(function(q) {
       var qEl = document.createElement('div');
       qEl.className = 'passport-checklist-question';
-      qEl.textContent = q;
+      fillPassportTextWithAppendixLinks(qEl, q, appendixIdSet);
       qWrap.appendChild(qEl);
     });
     block.appendChild(qWrap);
@@ -4789,6 +4807,47 @@ function getPassportAppendixList(data) {
   if (data.appendix1) legacy.push({ id: '1', label: 'Приложение 1', content: { layout: 'gazList1', data: data.appendix1 } });
   if (data.appendix2) legacy.push({ id: '2', label: 'Приложение 2', content: { layout: 'gazTable2', data: data.appendix2 } });
   return legacy;
+}
+
+function getPassportAppendixIdSet(data) {
+  var set = {};
+  getPassportAppendixList(data).forEach(function(app) {
+    set[String(app.id)] = true;
+  });
+  return set;
+}
+
+function fillPassportTextWithAppendixLinks(container, text, appendixIdSet) {
+  if (!text) return;
+  var re = /приложение\s*(?:№\s*)?(\d+(?:\.\d+)?)\.?/gi;
+  var lastIndex = 0;
+  var match;
+  while ((match = re.exec(text)) !== null) {
+    var refId = String(match[1]).replace(/\.$/, '');
+    var fullMatch = match[0];
+    var start = match.index;
+    if (start > lastIndex) {
+      container.appendChild(document.createTextNode(text.slice(lastIndex, start)));
+    }
+    if (appendixIdSet[refId]) {
+      var link = document.createElement('span');
+      link.className = 'passport-appendix-link';
+      link.textContent = fullMatch;
+      bindUiTap(link, function(id) {
+        return function() { openPassportAppendix(id, 'screen-passport-checklist'); };
+      }(refId));
+      container.appendChild(link);
+    } else {
+      container.appendChild(document.createTextNode(fullMatch));
+    }
+    lastIndex = start + fullMatch.length;
+  }
+  if (lastIndex < text.length) {
+    container.appendChild(document.createTextNode(text.slice(lastIndex)));
+  }
+  if (!container.firstChild) {
+    container.textContent = text;
+  }
 }
 
 function findPassportAppendix(data, id) {
@@ -5278,8 +5337,9 @@ function renderPassportAppendixContent(bodyEl, content) {
   }
 }
 
-function openPassportAppendix(id) {
+function openPassportAppendix(id, returnScreen) {
   if (!_passportActive || !_passportActive.data) return;
+  _passportAppendixReturnScreen = returnScreen || 'screen-passport-detail';
   var passportId = _passportActive.data.id;
   loadPassportJson(passportId, true).then(function(data) {
     _passportActive.data = data;
@@ -5311,7 +5371,7 @@ function backFromPassportMub() {
 }
 
 function backFromPassportAppendix() {
-  showScreen('screen-passport-detail');
+  showScreen(_passportAppendixReturnScreen || 'screen-passport-detail');
 }
 
 function backFromPassportsList() {
