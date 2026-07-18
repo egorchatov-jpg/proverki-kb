@@ -58,11 +58,16 @@ html, body {
   position: fixed; inset: 0;
   display: flex; flex-direction: column;
   background: var(--bg);
-  opacity: 0; pointer-events: none;
-  transition: opacity 0.22s ease;
+  opacity: 0; pointer-events: none; visibility: hidden;
+  z-index: 0;
+  transition: opacity 0.22s ease, visibility 0s linear 0.22s;
   overflow: hidden;
 }
-.screen.active { opacity: 1; pointer-events: all; }
+.screen.active {
+  opacity: 1; pointer-events: all; visibility: visible;
+  z-index: 2;
+  transition: opacity 0.22s ease, visibility 0s linear 0s;
+}
 /* ===== LOBBY ===== */
 #screen-lobby { background: var(--bg); }
 
@@ -865,6 +870,7 @@ html, body {
 .is-win .settings-navy-btn { width: calc((100vw - 48px) / 3); }
 .passport-detail-scroll {
   flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
   padding: 8px 16px 12px; width: 100%; box-sizing: border-box;
 }
 .passport-detail-inner {
@@ -887,10 +893,13 @@ html, body {
 }
 .passport-barrier-btn:active { opacity: 0.78; }
 .passport-barrier-btn,
-.passport-mub-btn {
+.passport-mub-btn,
+.passport-appendix-btn {
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
+  z-index: 1;
 }
 .passport-mub-btn {
   flex-shrink: 0; width: 58px;
@@ -3124,6 +3133,8 @@ function showScreen(id) {
   }
   el.classList.add('active');
   if (prev && prev.id === 'screen-pin' && id !== 'screen-pin') setPinInputLocked(false);
+  var scrollEl = el.querySelector('.passport-detail-scroll, .passport-mub-scroll, .passport-appendix-scroll, .passport-checklist-scroll, .settings-screen-body');
+  if (scrollEl) scrollEl.scrollTop = 0;
   return true;
 }
 
@@ -4531,7 +4542,7 @@ var PASSPORT_ID_BY_LABEL = {
   'Паспорт РВ 01.': 'rv-01',
   'Паспорт ЭЛБ 01.': 'elb-01'
 };
-var APP_BUILD = 'pkb-v200';
+var APP_BUILD = 'pkb-v201';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -4559,22 +4570,29 @@ function loadPassportJson(id, force) {
     });
 }
 
-function ensurePassportDetailClickDelegate() {
-  var bodyEl = document.getElementById('passport-detail-body');
-  if (!bodyEl || bodyEl._passportClickBound) return;
-  bodyEl._passportClickBound = true;
-  bodyEl.addEventListener('click', function(e) {
-    var barrierBtn = e.target.closest('.passport-barrier-btn');
-    if (barrierBtn) {
-      var idx = parseInt(barrierBtn.getAttribute('data-barrier-idx'), 10);
-      if (!isNaN(idx)) openPassportChecklist(idx);
-      return;
-    }
-    var mubBtn = e.target.closest('.passport-mub-btn');
-    if (mubBtn) {
-      var mubIdx = parseInt(mubBtn.getAttribute('data-barrier-idx'), 10);
-      if (!isNaN(mubIdx)) openPassportMub(mubIdx);
-    }
+function bindUiTap(el, handler) {
+  if (!el || !handler) return;
+  var touchStart = null;
+  var lastTouchEnd = 0;
+  el.addEventListener('touchstart', function(e) {
+    if (e.touches.length !== 1) { touchStart = null; return; }
+    touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, { passive: true });
+  el.addEventListener('touchend', function(e) {
+    if (!touchStart) return;
+    var t = e.changedTouches && e.changedTouches[0];
+    if (!t) return;
+    var dx = t.clientX - touchStart.x;
+    var dy = t.clientY - touchStart.y;
+    touchStart = null;
+    if (dx * dx + dy * dy > 625) return;
+    lastTouchEnd = Date.now();
+    e.preventDefault();
+    handler(e);
+  }, { passive: false });
+  el.addEventListener('click', function(e) {
+    if (Date.now() - lastTouchEnd < 500) return;
+    handler(e);
   });
 }
 
@@ -4595,7 +4613,6 @@ function openPassportKBDetail(year, label) {
 
 function renderPassportDetailScreen() {
   if (!_passportActive || !_passportActive.data) return;
-  ensurePassportDetailClickDelegate();
   var data = _passportActive.data;
   var titleEl = document.getElementById('passport-detail-title');
   var bodyEl = document.getElementById('passport-detail-body');
@@ -4610,21 +4627,13 @@ function renderPassportDetailScreen() {
     mainBtn.className = 'passport-barrier-btn';
     mainBtn.setAttribute('data-barrier-idx', String(idx));
     mainBtn.textContent = b.label || b.code || '';
-    mainBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      openPassportChecklist(idx);
-    });
+    bindUiTap(mainBtn, function() { openPassportChecklist(idx); });
     var mubBtn = document.createElement('button');
     mubBtn.type = 'button';
     mubBtn.className = 'passport-mub-btn';
     mubBtn.setAttribute('data-barrier-idx', String(idx));
     mubBtn.textContent = 'МУБ';
-    mubBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      openPassportMub(idx);
-    });
+    bindUiTap(mubBtn, function() { openPassportMub(idx); });
     row.appendChild(mainBtn);
     row.appendChild(mubBtn);
     bodyEl.appendChild(row);
@@ -4634,7 +4643,7 @@ function renderPassportDetailScreen() {
     appBtn.type = 'button';
     appBtn.className = 'passport-appendix-btn';
     appBtn.textContent = app.label || ('Приложение ' + (i + 1));
-    appBtn.onclick = function() { openPassportAppendix(app.id); };
+    bindUiTap(appBtn, function() { openPassportAppendix(app.id); });
     bodyEl.appendChild(appBtn);
   });
 }
