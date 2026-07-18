@@ -820,6 +820,7 @@ html, body {
 #screen-passport-detail,
 #screen-passport-mub,
 #screen-passport-appendix,
+#screen-passport-checklist,
 #screen-methods, #screen-orgs,
 #screen-meropr-menu, #screen-corrective-list, #screen-corrective-edit, #screen-sokb-list, #screen-sokb-edit { background: var(--bg); }
 
@@ -944,6 +945,41 @@ html, body {
   margin-top: 14px; font-size: 13px; line-height: 1.45; color: #1a2035;
   white-space: pre-wrap;
 }
+.passport-checklist-scroll {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  width: 100%;
+}
+.passport-checklist-scroll .settings-screen-title {
+  padding-bottom: 8px;
+}
+.passport-checklist-barrier-sticky {
+  position: sticky; top: 0; z-index: 2;
+  margin: 0 16px 10px; padding: 10px 12px;
+  background: var(--navy); color: #fff;
+  font-size: 14px; font-weight: 600; line-height: 1.35;
+  text-align: left; border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(27, 58, 107, 0.25);
+}
+.passport-checklist-body {
+  padding: 0 16px 12px;
+}
+.passport-criterion-block { margin-bottom: 10px; }
+.passport-criterion-label {
+  padding: 10px 12px;
+  background: #4a6fa5; color: #fff;
+  font-size: 13px; font-weight: 600; line-height: 1.35;
+  text-align: left; border-radius: 14px 14px 0 0;
+}
+.passport-checklist-questions {
+  background: #e3ecf8;
+  padding: 10px 12px 12px;
+  border-radius: 0 0 14px 14px;
+}
+.passport-checklist-question {
+  font-size: 13px; line-height: 1.45; color: #1a2035;
+  margin-bottom: 10px; white-space: pre-wrap; word-break: break-word;
+}
+.passport-checklist-question:last-child { margin-bottom: 0; }
 .restore-point-btn {
   width: 100%; padding: 16px 20px;
   background: var(--gray-btn); color: #fff;
@@ -1687,6 +1723,18 @@ html, body {
   </div>
 </div>
 
+<!-- ===== SCREEN: ПАСПОРТ КБ — ЧЕК-ЛИСТ БАРЬЕРА ===== -->
+<div class="screen" id="screen-passport-checklist">
+  <div class="passport-checklist-scroll">
+    <div class="settings-screen-title" id="passport-checklist-sheet-title"></div>
+    <div class="passport-checklist-barrier-sticky" id="passport-checklist-barrier"></div>
+    <div class="passport-checklist-body" id="passport-checklist-body"></div>
+  </div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="backFromPassportChecklist()">Назад</button>
+  </div>
+</div>
+
 <!-- ===== SCREEN: ПАСПОРТ КБ — МУБ ===== -->
 <div class="screen" id="screen-passport-mub">
   <div class="settings-screen-title" id="passport-mub-title"></div>
@@ -2409,7 +2457,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -4263,6 +4311,7 @@ function renderPassportDetailScreen() {
     mainBtn.type = 'button';
     mainBtn.className = 'passport-barrier-btn';
     mainBtn.textContent = b.label || b.code || '';
+    mainBtn.onclick = function() { openPassportChecklist(idx); };
     var mubBtn = document.createElement('button');
     mubBtn.type = 'button';
     mubBtn.className = 'passport-mub-btn';
@@ -4280,6 +4329,50 @@ function renderPassportDetailScreen() {
     appBtn.onclick = function() { openPassportAppendix(i + 1); };
     bodyEl.appendChild(appBtn);
   });
+}
+
+function openPassportChecklist(barrierIdx) {
+  if (!_passportActive || !_passportActive.data) return;
+  var b = (_passportActive.data.barriers || [])[barrierIdx];
+  if (!b) return;
+  _passportChecklistIdx = barrierIdx;
+  renderPassportChecklistScreen(b);
+  showScreen('screen-passport-checklist');
+}
+
+function renderPassportChecklistScreen(barrier) {
+  var data = _passportActive.data;
+  var titleEl = document.getElementById('passport-checklist-sheet-title');
+  var barrierEl = document.getElementById('passport-checklist-barrier');
+  var bodyEl = document.getElementById('passport-checklist-body');
+  if (titleEl) titleEl.textContent = data.sheetTitle || '';
+  if (barrierEl) barrierEl.textContent = barrier.label || barrier.code || '';
+  if (!bodyEl) return;
+  bodyEl.innerHTML = '';
+  (barrier.criteria || []).forEach(function(crit) {
+    var block = document.createElement('div');
+    block.className = 'passport-criterion-block';
+    var label = document.createElement('div');
+    label.className = 'passport-criterion-label';
+    label.textContent = crit.label || '';
+    block.appendChild(label);
+    var qWrap = document.createElement('div');
+    qWrap.className = 'passport-checklist-questions';
+    (crit.questions || []).forEach(function(q) {
+      var qEl = document.createElement('div');
+      qEl.className = 'passport-checklist-question';
+      qEl.textContent = q;
+      qWrap.appendChild(qEl);
+    });
+    block.appendChild(qWrap);
+    bodyEl.appendChild(block);
+  });
+  var scrollEl = document.querySelector('#screen-passport-checklist .passport-checklist-scroll');
+  if (scrollEl) scrollEl.scrollTop = 0;
+}
+
+function backFromPassportChecklist() {
+  showScreen('screen-passport-detail');
 }
 
 function openPassportMub(barrierIdx) {

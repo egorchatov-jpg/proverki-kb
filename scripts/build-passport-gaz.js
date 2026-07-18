@@ -53,6 +53,34 @@ function formatAppendix2Col2(text) {
     .trim();
 }
 
+function mainBarrierCode(text) {
+  const m = text.match(/^([A-ZА-Я]{2,4}\.\d{1,2})\./i);
+  return m ? m[1] + '.' : null;
+}
+
+function parseBarrierChecklists(ws, barrierCodes) {
+  const codeSet = new Set(barrierCodes);
+  const maps = {};
+  barrierCodes.forEach(function(code) { maps[code] = new Map(); });
+
+  for (let r = 2; r <= ws.rowCount; r++) {
+    const b = cellText(ws.getCell(r, 2));
+    const c = cellText(ws.getCell(r, 3));
+    if (!b) continue;
+    const code = mainBarrierCode(b);
+    if (!code || !codeSet.has(code)) continue;
+    const map = maps[code];
+    if (!map.has(b)) map.set(b, { label: b, questions: [] });
+    if (c) map.get(b).questions.push(c);
+  }
+
+  const out = {};
+  barrierCodes.forEach(function(code) {
+    out[code] = Array.from(maps[code].values());
+  });
+  return out;
+}
+
 function parseAppendix2(ws) {
   const rows = [];
   for (let r = 1; r <= ws.rowCount; r++) {
@@ -99,8 +127,14 @@ function parseAppendix2(ws) {
       code,
       label: parsed.label,
       mub: parsed.mub,
+      criteria: [],
     });
   }
+
+  const checklists = parseBarrierChecklists(ws, barriers.map(function(b) { return b.code; }));
+  barriers.forEach(function(b) {
+    b.criteria = checklists[b.code] || [];
+  });
 
   const data = {
     id: 'gaz-01',
