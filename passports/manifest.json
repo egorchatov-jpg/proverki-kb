@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "generatedAt": "2026-07-18T18:25:17.442Z",
+  "passports": [
+    {
+      "id": "gaz-01",
+      "label": "Паспорт ГАЗ 01."
+    },
+    {
+      "id": "gruz-01",
+      "label": "Паспорт ГРУЗ 01."
+    },
+    {
+      "id": "dtp-01",
+      "label": "Паспорт ДТП 01."
+    },
+    {
+      "id": "rv-01",
+      "label": "Паспорт РВ 01."
+    },
+    {
+      "id": "elb-01",
+      "label": "Паспорт ЭЛБ 01."
+    }
+  ],
+  "assets": [
+    "/passports/dtp-01.json",
+    "/passports/dtp-01/img/appendix-41.jpg",
+    "/passports/dtp-01/img/appendix-71.jpg",
+    "/passports/dtp-01/img/appendix-81.jpg",
+    "/passports/elb-01.json",
+    "/passports/elb-01/img/appendix-161.jpg",
+    "/passports/gaz-01.json",
+    "/passports/gruz-01.json",
+    "/passports/gruz-01/img/appendix-11.jpg",
+    "/passports/gruz-01/img/appendix-12.jpg",
+    "/passports/gruz-01/img/appendix-21.jpg",
+    "/passports/gruz-01/img/appendix-51.jpg",
+    "/passports/gruz-01/img/appendix-52.jpg",
+    "/passports/rv-01.json",
+    "/passports/rv-01/img/appendix-11.jpg",
+    "/passports/rv-01/img/appendix-12.jpg"
+  ]
+}

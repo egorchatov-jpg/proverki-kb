@@ -2835,12 +2835,12 @@ function requestPushPermission() {
 }
 
 // ===== APP STATE =====
-var PASSPORTS_KB_BUTTONS = [
-  'Паспорт ГАЗ 01.',
-  'Паспорт ГРУЗ 01.',
-  'Паспорт ДТП 01.',
-  'Паспорт РВ 01.',
-  'Паспорт ЭЛБ 01.'
+var PASSPORT_CATALOG = [
+  { id: 'gaz-01', label: 'Паспорт ГАЗ 01.' },
+  { id: 'gruz-01', label: 'Паспорт ГРУЗ 01.' },
+  { id: 'dtp-01', label: 'Паспорт ДТП 01.' },
+  { id: 'rv-01', label: 'Паспорт РВ 01.' },
+  { id: 'elb-01', label: 'Паспорт ЭЛБ 01.' }
 ];
 
 var BARRIERS_PASSPORT_GROUPS = [
@@ -3013,10 +3013,12 @@ window.addEventListener('DOMContentLoaded', function() {
   initBpkInputIOSFix();
   setTodayDate();
   setTimeout(_unlockLobbyBanners, 400);
+  loadPassportManifest();
   loadFromServer(function() { _unlockLobbyBanners(); }); // independent of SW / push permission
   setInterval(function() {
     if (hasPendingSync()) retryAllQueues();
   }, 30000);
+  window.addEventListener('online', syncWhenOnline);
   document.addEventListener('visibilitychange', function() {
     if (document.hidden) {
       if (isSettingsDirty()) syncSettingsToServer();
@@ -3033,7 +3035,12 @@ window.addEventListener('DOMContentLoaded', function() {
         }
       } catch (_) {}
       renderLobby();
-      loadFromServer();
+      loadFromServer(function() {
+        retryAllQueues();
+        if (isSettingsDirty()) syncSettingsToServer();
+        prefetchPassportAssets();
+        loadPassportManifest();
+      });
       clearNotificationsAndBadge();
       if (swRegistration) subscribeToPush(swRegistration);
     }
@@ -4534,23 +4541,36 @@ function openPassportsList(year) {
 function renderPassportsList(year) {
   var body = document.getElementById('passports-list-body');
   body.innerHTML = '';
-  PASSPORTS_KB_BUTTONS.forEach(function(label) {
+  PASSPORT_CATALOG.forEach(function(p) {
     var btn = document.createElement('button');
     btn.className = 'settings-navy-btn';
-    btn.textContent = label;
-    btn.onclick = function() { openPassportKBDetail(year, label); };
+    btn.textContent = p.label;
+    btn.onclick = function() { openPassportKBDetail(year, p.label); };
     body.appendChild(btn);
   });
 }
 
-var PASSPORT_ID_BY_LABEL = {
-  'Паспорт ГАЗ 01.': 'gaz-01',
-  'Паспорт ГРУЗ 01.': 'gruz-01',
-  'Паспорт ДТП 01.': 'dtp-01',
-  'Паспорт РВ 01.': 'rv-01',
-  'Паспорт ЭЛБ 01.': 'elb-01'
-};
-var APP_BUILD = 'pkb-v202';
+var PASSPORT_ID_BY_LABEL = {};
+
+function rebuildPassportLabelMap() {
+  PASSPORT_ID_BY_LABEL = {};
+  PASSPORT_CATALOG.forEach(function(p) {
+    PASSPORT_ID_BY_LABEL[p.label] = p.id;
+  });
+}
+rebuildPassportLabelMap();
+
+function loadPassportManifest() {
+  return fetch('/passports/manifest.json?v=' + APP_BUILD)
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(m) {
+      if (!m || !Array.isArray(m.passports) || !m.passports.length) return;
+      PASSPORT_CATALOG = m.passports;
+      rebuildPassportLabelMap();
+    })
+    .catch(function() {});
+}
+var APP_BUILD = 'pkb-v203';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -4565,19 +4585,37 @@ var _passportChecklistIdx = null;
 var _passportChecklistResizeBound = false;
 
 function prefetchPassportAssets() {
-  if (!navigator.onLine) return;
-  Object.keys(PASSPORT_ID_BY_LABEL).forEach(function(label) {
-    var id = PASSPORT_ID_BY_LABEL[label];
-    if (!id) return;
-    loadPassportJson(id).then(function(data) {
-      getPassportAppendixList(data).forEach(function(app) {
-        var imgs = (app.content && app.content.images) || [];
-        imgs.forEach(function(src) {
-          var path = '/' + src.replace(/^\/+/, '');
-          fetch(path + '?v=' + PASSPORT_JSON_VERSION).catch(function() {});
-        });
+  fetch('/passports/manifest.json?v=' + APP_BUILD)
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(m) {
+      if (m && Array.isArray(m.passports) && m.passports.length) {
+        PASSPORT_CATALOG = m.passports;
+        rebuildPassportLabelMap();
+      }
+      var assets = (m && m.assets) || [];
+      assets.forEach(function(path) {
+        fetch(path + (path.indexOf('?') >= 0 ? '&' : '?') + 'v=' + PASSPORT_JSON_VERSION).catch(function() {});
       });
-    }).catch(function() {});
+      PASSPORT_CATALOG.forEach(function(p) {
+        if (p.id) loadPassportJson(p.id).catch(function() {});
+      });
+    })
+    .catch(function() {
+      PASSPORT_CATALOG.forEach(function(p) {
+        if (p.id) loadPassportJson(p.id).catch(function() {});
+      });
+    });
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'PRECACHE_PASSPORTS' });
+  }
+}
+
+function syncWhenOnline() {
+  loadFromServer(function() {
+    retryAllQueues();
+    if (isSettingsDirty()) syncSettingsToServer();
+    prefetchPassportAssets();
+    loadPassportManifest();
   });
 }
 

@@ -1,16 +1,19 @@
 /**
- * Regenerate PASSPORT_PRECACHE list in sw.js from passports/ folder.
+ * Generate passports/manifest.json and keep SW cache version in sync.
  * Usage: node scripts/build-sw-precache.js
  */
 const fs = require('fs');
 const path = require('path');
 
-const SW = path.join(__dirname, '../sw.js');
-const PASSPORTS = path.join(__dirname, '../passports');
+const ROOT = path.join(__dirname, '..');
+const PASSPORTS = path.join(ROOT, 'passports');
+const MANIFEST_OUT = path.join(PASSPORTS, 'manifest.json');
+const SW = path.join(ROOT, 'sw.js');
 
 function walk(dir, urlPrefix) {
   const out = [];
   fs.readdirSync(dir).forEach(function(name) {
+    if (name === 'manifest.json') return;
     const full = path.join(dir, name);
     const url = urlPrefix + '/' + name;
     if (fs.statSync(full).isDirectory()) {
@@ -22,19 +25,33 @@ function walk(dir, urlPrefix) {
   return out;
 }
 
-const passportUrls = walk(PASSPORTS, '/passports').sort();
-let sw = fs.readFileSync(SW, 'utf8');
-const block = 'const PASSPORT_PRECACHE = ' + JSON.stringify(passportUrls, null, 2) + ';';
+const assets = walk(PASSPORTS, '/passports').sort();
+const passports = [];
 
-if (/const PASSPORT_PRECACHE = \[[\s\S]*?\];/.test(sw)) {
-  sw = sw.replace(/const PASSPORT_PRECACHE = \[[\s\S]*?\];/, block);
-} else {
-  sw = sw.replace(
-    "const PRECACHE = ",
-    block + '\n\nconst PRECACHE = '
-  );
-}
+fs.readdirSync(PASSPORTS).forEach(function(name) {
+  if (!name.endsWith('.json') || name === 'manifest.json') return;
+  const full = path.join(PASSPORTS, name);
+  try {
+    const data = JSON.parse(fs.readFileSync(full, 'utf8'));
+    if (!data.id) return;
+    passports.push({
+      id: data.id,
+      label: data.settingsLabel || ('Паспорт ' + data.id.toUpperCase().replace('-', ' ') + '.'),
+    });
+  } catch (e) {
+    console.warn('Skip passport json:', name, e.message);
+  }
+});
 
-fs.writeFileSync(SW, sw);
-console.log('Updated PASSPORT_PRECACHE:', passportUrls.length, 'files');
-passportUrls.forEach(function(u) { console.log(' ', u); });
+passports.sort(function(a, b) { return a.label.localeCompare(b.label, 'ru'); });
+
+const manifest = {
+  version: 1,
+  generatedAt: new Date().toISOString(),
+  passports: passports,
+  assets: assets,
+};
+
+fs.writeFileSync(MANIFEST_OUT, JSON.stringify(manifest, null, 2), 'utf8');
+console.log('Written', MANIFEST_OUT);
+console.log('Passports:', passports.length, '| Assets:', assets.length);
