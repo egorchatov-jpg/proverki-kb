@@ -1,9 +1,17 @@
 const { getBackupsState, restoreBackup, createBackupFromLive } = require('../lib/backups-lib');
 
-function checkCronAuth(req) {
+function isCronInvocation(req) {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
-  return req.headers['authorization'] === `Bearer ${secret}`;
+  if (secret) {
+    // Vercel cron sends Authorization: Bearer <CRON_SECRET>
+    return req.headers['authorization'] === `Bearer ${secret}`;
+  }
+  // Without CRON_SECRET, rely on Vercel cron headers (current + legacy)
+  return !!(
+    req.headers['x-vercel-cron-schedule'] ||
+    req.headers['x-vercel-cron'] ||
+    (req.headers['user-agent'] || '').startsWith('vercel-cron/')
+  );
 }
 
 module.exports = async (req, res) => {
@@ -14,12 +22,9 @@ module.exports = async (req, res) => {
 
   try {
     if (req.method === 'GET') {
-      if (req.headers['x-vercel-cron']) {
-        if (!checkCronAuth(req)) {
-          return res.status(401).json({ error: 'Unauthorized' });
-        }
+      if (isCronInvocation(req)) {
         const result = await createBackupFromLive(new Date());
-        return res.status(200).json({ success: true, ...result });
+        return res.status(200).json({ success: true, cron: true, ...result });
       }
 
       const manifest = await getBackupsState();
