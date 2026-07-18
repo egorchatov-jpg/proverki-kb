@@ -4387,7 +4387,7 @@ var PASSPORT_ID_BY_LABEL = {
   'Паспорт ГАЗ 01.': 'gaz-01',
   'Паспорт ГРУЗ 01.': 'gruz-01'
 };
-var PASSPORT_JSON_VERSION = 'v5';
+var PASSPORT_JSON_VERSION = 'v6';
 var _passportCache = {};
 var _passportActive = null;
 var _passportChecklistIdx = null;
@@ -4579,10 +4579,12 @@ function appendPassportImages(parent, images, plain) {
   if (!images || !images.length) return;
   var wrap = document.createElement('div');
   wrap.className = plain ? 'passport-appendix-img-wrap-plain' : 'passport-appendix-img-wrap';
+  var ver = PASSPORT_JSON_VERSION;
   images.forEach(function(src) {
     var img = document.createElement('img');
     img.className = plain ? 'passport-appendix-img-plain' : 'passport-appendix-img';
-    img.src = '/' + src.replace(/^\/+/, '');
+    var path = '/' + src.replace(/^\/+/, '');
+    img.src = path + (path.indexOf('?') >= 0 ? '&' : '?') + 'v=' + ver;
     img.alt = '';
     img.loading = 'lazy';
     wrap.appendChild(img);

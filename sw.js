@@ -1,5 +1,5 @@
-const CACHE = 'pkb-v180';
-const PRECACHE = ['/', '/manifest.json', '/apple-touch-icon.png', '/favicon.png', '/icon-192.png', '/icon-512.png', '/badge.svg', '/passports/gaz-01.json?v=v5', '/passports/gruz-01.json?v=v5'];
+const CACHE = 'pkb-v181';
+const PRECACHE = ['/', '/manifest.json', '/apple-touch-icon.png', '/favicon.png', '/icon-192.png', '/icon-512.png', '/badge.svg', '/passports/gaz-01.json?v=v6', '/passports/gruz-01.json?v=v6'];
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -61,7 +61,8 @@ self.addEventListener('fetch', e => {
   if (url.pathname.startsWith('/api/')) return;
   // App shell: network-first so deploys reach users without stale SW cache
   const isAppShell = url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/sw.js';
-  if (isAppShell) {
+  const isPassport = url.pathname.startsWith('/passports/');
+  if (isAppShell || isPassport) {
     e.respondWith(
       fetch(e.request).then(res => {
         if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
