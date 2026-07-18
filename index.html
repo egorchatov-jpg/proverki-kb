@@ -4280,6 +4280,7 @@ var PASSPORT_ID_BY_LABEL = {
 var PASSPORT_JSON_VERSION = 'v2';
 var _passportCache = {};
 var _passportActive = null;
+var _passportChecklistIdx = null;
 
 function loadPassportJson(id) {
   var cacheKey = id + ':' + PASSPORT_JSON_VERSION;

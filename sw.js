@@ -1,4 +1,4 @@
-const CACHE = 'pkb-v174';
+const CACHE = 'pkb-v175';
 const PRECACHE = ['/', '/manifest.json', '/apple-touch-icon.png', '/favicon.png', '/icon-192.png', '/icon-512.png', '/badge.svg', '/passports/gaz-01.json?v=v2'];
 
 self.addEventListener('install', e => {
