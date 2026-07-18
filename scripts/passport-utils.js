@@ -155,10 +155,18 @@ function parseAppendix11Sheet(ws, savedMap) {
   const rows = [];
 
   for (let r = 1; r <= ws.rowCount; r++) {
-    const text = cellText(ws.getCell(r, 1));
+    const cell = ws.getCell(r, 1);
+    const text = cellText(cell);
     const images = resolveImages(byCell[imageCellKey(r, 1)], savedMap);
     if (!text && !images.length) continue;
-    rows.push({ text: text, images: images });
+    const font = cell.font || {};
+    const alignment = cell.alignment || {};
+    rows.push({
+      text: text,
+      images: images,
+      bold: !!font.bold,
+      align: alignment.horizontal || 'left',
+    });
   }
 
   return { layout: 'excelColumn', rows: rows };

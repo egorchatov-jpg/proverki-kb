@@ -988,7 +988,11 @@ html, body {
   white-space: pre-wrap; word-break: break-word;
 }
 .passport-appendix-excel-block .passport-appendix-img-wrap-plain {
-  margin-top: 4px; gap: 4px;
+  display: flex; flex-direction: row; flex-wrap: wrap;
+  gap: 2px; margin-top: 2px; justify-content: flex-start;
+}
+.passport-appendix-excel-block .passport-appendix-img-plain {
+  width: auto; max-width: 100%; flex: 0 1 auto;
 }
 .passport-appendix-img-wrap-plain {
   display: flex; flex-direction: column; gap: 8px;
@@ -2859,7 +2863,26 @@ function _showPushPromptOrFinish() {
 }
 
 // ===== INIT =====
+function ensureAppBuildFresh() {
+  try {
+    var prev = localStorage.getItem('pkb-app-build');
+    if (prev && prev !== APP_BUILD) {
+      localStorage.setItem('pkb-app-build', APP_BUILD);
+      if ('caches' in window) {
+        caches.keys().then(function(keys) {
+          return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+        }).then(function() { window.location.reload(); });
+      } else {
+        window.location.reload();
+      }
+      return;
+    }
+    if (!prev) localStorage.setItem('pkb-app-build', APP_BUILD);
+  } catch (_e) {}
+}
+
 window.addEventListener('DOMContentLoaded', function() {
+  ensureAppBuildFresh();
   var needDataMigration = false;
   try {
     needDataMigration = localStorage.getItem(DATA_VERSION_KEY) !== CURRENT_DATA_VERSION;
@@ -2971,9 +2994,16 @@ function saveState() {
 
 function registerSW() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').then(function(reg) {
+    var reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+      if (reloaded) return;
+      reloaded = true;
+      window.location.reload();
+    });
+    navigator.serviceWorker.register('/sw.js?v=' + APP_BUILD).then(function(reg) {
       swRegistration = reg;
       subscribeToPush(reg);
+      reg.update();
     }).catch(function(){});
   }
 }
@@ -4395,16 +4425,24 @@ var PASSPORT_ID_BY_LABEL = {
   'Паспорт ГАЗ 01.': 'gaz-01',
   'Паспорт ГРУЗ 01.': 'gruz-01'
 };
-var PASSPORT_JSON_VERSION = 'v7';
+var APP_BUILD = 'pkb-v183';
+var PASSPORT_JSON_VERSION = 'v8';
 var _passportCache = {};
+try {
+  var _pv = localStorage.getItem('pkb-passport-ver');
+  if (_pv !== PASSPORT_JSON_VERSION) {
+    _passportCache = {};
+    localStorage.setItem('pkb-passport-ver', PASSPORT_JSON_VERSION);
+  }
+} catch (_e) {}
 var _passportActive = null;
 var _passportChecklistIdx = null;
 var _passportChecklistResizeBound = false;
 
-function loadPassportJson(id) {
+function loadPassportJson(id, force) {
   var cacheKey = id + ':' + PASSPORT_JSON_VERSION;
-  if (_passportCache[cacheKey]) return Promise.resolve(_passportCache[cacheKey]);
-  return fetch('/passports/' + id + '.json?v=' + PASSPORT_JSON_VERSION)
+  if (!force && _passportCache[cacheKey]) return Promise.resolve(_passportCache[cacheKey]);
+  return fetch('/passports/' + id + '.json?v=' + PASSPORT_JSON_VERSION, { cache: 'no-store' })
     .then(function(r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
@@ -4680,6 +4718,8 @@ function renderPassportAppendixContent(bodyEl, content) {
       if (row.text) {
         var tx = document.createElement('div');
         tx.className = 'passport-appendix-excel-text';
+        if (row.bold) tx.style.fontWeight = '700';
+        if (row.align === 'center') tx.style.textAlign = 'center';
         tx.textContent = row.text;
         block.appendChild(tx);
       }
@@ -4837,19 +4877,25 @@ function renderPassportAppendixContent(bodyEl, content) {
 
 function openPassportAppendix(id) {
   if (!_passportActive || !_passportActive.data) return;
-  var data = _passportActive.data;
-  var app = findPassportAppendix(data, id);
-  if (!app) return;
-  var titleEl = document.getElementById('passport-appendix-title');
-  var bodyEl = document.getElementById('passport-appendix-body');
-  if (!bodyEl) return;
-  bodyEl.innerHTML = '';
-  var content = app.content || {};
-  if (titleEl) titleEl.textContent = app.label || content.title || ('Приложение ' + app.id);
-  renderPassportAppendixContent(bodyEl, content);
-  var scrollEl = document.getElementById('passport-appendix-body');
-  if (scrollEl) scrollEl.scrollTop = 0;
-  showScreen('screen-passport-appendix');
+  var passportId = _passportActive.data.id;
+  loadPassportJson(passportId, true).then(function(data) {
+    _passportActive.data = data;
+    var app = findPassportAppendix(data, id);
+    if (!app) return;
+    var titleEl = document.getElementById('passport-appendix-title');
+    var bodyEl = document.getElementById('passport-appendix-body');
+    if (!bodyEl) return;
+    bodyEl.innerHTML = '';
+    bodyEl.setAttribute('data-passport-layout', (app.content && app.content.layout) || '');
+    bodyEl.setAttribute('data-passport-ver', PASSPORT_JSON_VERSION);
+    var content = app.content || {};
+    if (titleEl) titleEl.textContent = app.label || ('Приложение ' + app.id);
+    renderPassportAppendixContent(bodyEl, content);
+    bodyEl.scrollTop = 0;
+    showScreen('screen-passport-appendix');
+  }).catch(function(e) {
+    alert('Не удалось загрузить приложение: ' + e.message);
+  });
 }
 
 function backFromPassportDetail() {
