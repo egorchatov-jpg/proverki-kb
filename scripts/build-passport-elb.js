@@ -13,9 +13,8 @@ const IMG_DIR = path.join(__dirname, '../passports/elb-01/img');
 const IMG_URL = 'passports/elb-01/img/';
 const APPENDIX_IMAGE_SCRIPTS = [
   path.join(__dirname, 'build-elb-appendix-161-image.js'),
-  path.join(__dirname, 'build-elb-appendix-12-image.js'),
 ];
-const KEEP_IMAGES = ['appendix-161.jpg', 'appendix-12.jpg'];
+const KEEP_IMAGES = ['appendix-161.jpg'];
 
 (async function() {
   const wb = new ExcelJS.Workbook();
@@ -50,17 +49,6 @@ const KEEP_IMAGES = ['appendix-161.jpg', 'appendix-12.jpg'];
         layout: 'imagePage',
         images: fs.existsSync(path.join(IMG_DIR, 'appendix-161.jpg'))
           ? [IMG_URL + 'appendix-161.jpg']
-          : [],
-      },
-    },
-    {
-      id: '1.2',
-      label: 'Приложение 1.2.',
-      sheet: 'Приложение 1.2.',
-      content: {
-        layout: 'imagePage',
-        images: fs.existsSync(path.join(IMG_DIR, 'appendix-12.jpg'))
-          ? [IMG_URL + 'appendix-12.jpg']
           : [],
       },
     },

@@ -430,15 +430,6 @@
           "passports/elb-01/img/appendix-161.jpg"
         ]
       }
-    },
-    {
-      "id": "1.2",
-      "label": "Приложение 1.2.",
-      "sheet": "Приложение 1.2.",
-      "content": {
-        "layout": "imagePage",
-        "images": []
-      }
     }
   ]
 }
