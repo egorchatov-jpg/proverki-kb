@@ -922,6 +922,17 @@ html, body {
   flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
   padding: 8px 16px 16px; width: 100%; box-sizing: border-box;
 }
+.passport-appendix-scroll--image {
+  padding-left: 0; padding-right: 0; padding-top: 0;
+}
+.passport-appendix-image-page {
+  width: 100%; margin: 0; padding: 0; line-height: 0;
+}
+.passport-appendix-page-img {
+  width: 100%; max-width: 100%; height: auto;
+  display: block; margin: 0; padding: 0; border: none;
+  border-radius: 0; box-sizing: border-box;
+}
 .passport-appendix-list-title {
   font-size: 15px; font-weight: 700; color: #1a2035;
   margin-bottom: 10px; line-height: 1.4;
@@ -4480,8 +4491,8 @@ var PASSPORT_ID_BY_LABEL = {
   'Паспорт ГАЗ 01.': 'gaz-01',
   'Паспорт ГРУЗ 01.': 'gruz-01'
 };
-var APP_BUILD = 'pkb-v188';
-var PASSPORT_JSON_VERSION = 'v13';
+var APP_BUILD = 'pkb-v189';
+var PASSPORT_JSON_VERSION = 'v14';
 var _passportCache = {};
 try {
   var _pv = localStorage.getItem('pkb-passport-ver');
@@ -4808,6 +4819,7 @@ function renderPassportAppendixContent(bodyEl, content) {
     return;
   }
   if (content.layout === 'imagePage') {
+    bodyEl.classList.add('passport-appendix-scroll--image');
     var page = document.createElement('div');
     page.className = 'passport-appendix-image-page';
     var ver = PASSPORT_JSON_VERSION;
@@ -4818,11 +4830,13 @@ function renderPassportAppendixContent(bodyEl, content) {
       img.src = path + (path.indexOf('?') >= 0 ? '&' : '?') + 'v=' + ver;
       img.alt = '';
       img.loading = 'lazy';
+      img.decoding = 'async';
       page.appendChild(img);
     });
     bodyEl.appendChild(page);
     return;
   }
+  bodyEl.classList.remove('passport-appendix-scroll--image');
   if (content.layout === 'excelGrid') {
     var table = document.createElement('table');
     table.className = 'passport-excel-grid' + (content.gridKind === 'numTable' ? ' passport-excel-grid--numtable' : '') + (content.gridKind === 'sheet12' ? ' passport-excel-grid--sheet12' : '');
@@ -5042,6 +5056,7 @@ function openPassportAppendix(id) {
     var bodyEl = document.getElementById('passport-appendix-body');
     if (!bodyEl) return;
     bodyEl.innerHTML = '';
+    bodyEl.classList.remove('passport-appendix-scroll--image');
     bodyEl.setAttribute('data-passport-layout', (app.content && app.content.layout) || '');
     bodyEl.setAttribute('data-passport-ver', PASSPORT_JSON_VERSION);
     var content = app.content || {};
