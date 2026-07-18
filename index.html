@@ -815,6 +815,8 @@ html, body {
 #screen-export,
 #screen-barriers-years,
 #screen-barriers-list,
+#screen-passports-years,
+#screen-passports-list,
 #screen-methods, #screen-orgs,
 #screen-meropr-menu, #screen-corrective-list, #screen-corrective-edit, #screen-sokb-list, #screen-sokb-edit { background: var(--bg); }
 
@@ -846,6 +848,15 @@ html, body {
 }
 .settings-wide-btn:active { opacity: 0.75; }
 .is-win .settings-wide-btn { width: calc((100vw - 48px) / 3); }
+.settings-orange-btn {
+  width: 100%; padding: 16px 20px;
+  background: var(--orange); color: #fff;
+  font-size: 16px; font-weight: 600;
+  border: none; border-radius: 14px; cursor: pointer; text-align: center;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+}
+.settings-orange-btn:active { opacity: 0.75; }
+.is-win .settings-orange-btn { width: calc((100vw - 48px) / 3); }
 .restore-point-btn {
   width: 100%; padding: 16px 20px;
   background: var(--gray-btn); color: #fff;
@@ -1531,6 +1542,7 @@ html, body {
   <div class="settings-screen-title">Настройки</div>
   <div class="settings-screen-body">
     <button class="settings-wide-btn" onclick="openExportScreen()">Выгрузить проверки КБ</button>
+    <button class="settings-wide-btn" onclick="openPassportsKBYearsScreen()">Паспорта КБ</button>
     <button class="settings-wide-btn" onclick="openBarriersPKYearsScreen()">Барьеры ПК</button>
     <button class="settings-wide-btn" onclick="openMethodsScreen()">Методы проверок</button>
     <button class="settings-wide-btn" onclick="openOrgsScreen()">Проверяемые организации</button>
@@ -1549,6 +1561,24 @@ html, body {
   <div class="settings-screen-body" id="export-year-list"></div>
   <div class="settings-footer">
     <button class="screen-back-btn" onclick="showScreen('screen-settings')">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: ПАСПОРТА КБ — ВЫБОР ГОДА ===== -->
+<div class="screen" id="screen-passports-years">
+  <div class="settings-screen-title">Паспорта КБ</div>
+  <div class="settings-screen-body" id="passports-year-list"></div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="backFromPassportsYearsScreen()">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: ПАСПОРТА КБ — СПИСОК ===== -->
+<div class="screen" id="screen-passports-list">
+  <div class="settings-screen-title" id="passports-list-title">Паспорта КБ</div>
+  <div class="settings-screen-body" id="passports-list-body"></div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="backFromPassportsList()">Назад</button>
   </div>
 </div>
 
@@ -2238,7 +2268,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-passports-years', 'screen-passports-list', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -2393,6 +2423,14 @@ function requestPushPermission() {
 }
 
 // ===== APP STATE =====
+var PASSPORTS_KB_BUTTONS = [
+  'Паспорт ГАЗ 01.',
+  'Паспорт ГРУЗ 01.',
+  'Паспорт ДТП 01.',
+  'Паспорт РВ 01.',
+  'Паспорт ЭЛБ 01.'
+];
+
 var BARRIERS_PASSPORT_GROUPS = [
   { passport: 'Пожары/ взрывы', barriers: ['ВЗР.02', 'ВЗР.03', 'ВЗР.08', 'ВЗР.13', 'ВЗР.18', 'ПАЗ.01', 'ПАЗ.02', 'ПАЗ.03', 'ЧС.01'] },
   { passport: 'Происшествия, обусловленные  присутствием взрывоопасных, токсичных и инертных газовоздушных сред', barriers: ['ГАЗ.01', 'ГАЗ.02', 'ГАЗ.03', 'ГАЗ.04', 'ГАЗ.05', 'ГАЗ.06', 'ГАЗ.07', 'ГАЗ.11', 'ГАЗ.12', 'ГАЗ.13'] },
@@ -3884,6 +3922,95 @@ function saveNewMethod() {
   document.getElementById('method-new-row').style.display = 'none';
   renderMethodsTable();
   markMethodsDirty();
+}
+
+function openPassportsKBYearsScreen() {
+  renderPassportsYearList();
+  showScreen('screen-passports-years');
+}
+
+function backFromPassportsYearsScreen() {
+  if (isSettingsDirty()) syncSettingsToServer();
+  showScreen('screen-settings');
+}
+
+function renderPassportsYearList() {
+  var years = getBarriersYears();
+  var list = document.getElementById('passports-year-list');
+  list.innerHTML = '';
+  years.forEach(function(year) {
+    var btn = document.createElement('button');
+    btn.className = 'year-action-btn';
+    btn.textContent = year;
+    btn.onclick = function() { openPassportsList(year); };
+    list.appendChild(btn);
+  });
+  var actionRow = document.createElement('div');
+  actionRow.className = 'methods-action-row';
+  actionRow.style.flexShrink = '0';
+  var minusBtn = document.createElement('button');
+  minusBtn.className = 'method-sq-btn minus';
+  minusBtn.id = 'passports-year-minus';
+  minusBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+  minusBtn.onclick = removePassportsYear;
+  var plusBtn = document.createElement('button');
+  plusBtn.className = 'method-sq-btn plus';
+  plusBtn.id = 'passports-year-plus';
+  plusBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+  plusBtn.onclick = addPassportsYear;
+  actionRow.appendChild(minusBtn);
+  actionRow.appendChild(plusBtn);
+  list.appendChild(actionRow);
+  updatePassportsYearBtns();
+}
+
+function updatePassportsYearBtns() {
+  var years = getBarriersYears();
+  var currentYear = new Date().getFullYear();
+  var maxYear = years.length ? +years[0] : currentYear;
+  var minusBtn = document.getElementById('passports-year-minus');
+  var plusBtn = document.getElementById('passports-year-plus');
+  if (plusBtn) plusBtn.disabled = maxYear >= 2050;
+  if (minusBtn) minusBtn.disabled = maxYear <= currentYear;
+}
+
+function addPassportsYear() {
+  addBarriersYear();
+  renderPassportsYearList();
+}
+
+function removePassportsYear() {
+  removeBarriersYear();
+  renderPassportsYearList();
+}
+
+var _passportsYear = null;
+
+function openPassportsList(year) {
+  _passportsYear = year;
+  document.getElementById('passports-list-title').textContent = 'Паспорта КБ — ' + year;
+  renderPassportsList(year);
+  showScreen('screen-passports-list');
+}
+
+function renderPassportsList(year) {
+  var body = document.getElementById('passports-list-body');
+  body.innerHTML = '';
+  PASSPORTS_KB_BUTTONS.forEach(function(label) {
+    var btn = document.createElement('button');
+    btn.className = 'settings-orange-btn';
+    btn.textContent = label;
+    btn.onclick = function() { openPassportKBDetail(year, label); };
+    body.appendChild(btn);
+  });
+}
+
+function openPassportKBDetail(year, label) {
+  // Placeholder — behavior will be defined in the next step
+}
+
+function backFromPassportsList() {
+  showScreen('screen-passports-years');
 }
 
 function openBarriersPKYearsScreen() {
