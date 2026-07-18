@@ -954,32 +954,54 @@ html, body {
 .passport-checklist-scroll {
   flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
   width: 100%;
+  --checklist-criterion-top: 72px;
 }
 .passport-checklist-scroll .settings-screen-title {
   padding-bottom: 8px;
 }
-.passport-checklist-barrier-sticky {
+.passport-checklist-barrier-wrap {
   position: sticky; top: 0; z-index: 2;
-  margin: 0 16px 10px; padding: 10px 12px;
+  padding: 0 16px 10px;
+  background: var(--bg);
+  pointer-events: none;
+}
+.passport-checklist-barrier-wrap::after {
+  content: '';
+  display: block;
+  height: 14px;
+  margin-top: -4px;
+  background: radial-gradient(ellipse 78% 100% at 50% 0%, var(--bg) 35%, transparent 100%);
+  pointer-events: none;
+}
+.passport-checklist-barrier-sticky {
+  position: relative;
+  margin: 0; padding: 10px 12px;
   background: var(--navy); color: #fff;
   font-size: 14px; font-weight: 600; line-height: 1.35;
   text-align: left; border-radius: 14px;
   box-shadow: 0 2px 8px rgba(27, 58, 107, 0.25);
+  pointer-events: auto;
 }
 .passport-checklist-body {
   padding: 0 16px 12px;
+  position: relative; z-index: 0;
 }
 .passport-criterion-block { margin-bottom: 10px; }
 .passport-criterion-label {
+  position: sticky;
+  top: var(--checklist-criterion-top);
+  z-index: 1;
   padding: 10px 12px;
+  margin-bottom: 8px;
   background: #4a6fa5; color: #fff;
   font-size: 13px; font-weight: 600; line-height: 1.35;
-  text-align: left; border-radius: 14px 14px 0 0;
+  text-align: left; border-radius: 14px;
+  box-shadow: 0 2px 6px rgba(74, 111, 165, 0.22);
 }
 .passport-checklist-questions {
   background: #e3ecf8;
   padding: 10px 12px 12px;
-  border-radius: 0 0 14px 14px;
+  border-radius: 14px;
 }
 .passport-checklist-question {
   font-size: 13px; line-height: 1.45; color: #1a2035;
@@ -1731,9 +1753,11 @@ html, body {
 
 <!-- ===== SCREEN: ПАСПОРТ КБ — ЧЕК-ЛИСТ БАРЬЕРА ===== -->
 <div class="screen" id="screen-passport-checklist">
-  <div class="passport-checklist-scroll">
+  <div class="passport-checklist-scroll" id="passport-checklist-scroll">
     <div class="settings-screen-title" id="passport-checklist-sheet-title"></div>
-    <div class="passport-checklist-barrier-sticky" id="passport-checklist-barrier"></div>
+    <div class="passport-checklist-barrier-wrap" id="passport-checklist-barrier-wrap">
+      <div class="passport-checklist-barrier-sticky" id="passport-checklist-barrier"></div>
+    </div>
     <div class="passport-checklist-body" id="passport-checklist-body"></div>
   </div>
   <div class="settings-footer">
@@ -4277,10 +4301,11 @@ function renderPassportsList(year) {
 var PASSPORT_ID_BY_LABEL = {
   'Паспорт ГАЗ 01.': 'gaz-01'
 };
-var PASSPORT_JSON_VERSION = 'v2';
+var PASSPORT_JSON_VERSION = 'v3';
 var _passportCache = {};
 var _passportActive = null;
 var _passportChecklistIdx = null;
+var _passportChecklistResizeBound = false;
 
 function loadPassportJson(id) {
   var cacheKey = id + ':' + PASSPORT_JSON_VERSION;
@@ -4388,6 +4413,13 @@ function openPassportChecklist(barrierIdx) {
   renderPassportChecklistScreen(b);
 }
 
+function updatePassportChecklistStickyOffset() {
+  var wrap = document.getElementById('passport-checklist-barrier-wrap');
+  var scroll = document.getElementById('passport-checklist-scroll');
+  if (!wrap || !scroll) return;
+  scroll.style.setProperty('--checklist-criterion-top', wrap.offsetHeight + 'px');
+}
+
 function renderPassportChecklistScreen(barrier) {
   var data = _passportActive.data;
   var titleEl = document.getElementById('passport-checklist-sheet-title');
@@ -4415,8 +4447,15 @@ function renderPassportChecklistScreen(barrier) {
     block.appendChild(qWrap);
     bodyEl.appendChild(block);
   });
-  var scrollEl = document.querySelector('#screen-passport-checklist .passport-checklist-scroll');
+  var scrollEl = document.getElementById('passport-checklist-scroll');
   if (scrollEl) scrollEl.scrollTop = 0;
+  requestAnimationFrame(function() {
+    updatePassportChecklistStickyOffset();
+  });
+  if (!_passportChecklistResizeBound) {
+    _passportChecklistResizeBound = true;
+    window.addEventListener('resize', updatePassportChecklistStickyOffset);
+  }
 }
 
 function backFromPassportChecklist() {
