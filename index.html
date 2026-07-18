@@ -372,7 +372,10 @@ html, body {
 .card-btn-cancel { background: var(--gray-btn-dark); }
 .card-btn-submit { background: var(--orange); }
 .card-btn-submit:disabled { opacity: 0.4; pointer-events: none; }
-.field-barrier-col { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+#field-wrap-barrier { align-items: flex-start; }
+#field-wrap-barrier > .field-label { align-self: center; }
+.field-wrap-checklist { padding-top: 0; margin-top: -2px; }
+.field-label-spacer { visibility: hidden; pointer-events: none; }
 .card-checklist-btn {
   width: 100%; min-height: 36px; padding: 6px 10px;
   border: none; border-radius: 10px;
@@ -407,6 +410,12 @@ html, body {
 .card-checklist-question.violation { color: var(--red); font-weight: 600; }
 .card-checklist-criterion { margin-bottom: 10px; }
 #overlay-checklist-violation .method-new-row { padding: 0; margin-top: 8px; }
+.checklist-violation-question {
+  font-size: 13px; line-height: 1.45; color: #1a2035;
+  text-align: left; margin: 8px 0 4px;
+  white-space: pre-wrap; word-break: break-word;
+}
+.card-checklist-question .passport-appendix-link { position: relative; z-index: 1; }
 #val-desc .checklist-desc-line { margin-bottom: 6px; }
 #val-desc .checklist-desc-line:last-child { margin-bottom: 0; }
 
@@ -1797,12 +1806,13 @@ html, body {
 
       <div class="field-wrap" id="field-wrap-barrier">
         <div class="field-label">Проверяемый барьер</div>
-        <div class="field-barrier-col">
-          <div class="field-cell" id="cell-barrier" onclick="openDrumBarrier()">
-            <span class="placeholder" id="val-barrier">Выбрать</span>
-          </div>
-          <button type="button" class="card-checklist-btn" id="btn-card-checklist" hidden onclick="openCardChecklistScreen()">Заполнить чек-лист</button>
+        <div class="field-cell" id="cell-barrier" onclick="openDrumBarrier()">
+          <span class="placeholder" id="val-barrier">Выбрать</span>
         </div>
+      </div>
+      <div class="field-wrap field-wrap-checklist" id="field-wrap-checklist-btn" hidden>
+        <div class="field-label field-label-spacer">Проверяемый барьер</div>
+        <button type="button" class="card-checklist-btn" id="btn-card-checklist" onclick="openCardChecklistScreen()">Заполнить чек-лист</button>
       </div>
 
       <div class="field-wrap">
@@ -1944,6 +1954,7 @@ html, body {
 <div class="overlay" id="overlay-checklist-violation">
   <div class="overlay-box">
     <div class="overlay-title">Внесите описание нарушения</div>
+    <div class="checklist-violation-question" id="checklist-violation-question"></div>
     <div class="method-new-row">
       <input class="method-new-input" id="checklist-violation-input" type="text" inputmode="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
       <button type="button" class="method-cancel-btn" onclick="closeChecklistViolationOverlay()">
@@ -4112,14 +4123,15 @@ function openCardForEdit(r) {
     cardData.descFromChecklist = true;
     _cardChecklistQuestionTexts = r.checklistQuestionTexts ? Object.assign({}, r.checklistQuestionTexts) : {};
     lockWorksCell();
+    lockDescCell();
     if (r.works === 'Нет' && r.desc) {
       var descEl = document.getElementById('val-desc');
       if (descEl) {
         descEl.innerHTML = buildChecklistDescHtml(cardData.checklistViolations, _cardChecklistQuestionTexts);
         descEl.classList.remove('placeholder');
       }
-      setDimmed('desc', false);
     }
+    setCardChecklistButtonLabel();
   } else {
     clearCardChecklistState();
   }
@@ -4162,8 +4174,7 @@ function resetCard() {
   setDimmed('desc', true);
   updateCardDescEditable(true);
   unlockWorksCell();
-  var clBtn = document.getElementById('btn-card-checklist');
-  if (clBtn) clBtn.hidden = true;
+  setCardChecklistButtonVisible(false);
   updateValidation();
 }
 
@@ -4700,7 +4711,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v206';
+var APP_BUILD = 'pkb-v207';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -4949,7 +4960,10 @@ function fillPassportTextWithAppendixLinks(container, text, appendixIdSet, retur
       link.className = 'passport-appendix-link';
       link.textContent = fullMatch;
       bindUiTap(link, function(id) {
-        return function() { openPassportAppendix(id, appendixReturn); };
+        return function(e) {
+          if (e && e.stopPropagation) e.stopPropagation();
+          openPassportAppendix(id, appendixReturn);
+        };
       }(refId));
       container.appendChild(link);
     } else {
@@ -8006,7 +8020,9 @@ function clearCardChecklistState() {
   cardData.descFromChecklist = false;
   _cardChecklistMatch = null;
   unlockWorksCell();
+  unlockDescCell();
   updateCardDescEditable(true);
+  setCardChecklistButtonLabel();
 }
 
 function unlockWorksCell() {
@@ -8025,6 +8041,38 @@ function lockWorksCell() {
   }
 }
 
+function lockDescCell() {
+  var cell = document.getElementById('cell-desc');
+  var lbl = document.getElementById('lbl-desc');
+  if (cell) {
+    cell.classList.add('dimmed');
+    cell.removeAttribute('onclick');
+  }
+  if (lbl) lbl.classList.add('dimmed');
+}
+
+function unlockDescCell() {
+  var cell = document.getElementById('cell-desc');
+  var lbl = document.getElementById('lbl-desc');
+  if (cell) {
+    cell.classList.remove('dimmed');
+    cell.setAttribute('onclick', 'openDescOverlay()');
+  }
+  if (lbl) lbl.classList.remove('dimmed');
+}
+
+function setCardChecklistButtonLabel() {
+  var btn = document.getElementById('btn-card-checklist');
+  if (!btn) return;
+  btn.textContent = cardData.checklistFilled ? 'Чек-лист' : 'Заполнить чек-лист';
+}
+
+function setCardChecklistButtonVisible(visible) {
+  var wrap = document.getElementById('field-wrap-checklist-btn');
+  if (wrap) wrap.hidden = !visible;
+  setCardChecklistButtonLabel();
+}
+
 function updateCardDescEditable(editable) {
   var cell = document.getElementById('cell-desc');
   if (!cell) return;
@@ -8036,17 +8084,15 @@ function updateCardDescEditable(editable) {
 }
 
 function updateCardChecklistButton() {
-  var btn = document.getElementById('btn-card-checklist');
-  if (!btn) return;
   var barrier = cardData.barrier;
   if (!barrier || barrier === 'Выбрать') {
-    btn.hidden = true;
+    setCardChecklistButtonVisible(false);
     _cardChecklistMatch = null;
     return;
   }
   findPassportBarrierForName(barrier).then(function(match) {
     _cardChecklistMatch = match;
-    btn.hidden = !match;
+    setCardChecklistButtonVisible(!!match);
   });
 }
 
@@ -8082,11 +8128,9 @@ function buildChecklistDescPlain(violations, questionTexts) {
   });
   if (!items.length) return '';
   items.sort(function(a, b) { return a.key.localeCompare(b.key, 'ru'); });
-  var n = items.length;
-  var lines = items.map(function(item) {
+  return items.map(function(item) {
     return item.prefix + ' ' + item.desc;
-  });
-  return '(' + n + ' ' + violationCountWord(n) + '):\n"' + lines.join(';\n\n') + '"';
+  }).join(';\n\n');
 }
 
 function buildChecklistDescHtml(violations, questionTexts) {
@@ -8099,11 +8143,9 @@ function buildChecklistDescHtml(violations, questionTexts) {
   });
   if (!items.length) return '';
   items.sort(function(a, b) { return a.key.localeCompare(b.key, 'ru'); });
-  var n = items.length;
-  var lines = items.map(function(item) {
+  return items.map(function(item) {
     return '<span class="checklist-desc-line"><strong>' + escapeHtmlText(item.prefix) + '</strong> ' + escapeHtmlText(item.desc) + '</span>';
-  });
-  return '(' + n + ' ' + violationCountWord(n) + '):<br>"' + lines.join('<br><br>') + '"';
+  }).join('<br><br>');
 }
 
 function applyChecklistToCardFields(violations, questionTexts) {
@@ -8125,15 +8167,16 @@ function applyChecklistToCardFields(violations, questionTexts) {
       el.innerHTML = htmlDesc;
       el.classList.remove('placeholder');
     }
-    setDimmed('desc', false);
+    lockDescCell();
     updateCardDescEditable(false);
   } else {
     cardData.desc = '';
     var el2 = document.getElementById('val-desc');
     if (el2) { el2.textContent = '—'; el2.classList.add('placeholder'); }
-    setDimmed('desc', true);
+    lockDescCell();
     updateCardDescEditable(false);
   }
+  setCardChecklistButtonLabel();
   updateValidation();
 }
 
@@ -8173,7 +8216,11 @@ function renderCardChecklistScreen() {
       if (violations[qKey]) qEl.classList.add('violation');
       fillPassportTextWithAppendixLinks(qEl, q, appendixIdSet, 'screen-card-checklist');
       bindUiTap(qEl, function(key) {
-        return function() { openChecklistViolationOverlay(key); };
+        return function(e) {
+          var t = e && e.target;
+          if (t && t.closest && t.closest('.passport-appendix-link')) return;
+          openChecklistViolationOverlay(key);
+        };
       }(qKey));
       block.appendChild(qEl);
     });
@@ -8229,14 +8276,15 @@ function cancelCardChecklist() {
           el.innerHTML = buildChecklistDescHtml(cardData.checklistViolations || {}, _cardChecklistQuestionTexts);
           el.classList.remove('placeholder');
         }
-        setDimmed('desc', false);
+        lockDescCell();
         updateCardDescEditable(false);
       } else {
         var el2 = document.getElementById('val-desc');
         if (el2) { el2.textContent = '—'; el2.classList.add('placeholder'); }
-        setDimmed('desc', true);
+        lockDescCell();
         updateCardDescEditable(false);
       }
+      setCardChecklistButtonLabel();
     } else {
       var el3 = document.getElementById('val-desc');
       if (el3) {
@@ -8264,7 +8312,9 @@ function applyCardChecklist() {
 function openChecklistViolationOverlay(qKey) {
   _cardChecklistViolationKey = qKey;
   var inp = document.getElementById('checklist-violation-input');
+  var qEl = document.getElementById('checklist-violation-question');
   var violations = cardData.checklistViolations || {};
+  if (qEl) qEl.textContent = _cardChecklistQuestionTexts[qKey] || '';
   if (inp) inp.value = violations[qKey] || '';
   document.getElementById('overlay-checklist-violation').classList.add('active');
   setTimeout(function() { if (inp) inp.focus(); }, 300);
@@ -8313,14 +8363,15 @@ function restoreCardChecklistFromRecord(r) {
       });
     }
     lockWorksCell();
+    lockDescCell();
     updateCardDescEditable(false);
+    setCardChecklistButtonLabel();
     if (r.works === 'Нет' && r.desc) {
       var el = document.getElementById('val-desc');
       if (el) {
         el.innerHTML = buildChecklistDescHtml(cardData.checklistViolations, _cardChecklistQuestionTexts);
         el.classList.remove('placeholder');
       }
-      setDimmed('desc', false);
     }
   });
 }
