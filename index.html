@@ -817,6 +817,9 @@ html, body {
 #screen-barriers-list,
 #screen-passports-years,
 #screen-passports-list,
+#screen-passport-detail,
+#screen-passport-mub,
+#screen-passport-appendix,
 #screen-methods, #screen-orgs,
 #screen-meropr-menu, #screen-corrective-list, #screen-corrective-edit, #screen-sokb-list, #screen-sokb-edit { background: var(--bg); }
 
@@ -848,15 +851,93 @@ html, body {
 }
 .settings-wide-btn:active { opacity: 0.75; }
 .is-win .settings-wide-btn { width: calc((100vw - 48px) / 3); }
-.settings-orange-btn {
+.settings-navy-btn {
   width: 100%; padding: 16px 20px;
-  background: var(--orange); color: #fff;
+  background: var(--navy); color: #fff;
   font-size: 16px; font-weight: 600;
   border: none; border-radius: 14px; cursor: pointer; text-align: center;
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
 }
-.settings-orange-btn:active { opacity: 0.75; }
-.is-win .settings-orange-btn { width: calc((100vw - 48px) / 3); }
+.settings-navy-btn:active { opacity: 0.75; }
+.is-win .settings-navy-btn { width: calc((100vw - 48px) / 3); }
+.passport-detail-scroll {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 8px 16px 12px; width: 100%; box-sizing: border-box;
+}
+.passport-detail-inner { width: 100%; max-width: 100%; }
+.passport-barrier-row {
+  display: flex; align-items: stretch; gap: 8px;
+  width: 100%; margin-bottom: 8px;
+}
+.passport-barrier-btn {
+  flex: 1; min-width: 0;
+  height: calc(3 * 1.35 * 14px + 20px);
+  padding: 10px 12px;
+  background: var(--navy); color: #fff;
+  font-size: 14px; font-weight: 600; line-height: 1.35;
+  text-align: left; overflow: hidden;
+  border: none; border-radius: 14px; cursor: pointer;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+}
+.passport-barrier-btn:active { opacity: 0.78; }
+.passport-mub-btn {
+  flex-shrink: 0; width: 58px;
+  height: calc(3 * 1.35 * 14px + 20px);
+  padding: 10px 6px;
+  background: var(--gray-btn); color: #fff;
+  font-size: 14px; font-weight: 700;
+  border: none; border-radius: 14px; cursor: pointer;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+}
+.passport-mub-btn:active { opacity: 0.78; }
+.passport-appendix-btn {
+  width: 100%; padding: 16px 20px; margin-top: 4px;
+  background: var(--gray-btn); color: #fff;
+  font-size: 16px; font-weight: 600;
+  border: none; border-radius: 14px; cursor: pointer; text-align: center;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+}
+.passport-appendix-btn:active { opacity: 0.75; }
+.passport-mub-scroll {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 12px 16px 16px;
+}
+.passport-mub-text {
+  font-size: 14px; line-height: 1.45; color: #1a2035;
+  white-space: pre-wrap; word-break: break-word;
+}
+.passport-appendix-scroll {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 8px 16px 16px; width: 100%; box-sizing: border-box;
+}
+.passport-appendix-list-title {
+  font-size: 15px; font-weight: 700; color: #1a2035;
+  margin-bottom: 10px; line-height: 1.4;
+}
+.passport-appendix-list {
+  margin: 0 0 14px 0; padding-left: 22px;
+  font-size: 14px; line-height: 1.45; color: #1a2035;
+}
+.passport-appendix-list li { margin-bottom: 4px; }
+.passport-appendix-footnote {
+  font-size: 13px; line-height: 1.45; color: var(--text2);
+  white-space: pre-wrap;
+}
+.passport-appendix-table {
+  width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.4;
+}
+.passport-appendix-table th,
+.passport-appendix-table td {
+  border: 1px solid var(--border); padding: 8px 10px;
+  vertical-align: top; text-align: left;
+}
+.passport-appendix-table th {
+  background: #eef1f7; font-weight: 700; color: #1a2035;
+}
+.passport-appendix-exceptions {
+  margin-top: 14px; font-size: 13px; line-height: 1.45; color: #1a2035;
+  white-space: pre-wrap;
+}
 .restore-point-btn {
   width: 100%; padding: 16px 20px;
   background: var(--gray-btn); color: #fff;
@@ -874,11 +955,11 @@ html, body {
   text-align: center; color: var(--text2); font-size: 14px; padding: 24px 0;
 }
 #overlay-restore-confirm .overlay-title { text-align: center; line-height: 1.4; }
-/* Orange year action button — same width as a single nav-btn */
+/* Navy year action button — same width as a single nav-btn */
 .year-action-btn {
   width: calc((100vw - 48px) / 3);
   height: 53px;
-  background: var(--orange); color: #fff;
+  background: var(--navy); color: #fff;
   font-size: 16px; font-weight: 700;
   border: none; border-radius: var(--btn-radius); cursor: pointer;
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
@@ -895,6 +976,13 @@ html, body {
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
 }
 .screen-back-btn:active { opacity: 0.78; }
+.settings-footer-dual {
+  display: none;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
 .screen-save-btn {
   width: calc((100vw - 48px) / 3);
   height: 53px;
@@ -1582,6 +1670,37 @@ html, body {
   </div>
 </div>
 
+<!-- ===== SCREEN: ПАСПОРТ КБ — БАРЬЕРЫ ===== -->
+<div class="screen" id="screen-passport-detail">
+  <div class="settings-screen-title" id="passport-detail-title"></div>
+  <div class="passport-detail-scroll">
+    <div class="passport-detail-inner" id="passport-detail-body"></div>
+  </div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="backFromPassportDetail()">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: ПАСПОРТ КБ — МУБ ===== -->
+<div class="screen" id="screen-passport-mub">
+  <div class="settings-screen-title" id="passport-mub-title"></div>
+  <div class="passport-mub-scroll">
+    <div class="passport-mub-text" id="passport-mub-body"></div>
+  </div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="backFromPassportMub()">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: ПАСПОРТ КБ — ПРИЛОЖЕНИЕ ===== -->
+<div class="screen" id="screen-passport-appendix">
+  <div class="settings-screen-title" id="passport-appendix-title">Приложение</div>
+  <div class="passport-appendix-scroll" id="passport-appendix-body"></div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="backFromPassportAppendix()">Назад</button>
+  </div>
+</div>
+
 <!-- ===== SCREEN: БАРЬЕРЫ ПК — ВЫБОР ГОДА ===== -->
 <div class="screen" id="screen-barriers-years">
   <div class="settings-screen-title">Отметьте барьеры Каркаса Безопасности, вошедшие в производственный контракт</div>
@@ -1633,7 +1752,11 @@ html, body {
     </button>
   </div>
   <div class="settings-footer">
-    <button class="screen-back-btn" onclick="backFromBarriersList()">Назад</button>
+    <button class="screen-back-btn settings-footer-single" onclick="backFromBarriersList()">Назад</button>
+    <div class="settings-footer-dual">
+      <button class="screen-back-btn" onclick="cancelBarriersListChanges()">Отмена</button>
+      <button class="screen-save-btn" onclick="backFromBarriersList()">Готово</button>
+    </div>
   </div>
 </div>
 
@@ -1671,7 +1794,11 @@ html, body {
     </button>
   </div>
   <div class="settings-footer">
-    <button class="screen-back-btn" onclick="backFromMethodsScreen()">Назад</button>
+    <button class="screen-back-btn settings-footer-single" onclick="backFromMethodsScreen()">Назад</button>
+    <div class="settings-footer-dual">
+      <button class="screen-back-btn" onclick="cancelMethodsChanges()">Отмена</button>
+      <button class="screen-save-btn" onclick="backFromMethodsScreen()">Готово</button>
+    </div>
   </div>
 </div>
 
@@ -1708,7 +1835,11 @@ html, body {
     </button>
   </div>
   <div class="settings-footer">
-    <button class="screen-back-btn" onclick="backFromOrgsScreen()">Назад</button>
+    <button class="screen-back-btn settings-footer-single" onclick="backFromOrgsScreen()">Назад</button>
+    <div class="settings-footer-dual">
+      <button class="screen-back-btn" onclick="cancelOrgsChanges()">Отмена</button>
+      <button class="screen-save-btn" onclick="backFromOrgsScreen()">Готово</button>
+    </div>
   </div>
 </div>
 
@@ -1717,7 +1848,11 @@ html, body {
   <div class="settings-screen-title">Управление паролями</div>
   <div class="pw-body" id="passwords-body"></div>
   <div class="settings-footer">
-    <button class="screen-back-btn" onclick="backFromPasswordsScreen()">Назад</button>
+    <button class="screen-back-btn settings-footer-single" onclick="backFromPasswordsScreen()">Назад</button>
+    <div class="settings-footer-dual">
+      <button class="screen-back-btn" onclick="cancelPasswordsChanges()">Отмена</button>
+      <button class="screen-save-btn" onclick="backFromPasswordsScreen()">Готово</button>
+    </div>
   </div>
 </div>
 
@@ -2268,7 +2403,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-passports-years', 'screen-passports-list', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -3718,8 +3853,76 @@ function settingsBackBtn(screenId) {
 }
 
 function setSettingsBackLabel(screenId, dirty) {
+  var footer = document.querySelector('#' + screenId + ' .settings-footer');
+  if (!footer) return;
+  var single = footer.querySelector('.settings-footer-single');
+  var dual = footer.querySelector('.settings-footer-dual');
+  if (single && dual) {
+    single.style.display = dirty ? 'none' : '';
+    dual.style.display = dirty ? 'flex' : 'none';
+    return;
+  }
   var btn = settingsBackBtn(screenId);
   if (btn) btn.textContent = dirty ? 'Готово' : 'Назад';
+}
+
+function cancelMethodsChanges() {
+  try {
+    var snap = JSON.parse(_settingsSnap.methods || '[]');
+    appState.methods = snap.map(function(m) {
+      return { name: m.name, show: m.show !== false };
+    });
+  } catch (e) {}
+  saveState();
+  var row = document.getElementById('method-new-row');
+  if (row) row.style.display = 'none';
+  renderMethodsTable();
+  setSettingsBackLabel('screen-methods', false);
+}
+
+function cancelOrgsChanges() {
+  try {
+    var snap = JSON.parse(_settingsSnap.orgs || '[]');
+    appState.orgs = snap.map(function(o) {
+      return { name: o.name, show: o.show !== false };
+    });
+  } catch (e) {}
+  saveState();
+  var row = document.getElementById('org-new-row');
+  if (row) row.style.display = 'none';
+  renderOrgsTable();
+  setSettingsBackLabel('screen-orgs', false);
+}
+
+function cancelPasswordsChanges() {
+  var snap = getPasswordSnap();
+  var pw = getPw();
+  pw.admin = snap.admin;
+  pw.inspector = snap.inspector;
+  pw.orgs = Object.assign({}, snap.orgs || {});
+  saveState();
+  renderPasswordsScreen();
+  setSettingsBackLabel('screen-passwords', false);
+}
+
+function cancelBarriersListChanges() {
+  if (!_bpkYear) return;
+  try {
+    var snap = JSON.parse(_settingsSnap.barriers || '[]');
+    appState.barriersConfig[_bpkYear] = snap.map(function(b) {
+      return {
+        name: b.name,
+        passport: b.passport || '',
+        inPK: !!b.inPK,
+        show: b.show !== false
+      };
+    });
+  } catch (e) {}
+  saveState();
+  hideAddBarrierInput();
+  closeBpkNameOverlay();
+  renderBarriersTable(_bpkYear);
+  setSettingsBackLabel('screen-barriers-list', false);
 }
 
 function takeSettingsSnap(key, value) {
@@ -3998,15 +4201,168 @@ function renderPassportsList(year) {
   body.innerHTML = '';
   PASSPORTS_KB_BUTTONS.forEach(function(label) {
     var btn = document.createElement('button');
-    btn.className = 'settings-orange-btn';
+    btn.className = 'settings-navy-btn';
     btn.textContent = label;
     btn.onclick = function() { openPassportKBDetail(year, label); };
     body.appendChild(btn);
   });
 }
 
+var PASSPORT_ID_BY_LABEL = {
+  'Паспорт ГАЗ 01.': 'gaz-01'
+};
+var _passportCache = {};
+var _passportActive = null;
+
+function loadPassportJson(id) {
+  if (_passportCache[id]) return Promise.resolve(_passportCache[id]);
+  return fetch('/passports/' + id + '.json')
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(data) {
+      _passportCache[id] = data;
+      return data;
+    });
+}
+
 function openPassportKBDetail(year, label) {
-  // Placeholder — behavior will be defined in the next step
+  var id = PASSPORT_ID_BY_LABEL[label];
+  if (!id) {
+    alert('Паспорт пока не подключён');
+    return;
+  }
+  loadPassportJson(id).then(function(data) {
+    _passportActive = { data: data, year: year, label: label };
+    renderPassportDetailScreen();
+    showScreen('screen-passport-detail');
+  }).catch(function(e) {
+    alert('Не удалось загрузить паспорт: ' + e.message);
+  });
+}
+
+function renderPassportDetailScreen() {
+  if (!_passportActive || !_passportActive.data) return;
+  var data = _passportActive.data;
+  var titleEl = document.getElementById('passport-detail-title');
+  var bodyEl = document.getElementById('passport-detail-body');
+  if (titleEl) titleEl.textContent = data.sheetTitle || '';
+  if (!bodyEl) return;
+  bodyEl.innerHTML = '';
+  (data.barriers || []).forEach(function(b, idx) {
+    var row = document.createElement('div');
+    row.className = 'passport-barrier-row';
+    var mainBtn = document.createElement('button');
+    mainBtn.type = 'button';
+    mainBtn.className = 'passport-barrier-btn';
+    mainBtn.textContent = b.label || b.code || '';
+    var mubBtn = document.createElement('button');
+    mubBtn.type = 'button';
+    mubBtn.className = 'passport-mub-btn';
+    mubBtn.textContent = 'МУБ';
+    mubBtn.onclick = function() { openPassportMub(idx); };
+    row.appendChild(mainBtn);
+    row.appendChild(mubBtn);
+    bodyEl.appendChild(row);
+  });
+  ['Приложение 1', 'Приложение 2'].forEach(function(caption, i) {
+    var appBtn = document.createElement('button');
+    appBtn.type = 'button';
+    appBtn.className = 'passport-appendix-btn';
+    appBtn.textContent = caption;
+    appBtn.onclick = function() { openPassportAppendix(i + 1); };
+    bodyEl.appendChild(appBtn);
+  });
+}
+
+function openPassportMub(barrierIdx) {
+  if (!_passportActive || !_passportActive.data) return;
+  var b = (_passportActive.data.barriers || [])[barrierIdx];
+  if (!b) return;
+  var titleEl = document.getElementById('passport-mub-title');
+  var bodyEl = document.getElementById('passport-mub-body');
+  if (titleEl) titleEl.textContent = b.label || b.code || '';
+  if (bodyEl) bodyEl.textContent = b.mub || '';
+  showScreen('screen-passport-mub');
+}
+
+function openPassportAppendix(num) {
+  if (!_passportActive || !_passportActive.data) return;
+  var data = _passportActive.data;
+  var titleEl = document.getElementById('passport-appendix-title');
+  var bodyEl = document.getElementById('passport-appendix-body');
+  if (!bodyEl) return;
+  bodyEl.innerHTML = '';
+  if (num === 1) {
+    var a1 = data.appendix1 || {};
+    if (titleEl) titleEl.textContent = 'Приложение 1';
+    var t = document.createElement('div');
+    t.className = 'passport-appendix-list-title';
+    t.textContent = a1.title || 'Перечень замкнутых пространств:';
+    bodyEl.appendChild(t);
+    if (a1.items && a1.items.length) {
+      var ol = document.createElement('ol');
+      ol.className = 'passport-appendix-list';
+      a1.items.forEach(function(item) {
+        var li = document.createElement('li');
+        li.textContent = item.text;
+        ol.appendChild(li);
+      });
+      bodyEl.appendChild(ol);
+    }
+    if (a1.footnote) {
+      var fn = document.createElement('div');
+      fn.className = 'passport-appendix-footnote';
+      fn.textContent = a1.footnote;
+      bodyEl.appendChild(fn);
+    }
+  } else if (num === 2) {
+    var a2 = data.appendix2 || {};
+    if (titleEl) titleEl.textContent = a2.title || 'Приложение 2';
+    var table = document.createElement('table');
+    table.className = 'passport-appendix-table';
+    var thead = document.createElement('thead');
+    var hr = document.createElement('tr');
+    var h1 = document.createElement('th');
+    h1.textContent = (a2.header && a2.header.col1) || 'вид СИЗОД';
+    var h2 = document.createElement('th');
+    h2.textContent = (a2.header && a2.header.col2) || 'положение наготове';
+    hr.appendChild(h1); hr.appendChild(h2);
+    thead.appendChild(hr);
+    table.appendChild(thead);
+    var tbody = document.createElement('tbody');
+    (a2.table || []).forEach(function(row) {
+      var tr = document.createElement('tr');
+      var td1 = document.createElement('td');
+      td1.textContent = row.col1 || '';
+      var td2 = document.createElement('td');
+      td2.textContent = row.col2 || '';
+      tr.appendChild(td1); tr.appendChild(td2);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    bodyEl.appendChild(table);
+    if (a2.exceptions && (a2.exceptions.col1 || a2.exceptions.col2)) {
+      var ex = document.createElement('div');
+      ex.className = 'passport-appendix-exceptions';
+      ex.textContent = a2.exceptions.col1 || a2.exceptions.col2;
+      bodyEl.appendChild(ex);
+    }
+  }
+  showScreen('screen-passport-appendix');
+}
+
+function backFromPassportDetail() {
+  showScreen('screen-passports-list');
+}
+
+function backFromPassportMub() {
+  showScreen('screen-passport-detail');
+}
+
+function backFromPassportAppendix() {
+  showScreen('screen-passport-detail');
 }
 
 function backFromPassportsList() {
