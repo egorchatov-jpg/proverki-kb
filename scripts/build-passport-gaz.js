@@ -9,13 +9,31 @@ const ExcelJS = require('exceljs');
 const SRC = 'C:/Users/egorc/KBBKSSPD/ПАСПОРТА КАРКАСЫ БЕЗОПАСНОСТИ 2026/БКС/Паспорт ГАЗ 01.01.2026.xlsx';
 const OUT = path.join(__dirname, '../passports/gaz-01.json');
 
+function normalizeSpacing(text) {
+  if (text == null || text === '') return '';
+  return String(text)
+    .replace(/\u00a0/g, ' ')
+    .split(/\r?\n/)
+    .map(function(line) {
+      return line
+        .replace(/[ \t]{2,}/g, ' ')
+        .replace(/ ([.,;:])/g, '$1')
+        .replace(/ \)/g, ')')
+        .trim();
+    })
+    .join('\n')
+    .trim();
+}
+
 function cellText(cell) {
   const v = cell.value;
   if (v == null) return '';
-  if (typeof v === 'string' || typeof v === 'number') return String(v).trim();
-  if (v.richText) return v.richText.map(r => r.text).join('').trim();
-  if (v.text) return String(v.text).trim();
-  return String(v).trim();
+  let s = '';
+  if (typeof v === 'string' || typeof v === 'number') s = String(v);
+  else if (v.richText) s = v.richText.map(r => r.text).join('');
+  else if (v.text) s = String(v.text);
+  else s = String(v);
+  return normalizeSpacing(s);
 }
 
 function parseBarrierCell(text) {
