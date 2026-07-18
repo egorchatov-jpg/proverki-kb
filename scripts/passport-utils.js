@@ -110,7 +110,7 @@ function collectSheetImages(ws) {
     const col = (tl.nativeCol != null ? tl.nativeCol : tl.col) + 1;
     const key = imageCellKey(row, col);
     if (!byCell[key]) byCell[key] = [];
-    if (byCell[key].indexOf(img.imageId) < 0) byCell[key].push(img.imageId);
+    byCell[key].push(img.imageId);
   });
   return byCell;
 }
@@ -363,27 +363,40 @@ function cellStyleKind12(cell, text, col) {
   return 'white';
 }
 
-function imagesInRange(byCell, savedMap, r1, c1, r2, c2) {
-  const list = [];
+function imagesAtCell(byCell, savedMap, r, c) {
+  const ids = byCell[imageCellKey(r, c)] || [];
+  return ids.map(function(id) { return savedMap[id]; }).filter(Boolean);
+}
+
+function imagesInRangeAll(byCell, savedMap, r1, c1, r2, c2) {
+  const out = [];
   for (let r = r1; r <= r2; r++) {
     for (let c = c1; c <= c2; c++) {
-      const ids = byCell[imageCellKey(r, c)];
-      if (!ids) continue;
+      const ids = byCell[imageCellKey(r, c)] || [];
       ids.forEach(function(id) {
-        list.push({ r: r, c: c, id: id });
+        const url = savedMap[id];
+        if (url) out.push(url);
       });
     }
   }
-  list.sort(function(a, b) { return a.r - b.r || a.c - b.c; });
-  const seen = new Set();
-  const out = [];
-  list.forEach(function(item) {
-    if (seen.has(item.id)) return;
-    seen.add(item.id);
-    const url = savedMap[item.id];
-    if (url) out.push(url);
-  });
   return out;
+}
+
+function buildSubgrid(byCell, savedMap, r1, c1, r2, c2) {
+  const rows = [];
+  for (let r = r1; r <= r2; r++) {
+    const cells = [];
+    for (let c = c1; c <= c2; c++) {
+      cells.push({
+        text: '',
+        images: imagesAtCell(byCell, savedMap, r, c),
+        align: 'center',
+        valign: 'middle',
+      });
+    }
+    rows.push({ cells: cells });
+  }
+  return rows;
 }
 
 function parseAppendix12Sheet(ws, savedMap) {
@@ -402,31 +415,57 @@ function parseAppendix12Sheet(ws, savedMap) {
       const c2 = master ? master.c2 : c;
       const cell = ws.getCell(r, c);
       const text = cellText(cell);
-      const images = imagesInRange(byCell, savedMap, r, c, r2, c2);
       const rowspan = master ? master.rowspan : 1;
       const colspan = master ? master.colspan : 1;
-      if (!text && !images.length && rowspan === 1 && colspan === 1) continue;
-
+      const styleKind = cellStyleKind12(cell, text, c);
       const alignment = cell.alignment || {};
       let align = alignment.horizontal || 'left';
       if (/^ЗГ\s*[×x]\s*/.test(text || '')) align = 'center';
+      if (styleKind === 'sidebar') align = 'center';
+
+      let images = [];
+      let subgrid = null;
+      let imagesWrap = false;
+      const subRows = r2 - r + 1;
+      const subCols = c2 - c + 1;
+
+      if (!text && subRows > 1 && subCols > 1) {
+        subgrid = buildSubgrid(byCell, savedMap, r, c, r2, c2);
+      } else if (!text && subRows === 1 && subCols === 3) {
+        subgrid = buildSubgrid(byCell, savedMap, r, c, r2, c2);
+      } else if (!text && (subRows > 1 || subCols > 1)) {
+        images = imagesInRangeAll(byCell, savedMap, r, c, r2, c2);
+        if (images.length > 2) imagesWrap = true;
+      } else {
+        images = imagesAtCell(byCell, savedMap, r, c);
+      }
+
+      if (!text && !images.length && !subgrid) {
+        if (rowspan === 1 && colspan === 1) continue;
+        const hasSubContent = subgrid && subgrid.some(function(sr) {
+          return sr.cells.some(function(sc) { return sc.images && sc.images.length; });
+        });
+        if (!hasSubContent) continue;
+      }
+
       cells.push({
         colspan: colspan,
         rowspan: rowspan,
         text: text,
-        images: images,
-        imagesGrid: images.length >= 6,
-        style: cellStyleKind12(cell, text, c),
+        images: subgrid ? [] : images,
+        subgrid: subgrid,
+        imagesWrap: imagesWrap,
+        style: styleKind,
         bold: !!(cell.font && cell.font.bold),
-        color: cellStyleKind12(cell, text, c) === 'sidebar' ? '#0070c0' : cellFontColor(cell),
+        color: styleKind === 'sidebar' ? '#0070c0' : cellFontColor(cell),
         align: align,
-        valign: alignment.vertical || (cellStyleKind12(cell, text, c) === 'sidebar' ? 'middle' : 'top'),
+        valign: alignment.vertical || (styleKind === 'sidebar' ? 'middle' : 'top'),
       });
     }
     if (cells.length) rows.push({ cells: cells });
   }
 
-  return { layout: 'excelGrid', colCount: maxCol, rows: rows };
+  return { layout: 'excelGrid', colCount: maxCol, gridKind: 'sheet12', rows: rows };
 }
 
 function parseAppendix21Sheet(ws) {
