@@ -884,6 +884,12 @@ html, body {
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
 }
 .passport-barrier-btn:active { opacity: 0.78; }
+.passport-barrier-btn,
+.passport-mub-btn {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
 .passport-mub-btn {
   flex-shrink: 0; width: 58px;
   height: calc(3 * 1.35 * 14px + 20px);
@@ -2875,7 +2881,13 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(function(s) {
     s.classList.remove('active');
   });
-  document.getElementById(id).classList.add('active');
+  var el = document.getElementById(id);
+  if (!el) {
+    console.error('[showScreen] missing screen:', id);
+    return false;
+  }
+  el.classList.add('active');
+  return true;
 }
 
 function goLobby() {
@@ -4283,21 +4295,23 @@ function loadPassportJson(id) {
     });
 }
 
-function getBarrierChecklistCriteria(barrier) {
-  if (!barrier) return [];
-  var code = barrier.code || '';
-  if (!code) return barrier.criteria || [];
-  var prefix = code.charAt(code.length - 1) === '.' ? code : code + '.';
-  var out = [];
-  (barrier.criteria || []).forEach(function(crit) {
-    var label = crit.label || '';
-    if (label.indexOf(prefix) !== 0) return;
-    var questions = (crit.questions || []).filter(function(q) {
-      return (q || '').indexOf(prefix) === 0;
-    });
-    if (label || questions.length) out.push({ label: label, questions: questions });
+function ensurePassportDetailClickDelegate() {
+  var bodyEl = document.getElementById('passport-detail-body');
+  if (!bodyEl || bodyEl._passportClickBound) return;
+  bodyEl._passportClickBound = true;
+  bodyEl.addEventListener('click', function(e) {
+    var barrierBtn = e.target.closest('.passport-barrier-btn');
+    if (barrierBtn) {
+      var idx = parseInt(barrierBtn.getAttribute('data-barrier-idx'), 10);
+      if (!isNaN(idx)) openPassportChecklist(idx);
+      return;
+    }
+    var mubBtn = e.target.closest('.passport-mub-btn');
+    if (mubBtn) {
+      var mubIdx = parseInt(mubBtn.getAttribute('data-barrier-idx'), 10);
+      if (!isNaN(mubIdx)) openPassportMub(mubIdx);
+    }
   });
-  return out;
 }
 
 function openPassportKBDetail(year, label) {
@@ -4317,6 +4331,7 @@ function openPassportKBDetail(year, label) {
 
 function renderPassportDetailScreen() {
   if (!_passportActive || !_passportActive.data) return;
+  ensurePassportDetailClickDelegate();
   var data = _passportActive.data;
   var titleEl = document.getElementById('passport-detail-title');
   var bodyEl = document.getElementById('passport-detail-body');
@@ -4329,13 +4344,23 @@ function renderPassportDetailScreen() {
     var mainBtn = document.createElement('button');
     mainBtn.type = 'button';
     mainBtn.className = 'passport-barrier-btn';
+    mainBtn.setAttribute('data-barrier-idx', String(idx));
     mainBtn.textContent = b.label || b.code || '';
-    mainBtn.onclick = function() { openPassportChecklist(idx); };
+    mainBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      openPassportChecklist(idx);
+    });
     var mubBtn = document.createElement('button');
     mubBtn.type = 'button';
     mubBtn.className = 'passport-mub-btn';
+    mubBtn.setAttribute('data-barrier-idx', String(idx));
     mubBtn.textContent = 'МУБ';
-    mubBtn.onclick = function() { openPassportMub(idx); };
+    mubBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      openPassportMub(idx);
+    });
     row.appendChild(mainBtn);
     row.appendChild(mubBtn);
     bodyEl.appendChild(row);
@@ -4355,8 +4380,11 @@ function openPassportChecklist(barrierIdx) {
   var b = (_passportActive.data.barriers || [])[barrierIdx];
   if (!b) return;
   _passportChecklistIdx = barrierIdx;
+  if (!showScreen('screen-passport-checklist')) {
+    alert('Экран чек-листа недоступен. Полностью закройте и откройте приложение.');
+    return;
+  }
   renderPassportChecklistScreen(b);
-  showScreen('screen-passport-checklist');
 }
 
 function renderPassportChecklistScreen(barrier) {
@@ -4368,7 +4396,7 @@ function renderPassportChecklistScreen(barrier) {
   if (barrierEl) barrierEl.textContent = barrier.label || barrier.code || '';
   if (!bodyEl) return;
   bodyEl.innerHTML = '';
-  getBarrierChecklistCriteria(barrier).forEach(function(crit) {
+  (barrier.criteria || []).forEach(function(crit) {
     var block = document.createElement('div');
     block.className = 'passport-criterion-block';
     var label = document.createElement('div');
