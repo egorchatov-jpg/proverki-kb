@@ -4265,20 +4265,39 @@ function renderPassportsList(year) {
 var PASSPORT_ID_BY_LABEL = {
   'Паспорт ГАЗ 01.': 'gaz-01'
 };
+var PASSPORT_JSON_VERSION = 'v2';
 var _passportCache = {};
 var _passportActive = null;
 
 function loadPassportJson(id) {
-  if (_passportCache[id]) return Promise.resolve(_passportCache[id]);
-  return fetch('/passports/' + id + '.json')
+  var cacheKey = id + ':' + PASSPORT_JSON_VERSION;
+  if (_passportCache[cacheKey]) return Promise.resolve(_passportCache[cacheKey]);
+  return fetch('/passports/' + id + '.json?v=' + PASSPORT_JSON_VERSION)
     .then(function(r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
     })
     .then(function(data) {
-      _passportCache[id] = data;
+      _passportCache[cacheKey] = data;
       return data;
     });
+}
+
+function getBarrierChecklistCriteria(barrier) {
+  if (!barrier) return [];
+  var code = barrier.code || '';
+  if (!code) return barrier.criteria || [];
+  var prefix = code.charAt(code.length - 1) === '.' ? code : code + '.';
+  var out = [];
+  (barrier.criteria || []).forEach(function(crit) {
+    var label = crit.label || '';
+    if (label.indexOf(prefix) !== 0) return;
+    var questions = (crit.questions || []).filter(function(q) {
+      return (q || '').indexOf(prefix) === 0;
+    });
+    if (label || questions.length) out.push({ label: label, questions: questions });
+  });
+  return out;
 }
 
 function openPassportKBDetail(year, label) {
@@ -4349,7 +4368,7 @@ function renderPassportChecklistScreen(barrier) {
   if (barrierEl) barrierEl.textContent = barrier.label || barrier.code || '';
   if (!bodyEl) return;
   bodyEl.innerHTML = '';
-  (barrier.criteria || []).forEach(function(crit) {
+  getBarrierChecklistCriteria(barrier).forEach(function(crit) {
     var block = document.createElement('div');
     block.className = 'passport-criterion-block';
     var label = document.createElement('div');
