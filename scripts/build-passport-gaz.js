@@ -43,6 +43,16 @@ function parseAppendix1(ws) {
   return { title, items, footnote };
 }
 
+function formatAppendix2Col2(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/\r\n/g, '\n')
+    .replace(/;\s*\n-/g, ';\n-')
+    .replace(/(\.\n)([А-ЯA-Z«])/g, '$1\n$2')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function parseAppendix2(ws) {
   const rows = [];
   for (let r = 1; r <= ws.rowCount; r++) {
@@ -53,6 +63,8 @@ function parseAppendix2(ws) {
   const header = rows[0] || { col1: 'вид СИЗОД', col2: 'положение наготове' };
   const table = rows.slice(1).filter(function(row) {
     return row.col1 && row.col2 && !/^Исключения/i.test(row.col1);
+  }).map(function(row) {
+    return { col1: row.col1, col2: formatAppendix2Col2(row.col2) };
   });
   const exceptions = rows.filter(function(row) {
     return /^Исключения/i.test(row.col1) || /^Исключения/i.test(row.col2);
