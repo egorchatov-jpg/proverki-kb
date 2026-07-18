@@ -374,7 +374,9 @@ html, body {
 .card-btn-submit:disabled { opacity: 0.4; pointer-events: none; }
 #field-wrap-barrier { align-items: flex-start; }
 #field-wrap-barrier > .field-label { align-self: center; }
-.field-wrap-checklist { padding-top: 0; margin-top: -2px; }
+.field-wrap-checklist { padding-top: 0; margin-top: -2px; display: none; }
+#field-wrap-checklist-btn:not([hidden]) { display: flex; }
+#field-wrap-checklist-btn[hidden] { display: none !important; }
 .field-label-spacer { visibility: hidden; pointer-events: none; }
 .card-checklist-btn {
   width: 100%; min-height: 36px; padding: 6px 10px;
@@ -4167,8 +4169,8 @@ function resetCard() {
   setCardSubtitle('');
   setTodayDate();
   ['method','org','obj','barrier','works','desc'].forEach(function(k) {
-    var el = document.getElementById('val-' + k);
-    if (el) { el.textContent = k === 'method' || k === 'org' || k === 'barrier' || k === 'works' ? 'Выбрать' : '—'; }
+    var isPick = k === 'method' || k === 'org' || k === 'barrier' || k === 'works';
+    setCardVal(k, isPick ? 'Выбрать' : '—', isPick);
   });
   setWorksCellDisplay('Выбрать');
   setDimmed('desc', true);
@@ -4711,7 +4713,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v208';
+var APP_BUILD = 'pkb-v209';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
