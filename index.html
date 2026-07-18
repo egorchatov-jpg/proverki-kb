@@ -4711,7 +4711,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v207';
+var APP_BUILD = 'pkb-v208';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -7973,14 +7973,38 @@ function passportBarrierMatchesName(passportBarrier, cardBarrierName) {
   if (!cn) return false;
   var code = normalizeBarrierKey(passportBarrier.code);
   var label = String(passportBarrier.label || '').trim();
-  if (normalizeBarrierKey(label) === cn) return true;
+  var labelKey = normalizeBarrierKey(label);
+  if (labelKey === cn) return true;
   if (code === cn) return true;
-  if (code && (cn.indexOf(code) === 0 || code.indexOf(cn) === 0)) return true;
-  if (label && label.toLowerCase().indexOf(cn) === 0) return true;
+  if (code && cn.indexOf(code) === 0) {
+    var rest = cn.slice(code.length);
+    if (!rest || rest.charAt(0) === '.') return true;
+  }
+  if (label && label.toLowerCase().indexOf(cn) === 0) {
+    var next = label.charAt(cn.length);
+    if (!next || next === '.' || next === ' ') return true;
+  }
   var cnParts = cn.split('.');
   var codeParts = code.split('.');
   if (cnParts.length >= 2 && codeParts.length >= 2 && cnParts[0] === codeParts[0] && cnParts[1] === codeParts[1]) return true;
   return false;
+}
+
+function passportBarrierHasChecklistQuestions(barrier) {
+  if (!barrier || !barrier.criteria || !barrier.criteria.length) return false;
+  for (var i = 0; i < barrier.criteria.length; i++) {
+    var qs = barrier.criteria[i].questions;
+    if (qs && qs.length) return true;
+  }
+  return false;
+}
+
+function cardBarrierSelected() {
+  var barrier = String(cardData.barrier || '').trim();
+  if (!barrier || barrier === 'Выбрать') return false;
+  var el = document.getElementById('val-barrier');
+  if (el && el.classList.contains('placeholder')) return false;
+  return true;
 }
 
 function findPassportBarrierForName(barrierName) {
@@ -7996,7 +8020,7 @@ function findPassportBarrierForName(barrierName) {
     return loadPassportJson(p.id).then(function(data) {
       var barriers = data.barriers || [];
       for (var i = 0; i < barriers.length; i++) {
-        if (passportBarrierMatchesName(barriers[i], key)) {
+        if (passportBarrierMatchesName(barriers[i], key) && passportBarrierHasChecklistQuestions(barriers[i])) {
           return { passportId: p.id, barrierIdx: i, data: data, barrier: barriers[i] };
         }
       }
@@ -8084,15 +8108,16 @@ function updateCardDescEditable(editable) {
 }
 
 function updateCardChecklistButton() {
-  var barrier = cardData.barrier;
-  if (!barrier || barrier === 'Выбрать') {
+  if (!cardBarrierSelected()) {
     setCardChecklistButtonVisible(false);
     _cardChecklistMatch = null;
     return;
   }
+  var barrier = String(cardData.barrier || '').trim();
   findPassportBarrierForName(barrier).then(function(match) {
-    _cardChecklistMatch = match;
-    setCardChecklistButtonVisible(!!match);
+    var ok = !!(match && passportBarrierHasChecklistQuestions(match.barrier));
+    _cardChecklistMatch = ok ? match : null;
+    setCardChecklistButtonVisible(ok);
   });
 }
 
@@ -8393,7 +8418,7 @@ function openDrumBarrier() {
       clearCardChecklistState();
     }
     cardData.barrier = newBarrier;
-    document.getElementById('val-barrier').textContent = cardData.barrier;
+    setCardVal('barrier', cardData.barrier, false);
     updateCardChecklistButton();
     updateValidation();
   });
