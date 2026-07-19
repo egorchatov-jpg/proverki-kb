@@ -103,10 +103,6 @@ html, body {
   z-index: 5;
   flex-shrink: 0;
 }
-.is-ios-standalone #screen-card-checklist.active::before {
-  position: absolute;
-  z-index: 1;
-}
 /* ===== LOBBY ===== */
 #screen-lobby { background: var(--bg); }
 
@@ -396,6 +392,8 @@ html, body {
   padding: 12px 14px;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   flex-shrink: 0;
+  position: relative;
+  z-index: 5;
   background: var(--bg);
 }
 .card-btn {
@@ -429,16 +427,15 @@ html, body {
 .card-checklist-btn[hidden] { display: none !important; }
 #screen-card-checklist {
   display: flex; flex-direction: column;
-  position: relative;
   background: var(--bg);
 }
 .is-ios #screen-card-checklist.active::before {
   content: '';
-  position: absolute;
+  position: fixed;
   top: 0; left: 0; right: 0;
   height: env(safe-area-inset-top, 0px);
   background: var(--bg);
-  z-index: 1;
+  z-index: 6;
   pointer-events: none;
 }
 .card-checklist-body { padding: 0 16px 12px; position: relative; z-index: 0; }
@@ -1227,7 +1224,7 @@ html, body {
   .passport-appendix-flow-row.cols-4 { grid-template-columns: 1fr; }
 }
 .passport-checklist-scroll {
-  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
   width: 100%;
   --checklist-criterion-top: 72px;
 }
@@ -4815,7 +4812,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v219';
+var APP_BUILD = 'pkb-v220';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
