@@ -488,6 +488,7 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 .card-checklist-btn:active { opacity: 0.8; }
+.card-checklist-btn-required { box-shadow: 0 0 0 2px var(--red); }
 .card-checklist-btn[hidden] { display: none !important; }
 #screen-card-checklist {
   display: flex; flex-direction: column;
@@ -3117,6 +3118,7 @@ function subscribeToPush(reg) {
 
 function requestPushPermission() {
   closeOverlay('overlay-push-prompt');
+  markPushPromptDone();
   if (typeof Notification.requestPermission !== 'function') {
     _finishInit(); // no API — just complete init
     return;
@@ -3315,13 +3317,11 @@ function _finishInit() {
 }
 
 // Called at the end of DOMContentLoaded.
-// If the PWA is installed and permission is still 'default' — show our overlay
-// and defer SW registration.  Otherwise complete init immediately.
+// Custom overlay only in installed PWA on first launch (browser tab skips it).
+// Defer SW registration until overlay dismissed or not needed.
 function _showPushPromptOrFinish() {
   try {
-    if (('Notification' in window)
-        && (typeof Notification.requestPermission === 'function')
-        && Notification.permission === 'default') {
+    if (shouldShowPushPromptOverlay()) {
       var overlay = document.getElementById('overlay-push-prompt');
       if (overlay) {
         overlay.classList.add('active');
@@ -4448,18 +4448,65 @@ function setDimmed(key, dimmed) {
   if (lbl)  lbl.classList.toggle('dimmed', dimmed);
 }
 
+function cardBarrierHasChecklist() {
+  return !!_cardChecklistMatch;
+}
+
+function cardChecklistReadyForViolation() {
+  if (!cardData.checklistFilled || !cardData.descFromChecklist) return false;
+  return recordHasChecklistViolations(cardData);
+}
+
+function finalizeCardChecklistForSave() {
+  if (!cardData.checklistViolations) return;
+  var has = Object.keys(cardData.checklistViolations).some(function(k) {
+    return String(cardData.checklistViolations[k] || '').trim();
+  });
+  if (!has) {
+    cardData.checklistViolations = null;
+    cardData.checklistPassportId = null;
+    cardData.checklistQuestionTexts = null;
+    cardData.checklistFilled = false;
+    return;
+  }
+  cardData.checklistQuestionTexts = Object.assign({}, _cardChecklistQuestionTexts);
+  if (_cardChecklistMatch && !cardData.checklistPassportId) {
+    cardData.checklistPassportId = _cardChecklistMatch.passportId;
+  }
+}
+
+function updateCardChecklistButtonHint() {
+  var btn = document.getElementById('btn-card-checklist');
+  if (!btn) return;
+  var need = cardData.works === 'Нет' && cardBarrierHasChecklist() && !cardChecklistReadyForViolation();
+  btn.classList.toggle('card-checklist-btn-required', need);
+}
+
 function updateValidation() {
   var required = ['dateCheck','method','org','obj','barrier','works'];
-  if (cardData.works === 'Нет') { required.push('desc'); }
-  var ok = required.every(function(k) { return cardData[k] && cardData[k].trim && cardData[k].trim() !== '' || (cardData[k] && typeof cardData[k] === 'string' && cardData[k] !== ''); });
+  var ok = required.every(function(k) {
+    return cardData[k] && cardData[k].trim && cardData[k].trim() !== '' || (cardData[k] && typeof cardData[k] === 'string' && cardData[k] !== '');
+  });
+  if (cardData.works === 'Нет') {
+    if (cardBarrierHasChecklist()) {
+      ok = ok && cardChecklistReadyForViolation();
+    } else {
+      ok = ok && cardData.desc && String(cardData.desc).trim() !== '';
+    }
+  }
   var el = document.getElementById('card-validation');
   var btn = document.getElementById('btn-submit');
+  updateCardChecklistButtonHint();
   if (ok) {
     el.textContent = 'Заполнены все поля';
     el.className = 'card-validation ok';
     btn.disabled = false;
   } else {
-    el.textContent = 'Заполнены не все поля';
+    if (cardData.works === 'Нет' && cardBarrierHasChecklist() && !cardChecklistReadyForViolation()) {
+      el.textContent = cardData.checklistFilled ? 'Укажите нарушения в чек-листе' : 'Заполните чек-лист';
+    } else {
+      el.textContent = 'Заполнены не все поля';
+    }
     el.className = 'card-validation error';
     btn.disabled = true;
   }
@@ -4468,6 +4515,9 @@ function updateValidation() {
 function submitCardEdit() {
   var r = cardEditRecord;
   if (!r) return;
+  finalizeCardChecklistForSave();
+  updateValidation();
+  if (document.getElementById('btn-submit').disabled) return;
   var year = r.year || (r.dateCheck ? r.dateCheck.split('.')[2] : String(new Date().getFullYear()));
   var checkYear = cardData.dateCheck ? cardData.dateCheck.split('.')[2] : year;
   var fields = {
@@ -4503,6 +4553,9 @@ function submitCardEdit() {
 
 function submitCard() {
   if (cardEditRecord) { submitCardEdit(); return; }
+  finalizeCardChecklistForSave();
+  updateValidation();
+  if (document.getElementById('btn-submit').disabled) return;
   cardData.id = Date.now();
   cardData.dateEntry = dateTimeStr();
   var year = cardData.dateCheck ? cardData.dateCheck.split('.')[2] : new Date().getFullYear();
@@ -4875,10 +4928,42 @@ function saveNewMethod() {
 
 var _passportsKBReturnScreen = 'screen-settings';
 var _deferredInstallPrompt = null;
+var PUSH_PROMPT_DONE_KEY = 'pkb-push-prompt-done';
+
+function isRunningInBrowserTab() {
+  try {
+    if (window.matchMedia && window.matchMedia('(display-mode: browser)').matches) return true;
+  } catch (_e) {}
+  return false;
+}
 
 function isAppInstalled() {
-  return window.matchMedia('(display-mode: standalone)').matches
-      || window.navigator.standalone === true;
+  if (isRunningInBrowserTab()) return false;
+  if (window.navigator.standalone === true) return true;
+  try {
+    if (!window.matchMedia) return false;
+    return window.matchMedia('(display-mode: standalone)').matches
+        || window.matchMedia('(display-mode: fullscreen)').matches
+        || window.matchMedia('(display-mode: minimal-ui)').matches;
+  } catch (_e) {
+    return false;
+  }
+}
+
+function pushPromptAlreadyDone() {
+  try { return localStorage.getItem(PUSH_PROMPT_DONE_KEY) === '1'; } catch (_e) { return false; }
+}
+
+function markPushPromptDone() {
+  try { localStorage.setItem(PUSH_PROMPT_DONE_KEY, '1'); } catch (_e) {}
+}
+
+function shouldShowPushPromptOverlay() {
+  return isAppInstalled()
+      && !pushPromptAlreadyDone()
+      && ('Notification' in window)
+      && (typeof Notification.requestPermission === 'function')
+      && Notification.permission === 'default';
 }
 
 function updateLobbyInstallButton() {
@@ -5043,7 +5128,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v234';
+var APP_BUILD = 'pkb-v237';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -8733,8 +8818,16 @@ function cancelCardChecklist() {
 
 function applyCardChecklist() {
   var violations = cardData.checklistViolations || {};
+  var hasViol = Object.keys(violations).some(function(k) {
+    return String(violations[k] || '').trim();
+  });
+  if (cardData.works === 'Нет' && !hasViol) {
+    alert('Укажите нарушения: нажмите на пункт чек-листа и опишите нарушение');
+    return;
+  }
   cardData.checklistPassportId = _cardChecklistMatch ? _cardChecklistMatch.passportId : null;
   applyChecklistToCardFields(violations, _cardChecklistQuestionTexts);
+  cardData.checklistQuestionTexts = Object.assign({}, _cardChecklistQuestionTexts);
   _cardChecklistSnapshot = null;
   restorePassportActiveAfterCardChecklist();
   showScreen('screen-card');
@@ -8852,13 +8945,25 @@ function openDrumWorks() {
   openDrumOverlay('Барьер работоспособен', [
     { id: 'works', items: ['Да','Нет'], value: cardData.works || 'Да', minWidth: 200 }
   ], function(d) {
-    cardData.works = d['works'].getValue();
+    var newWorks = d['works'].getValue();
+    var broken = newWorks === 'Нет';
+    if (broken && cardBarrierHasChecklist()) {
+      openCardChecklistScreen();
+      cardData.works = 'Нет';
+      setWorksCellDisplay('Нет');
+      setDimmed('desc', true);
+      lockDescCell();
+      updateCardDescEditable(false);
+      updateValidation();
+      return;
+    }
+    cardData.works = newWorks;
     setWorksCellDisplay(cardData.works);
-    var broken = cardData.works === 'Нет';
     setDimmed('desc', !broken);
     if (!broken) {
       cardData.desc = '';
       document.getElementById('val-desc').textContent = '—';
+      document.getElementById('val-desc').classList.add('placeholder');
     }
     updateValidation();
   });
@@ -8913,6 +9018,7 @@ function applyTextOverlay() {
 
 function openDescOverlay() {
   if (cardData.descFromChecklist) return;
+  if (cardBarrierHasChecklist() && cardData.works === 'Нет') return;
   document.getElementById('desc-input').value = cardData.desc || '';
   document.getElementById('overlay-desc').classList.add('active');
   setTimeout(function(){ document.getElementById('desc-input').focus(); }, 300);

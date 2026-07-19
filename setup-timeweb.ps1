@@ -36,7 +36,7 @@ if (Test-Path $envProd) {
 
 Write-Host ""
 Write-Host "3. Домен" -ForegroundColor Yellow
-Write-Host "   - Можно использовать бесплатный *.twc1.net от Timeweb"
+Write-Host "   - Рабочий домен: https://kbcheck.webtm.ru/"
 Write-Host "   - Или привязать свой домен (A/CNAME на сервер приложения)"
 Write-Host ""
 

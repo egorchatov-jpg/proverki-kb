@@ -49,11 +49,11 @@ async function ghPut(fileName, contentBuf, sha, message) {
   return r.json();
 }
 
+const { parseSubscriptionsFromGithubContent } = require('../lib/subs-parse');
+
 function readSubsFile(existing) {
   if (!existing || !existing.content) return { data: { subscriptions: [] }, sha: undefined };
-  const txt = Buffer.from(existing.content.replace(/\n/g, ''), 'base64').toString('utf8');
-  const data = JSON.parse(txt);
-  if (!Array.isArray(data.subscriptions)) data.subscriptions = [];
+  const data = parseSubscriptionsFromGithubContent(existing.content);
   return { data, sha: existing.sha };
 }
 
