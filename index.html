@@ -70,6 +70,25 @@ html, body {
   z-index: 2;
   transition: opacity 0.22s ease, visibility 0s linear 0s;
 }
+/* is-ios portrait CSS lock: iOS ignores manifest orientation and orientation.lock() */
+@media (orientation: landscape) {
+  html.is-ios {
+    overflow: hidden;
+    background: var(--bg);
+  }
+  html.is-ios body {
+    position: fixed;
+    transform: rotate(-90deg);
+    transform-origin: left top;
+    -webkit-transform: rotate(-90deg);
+    -webkit-transform-origin: left top;
+    width: 100vh;
+    height: 100vw;
+    top: 100%;
+    left: 0;
+    overflow: hidden;
+  }
+}
 /* ===== LOBBY ===== */
 #screen-lobby { background: var(--bg); }
 
@@ -3054,6 +3073,7 @@ function lockPortraitOrientation() {
 }
 
 function initOrientationLock() {
+  if (_isIOS) return;
   lockPortraitOrientation();
   window.addEventListener('orientationchange', lockPortraitOrientation);
   if (window.screen && window.screen.orientation && window.screen.orientation.addEventListener) {
@@ -3166,7 +3186,7 @@ window.addEventListener('DOMContentLoaded', function() {
       }
     }
     if (!document.hidden) {
-      lockPortraitOrientation();
+      if (!_isIOS) lockPortraitOrientation();
       try {
         var savedScr = sessionStorage.getItem('pkb-active-screen');
         if (hasSession() && savedScr && document.getElementById(savedScr)) {
@@ -4743,7 +4763,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v217';
+var APP_BUILD = 'pkb-v218';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
