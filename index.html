@@ -253,7 +253,8 @@ html, body {
 
 /* ===== SCREEN: УСТАНОВКА ===== */
 #screen-install-device,
-#screen-install-ios { background: var(--bg); }
+#screen-install-ios,
+#screen-install-android { background: var(--bg); }
 .install-device-content {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 16px; padding: 24px;
@@ -279,7 +280,8 @@ html, body {
 }
 .install-device-icon svg { width: 24px; height: 24px; display: block; }
 .install-device-icon svg path { fill: #fff; stroke: none; }
-#screen-install-ios .passport-appendix-scroll {
+#screen-install-ios .passport-appendix-scroll,
+#screen-install-android .passport-appendix-scroll {
   flex: 1; min-height: 0;
 }
 
@@ -1764,6 +1766,18 @@ html, body {
   </div>
 </div>
 
+<!-- ===== ЭКРАН: УСТАНОВКА — ANDROID ===== -->
+<div class="screen" id="screen-install-android">
+  <div class="passport-appendix-scroll passport-appendix-scroll--image" id="install-android-scroll">
+    <div class="passport-appendix-image-page">
+      <img class="passport-appendix-page-img" id="install-android-img" src="/install-android.jpg" alt="">
+    </div>
+  </div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="backFromInstallAndroid()">Назад</button>
+  </div>
+</div>
+
 <!-- ===== ПРОВЕРКИ: МЕНЮ ===== -->
 <div class="screen" id="screen-proverki-menu">
   <div class="proverki-menu-content">
@@ -2946,7 +2960,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios', 'screen-install-android'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -4895,18 +4909,13 @@ function backFromInstallIos() {
 }
 
 function openInstallAndroid() {
-  if (_deferredInstallPrompt) {
-    _deferredInstallPrompt.prompt();
-    _deferredInstallPrompt.userChoice.then(function() {
-      _deferredInstallPrompt = null;
-      updateLobbyInstallButton();
-    }).catch(function() {
-      _deferredInstallPrompt = null;
-      updateLobbyInstallButton();
-    });
-    return;
-  }
-  alert('Установка доступна через меню браузера: «Установить приложение» или «Добавить на главный экран».');
+  var img = document.getElementById('install-android-img');
+  if (img) img.src = '/install-android.jpg?v=' + APP_BUILD;
+  showScreen('screen-install-android');
+}
+
+function backFromInstallAndroid() {
+  showScreen('screen-install-device');
 }
 
 function openPassportsKBFromLobby() {
@@ -5022,7 +5031,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v228';
+var APP_BUILD = 'pkb-v230';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
