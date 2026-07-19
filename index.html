@@ -2902,7 +2902,6 @@ function loadFromServer(onDone) {
     clearTimeout(safetyTimer);
     var cbs = _loadCallbacks;
     _loadCallbacks = null;
-    _setLobbyUiReady();
     cbs.forEach(function(cb) { cb(ok); });
   }
 
@@ -3762,9 +3761,6 @@ function openFindFilter(col) {
 }
 
 // ===== LOBBY =====
-var _lobbyViolCount = -1;
-var _lobbyUiReady = false;
-
 function _showLobbyBanners(count) {
   var noBanner = document.getElementById('no-violations-banner');
   var vBanner  = document.getElementById('violations-banner');
@@ -3782,12 +3778,6 @@ function _showLobbyBanners(count) {
   }
 }
 
-function _setLobbyUiReady() {
-  if (_lobbyUiReady) return;
-  _lobbyUiReady = true;
-  renderLobby();
-}
-
 function renderLobby() {
   var today = todayStr();
   var violations = appState.db.filter(function(r) {
@@ -3798,15 +3788,7 @@ function renderLobby() {
   content.querySelectorAll('.violation-card').forEach(function(el){ el.remove(); });
 
   var count = violations.length;
-  _lobbyViolCount = count;
-  if (_lobbyUiReady) {
-    _showLobbyBanners(count);
-  } else {
-    var noBanner = document.getElementById('no-violations-banner');
-    var vBanner  = document.getElementById('violations-banner');
-    if (noBanner) { noBanner.style.display = 'none'; noBanner.hidden = true; }
-    if (vBanner)  { vBanner.style.display = 'none';  vBanner.hidden = true; }
-  }
+  _showLobbyBanners(count);
 
   if (count > 0) {
     violations.forEach(function(r) {
@@ -5134,7 +5116,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v239';
+var APP_BUILD = 'pkb-v240';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
