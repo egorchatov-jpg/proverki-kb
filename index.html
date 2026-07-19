@@ -832,20 +832,6 @@ html, body {
 .detail-back-btn:active { opacity: 0.8; }
 .detail-back-btn:disabled { opacity: 0.5; }
 
-/* ===== PORTRAIT ORIENTATION LOCK ===== */
-#orientation-lock {
-  position: fixed; inset: 0; z-index: 50000;
-  background: var(--bg);
-  display: none; align-items: center; justify-content: center;
-  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
-  pointer-events: all;
-}
-#orientation-lock.active { display: flex; }
-.orientation-lock-text {
-  font-size: 18px; font-weight: 700; line-height: 1.45;
-  text-align: center; color: #1a2035; max-width: 300px;
-}
-
 /* ===== PULL-TO-REFRESH ===== */
 #pull-indicator {
   position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
@@ -3053,26 +3039,7 @@ if (window.visualViewport && !_isIOS) {
   window.visualViewport.addEventListener('scroll', syncOverlayHeight);
 }
 
-var _orientLockMq = null;
-
-function isLandscapeViewport() {
-  if (window.screen && window.screen.orientation && window.screen.orientation.type) {
-    return String(window.screen.orientation.type).indexOf('landscape') === 0;
-  }
-  return window.matchMedia('(orientation: landscape)').matches;
-}
-
-function updateOrientationLockOverlay() {
-  var el = document.getElementById('orientation-lock');
-  if (!el) return;
-  var landscape = isLandscapeViewport();
-  el.classList.toggle('active', landscape);
-  el.hidden = !landscape;
-  document.documentElement.classList.toggle('orientation-locked-landscape', landscape);
-}
-
 function lockPortraitOrientation() {
-  updateOrientationLockOverlay();
   try {
     if (screen.orientation && screen.orientation.lock) {
       screen.orientation.lock('portrait-primary').catch(function() {});
@@ -3089,15 +3056,11 @@ function lockPortraitOrientation() {
 function initOrientationLock() {
   lockPortraitOrientation();
   window.addEventListener('orientationchange', lockPortraitOrientation);
-  window.addEventListener('resize', lockPortraitOrientation);
   if (window.screen && window.screen.orientation && window.screen.orientation.addEventListener) {
     window.screen.orientation.addEventListener('change', lockPortraitOrientation);
   }
-  if (!_orientLockMq && window.matchMedia) {
-    _orientLockMq = window.matchMedia('(orientation: landscape)');
-    if (_orientLockMq.addEventListener) _orientLockMq.addEventListener('change', lockPortraitOrientation);
-    else if (_orientLockMq.addListener) _orientLockMq.addListener(lockPortraitOrientation);
-  }
+  document.addEventListener('touchstart', lockPortraitOrientation, { passive: true, once: true });
+  document.addEventListener('click', lockPortraitOrientation, { once: true });
 }
 
 // Clear push notifications from the notification drawer and reset the app icon badge.
@@ -4780,7 +4743,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v216';
+var APP_BUILD = 'pkb-v217';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -8661,8 +8624,5 @@ if (/Windows/.test(navigator.userAgent)) {
 }
 </script>
 
-<div id="orientation-lock" hidden aria-live="polite">
-  <p class="orientation-lock-text">Поверните устройство в вертикальное положение</p>
-</div>
 </body>
 </html>
