@@ -1,5 +1,6 @@
 const XLSX = require('xlsx');
 const { sortAndRenumberSheet, COLUMNS, buildColIdx } = require('./excel-utils');
+const { saveChecklistForRecord } = require('../lib/checklists-lib');
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'egorchatov-jpg';
@@ -178,6 +179,15 @@ module.exports = async (req, res) => {
     const fallback = { dateCheck, method, org, barrier };
 
     await updateRecord(fileName, dateEntry, fields, fallback);
+
+    if (fields.checklistFilled) {
+      try {
+        await saveChecklistForRecord(Object.assign({}, fields, { dateEntry }));
+      } catch (clErr) {
+        console.warn('[update] checklist save failed:', clErr.message);
+      }
+    }
+
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error('[update] error:', err.message);

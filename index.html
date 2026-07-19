@@ -2069,8 +2069,8 @@ html, body {
     <div class="card-checklist-body" id="card-checklist-body"></div>
   </div>
   <div class="card-bottom">
-    <button class="card-btn card-btn-cancel" onclick="cancelCardChecklist()">Отмена</button>
-    <button class="card-btn card-btn-submit" onclick="applyCardChecklist()">Готово</button>
+    <button type="button" class="card-btn card-btn-cancel" id="btn-card-checklist-cancel" onclick="cancelCardChecklist()">Отмена</button>
+    <button type="button" class="card-btn card-btn-submit" id="btn-card-checklist-submit" onclick="applyCardChecklist()">Готово</button>
   </div>
 </div>
 
@@ -2902,6 +2902,7 @@ function loadFromServer(onDone) {
     clearTimeout(safetyTimer);
     var cbs = _loadCallbacks;
     _loadCallbacks = null;
+    _setLobbyUiReady();
     cbs.forEach(function(cb) { cb(ok); });
   }
 
@@ -2937,21 +2938,31 @@ function loadFromServer(onDone) {
     }
 
     if (d && Array.isArray(d.records)) {
+      var localDb = appState.db.slice();
       seedUpdateQueueFromLocalDb(d.records);
       appState.db = mergeWithQueue(d.records);
+      preserveLocalChecklists(appState.db, localDb);
       appState.db = applyPendingUpdates(appState.db);
       purgeSyncedUpdates(appState.db);
       normalizeDbDates();
       renumberDb();
-      saveState();
-      renderLobby();
-      var fs = document.getElementById('screen-find');
-      if (fs && fs.classList.contains('active')) applyFindFilters();
-      var cs = document.getElementById('screen-corrective-list');
-      if (cs && cs.classList.contains('active')) renderCorrectiveList();
-      var ss = document.getElementById('screen-sokb-list');
-      if (ss && ss.classList.contains('active')) renderSokbList();
-      retryAllQueues();
+      fetch('/api/checklists', { cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : { items: {} }; })
+        .catch(function() { return { items: {} }; })
+        .then(function(cl) {
+          applyChecklistsMap(appState.db, cl.items || {});
+          saveState();
+          renderLobby();
+          var fs = document.getElementById('screen-find');
+          if (fs && fs.classList.contains('active')) applyFindFilters();
+          var cs = document.getElementById('screen-corrective-list');
+          if (cs && cs.classList.contains('active')) renderCorrectiveList();
+          var ss = document.getElementById('screen-sokb-list');
+          if (ss && ss.classList.contains('active')) renderSokbList();
+          retryAllQueues();
+          finish(true);
+        });
+      return;
     }
     finish(true);
   })
@@ -3200,6 +3211,8 @@ var _cardChecklistViolationKey = null;
 var _cardChecklistQuestionTexts = {};
 var _cardChecklistResizeBound = false;
 var _cardChecklistScrollTop = 0;
+var _recordChecklistView = null;
+var _cardChecklistReadOnly = false;
 var _passportActiveBeforeCard = null;
 var currentDrumCallback = null;
 var currentTextCallback = null;
@@ -3379,10 +3392,9 @@ window.addEventListener('DOMContentLoaded', function() {
   initDateDrum();
   initBpkInputIOSFix();
   setTodayDate();
-  setTimeout(_unlockLobbyBanners, 400);
   loadPassportManifest();
   initIOSStandaloneFix();
-  loadFromServer(function() { _unlockLobbyBanners(); }); // independent of SW / push permission
+  loadFromServer(function() {}); // independent of SW / push permission
   setInterval(function() {
     if (hasPendingSync()) retryAllQueues();
   }, 30000);
@@ -3403,7 +3415,6 @@ window.addEventListener('DOMContentLoaded', function() {
           showScreen(savedScr);
         }
       } catch (_) {}
-      renderLobby();
       loadFromServer(function() {
         retryAllQueues();
         if (isSettingsDirty()) syncSettingsToServer();
@@ -3752,7 +3763,7 @@ function openFindFilter(col) {
 
 // ===== LOBBY =====
 var _lobbyViolCount = -1;
-var _lobbyBannersReady = false;
+var _lobbyUiReady = false;
 
 function _showLobbyBanners(count) {
   var noBanner = document.getElementById('no-violations-banner');
@@ -3771,10 +3782,9 @@ function _showLobbyBanners(count) {
   }
 }
 
-function _unlockLobbyBanners() {
-  if (_lobbyBannersReady) return;
-  _lobbyBannersReady = true;
-  _lobbyViolCount = -1;
+function _setLobbyUiReady() {
+  if (_lobbyUiReady) return;
+  _lobbyUiReady = true;
   renderLobby();
 }
 
@@ -3785,16 +3795,16 @@ function renderLobby() {
   });
 
   var content = document.getElementById('lobby-content');
-  // remove old violation cards
   content.querySelectorAll('.violation-card').forEach(function(el){ el.remove(); });
 
   var count = violations.length;
-  var bannersChanged = (_lobbyViolCount !== count);
-  _lobbyViolCount = count;
-
-  if (_lobbyBannersReady && bannersChanged) {
-    _showLobbyBanners(count);
-  } else if (!_lobbyBannersReady) {
+  if (_lobbyUiReady) {
+    if (_lobbyViolCount !== count) {
+      _lobbyViolCount = count;
+      _showLobbyBanners(count);
+    }
+  } else {
+    _lobbyViolCount = count;
     var noBanner = document.getElementById('no-violations-banner');
     var vBanner  = document.getElementById('violations-banner');
     if (noBanner) { noBanner.style.display = 'none'; noBanner.hidden = true; }
@@ -4458,17 +4468,13 @@ function cardChecklistReadyForViolation() {
 }
 
 function finalizeCardChecklistForSave() {
-  if (!cardData.checklistViolations) return;
-  var has = Object.keys(cardData.checklistViolations).some(function(k) {
-    return String(cardData.checklistViolations[k] || '').trim();
-  });
-  if (!has) {
+  if (!cardData.checklistFilled) {
     cardData.checklistViolations = null;
     cardData.checklistPassportId = null;
     cardData.checklistQuestionTexts = null;
-    cardData.checklistFilled = false;
     return;
   }
+  if (!cardData.checklistViolations) cardData.checklistViolations = {};
   cardData.checklistQuestionTexts = Object.assign({}, _cardChecklistQuestionTexts);
   if (_cardChecklistMatch && !cardData.checklistPassportId) {
     cardData.checklistPassportId = _cardChecklistMatch.passportId;
@@ -4534,12 +4540,15 @@ function submitCardEdit() {
     barrierInPK: calcBarrierInPK(cardData.barrier, checkYear),
     checklistViolations: cardData.checklistViolations ? Object.assign({}, cardData.checklistViolations) : null,
     checklistPassportId: cardData.checklistPassportId || null,
-    checklistQuestionTexts: _cardChecklistQuestionTexts && Object.keys(_cardChecklistQuestionTexts).length ? Object.assign({}, _cardChecklistQuestionTexts) : null
+    checklistQuestionTexts: _cardChecklistQuestionTexts && Object.keys(_cardChecklistQuestionTexts).length ? Object.assign({}, _cardChecklistQuestionTexts) : null,
+    checklistFilled: !!cardData.checklistFilled,
+    checkId: r.checkId || ''
   };
   if (checkYear !== year) r.year = checkYear;
   if (fields.checklistViolations) r.checklistViolations = fields.checklistViolations;
   if (fields.checklistPassportId) r.checklistPassportId = fields.checklistPassportId;
   if (fields.checklistQuestionTexts) r.checklistQuestionTexts = fields.checklistQuestionTexts;
+  if (fields.checklistFilled) r.checklistFilled = true;
   saveRecordFieldUpdate(r.dateEntry, year, fields);
   cardEditRecord = null;
   var titleEl = document.querySelector('#screen-card .card-title');
@@ -5128,7 +5137,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v237';
+var APP_BUILD = 'pkb-v238';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -8192,6 +8201,12 @@ function openDetail(r, source) {
     row('Барьер в ПК', r.barrierInPK, '', editRecord) +
     row('Барьер работоспособен', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', editRecord) +
     (showViolationDesc ? block('Описание нарушения', formatRecordDescHtml(r), editRecord) : '') +
+    (recordHasSavedChecklist(r)
+      ? '<div class="detail-block detail-block-navy" onclick="openRecordChecklistView(detailRecordForEdit)">' +
+          '<div class="detail-block-label">Чек-лист</div>' +
+          '<div class="detail-block-val">' + (recordHasChecklistViolations(r) ? 'Открыть (есть нарушения)' : 'Открыть') + '</div>' +
+        '</div>'
+      : '') +
     corrBlock +
     contestBlock;
   document.getElementById('detail-scroll').scrollTop = 0;
@@ -8598,6 +8613,46 @@ function violationCountWord(n) {
   return 'нарушений';
 }
 
+function recordChecklistKey(r) {
+  return String((r && (r.checkId || r.dateEntry)) || '').trim();
+}
+
+function recordHasSavedChecklist(r) {
+  return !!(r && r.checklistFilled);
+}
+
+function applyChecklistsMap(records, items) {
+  if (!items || !records) return;
+  records.forEach(function(r) {
+    var key = recordChecklistKey(r);
+    var cl = key && items[key];
+    if (!cl || !cl.checklistFilled) return;
+    r.checklistViolations = cl.checklistViolations || {};
+    r.checklistQuestionTexts = cl.checklistQuestionTexts || {};
+    r.checklistPassportId = cl.checklistPassportId || null;
+    r.checklistFilled = true;
+  });
+}
+
+function preserveLocalChecklists(serverRecords, localRecords) {
+  var byKey = {};
+  (localRecords || []).forEach(function(r) {
+    if (!r.checklistFilled) return;
+    var key = recordChecklistKey(r);
+    if (key) byKey[key] = r;
+  });
+  (serverRecords || []).forEach(function(r) {
+    var key = recordChecklistKey(r);
+    var local = key && byKey[key];
+    if (local && local.checklistFilled && !r.checklistFilled) {
+      r.checklistViolations = local.checklistViolations || {};
+      r.checklistQuestionTexts = local.checklistQuestionTexts || {};
+      r.checklistPassportId = local.checklistPassportId || null;
+      r.checklistFilled = true;
+    }
+  });
+}
+
 function recordHasChecklistViolations(r) {
   if (!r || !r.checklistViolations) return false;
   return Object.keys(r.checklistViolations).some(function(k) {
@@ -8699,6 +8754,53 @@ function updateCardChecklistStickyOffset() {
   scroll.style.setProperty('--checklist-criterion-top', wrap.offsetHeight + 'px');
 }
 
+function setCardChecklistScreenMode(editing) {
+  _cardChecklistReadOnly = !editing;
+  var cancelBtn = document.getElementById('btn-card-checklist-cancel');
+  var submitBtn = document.getElementById('btn-card-checklist-submit');
+  if (cancelBtn) cancelBtn.textContent = editing ? 'Отмена' : 'Назад';
+  if (submitBtn) submitBtn.hidden = !editing;
+}
+
+function loadChecklistMatchForRecord(r) {
+  return findPassportBarrierForName(r.barrier).then(function(match) {
+    if (match) return match;
+    if (!r.checklistPassportId) return null;
+    return loadPassportJson(r.checklistPassportId).then(function(data) {
+      var barriers = data.barriers || [];
+      for (var i = 0; i < barriers.length; i++) {
+        if (passportBarrierMatchesName(barriers[i], r.barrier) && passportBarrierHasChecklistQuestions(barriers[i])) {
+          return { passportId: r.checklistPassportId, barrierIdx: i, data: data, barrier: barriers[i] };
+        }
+      }
+      return null;
+    });
+  });
+}
+
+function openRecordChecklistView(r) {
+  if (!r || !recordHasSavedChecklist(r)) return;
+  loadChecklistMatchForRecord(r).then(function(match) {
+    if (!match) {
+      alert('Чек-лист для этой проверки недоступен');
+      return;
+    }
+    _recordChecklistView = r;
+    _passportActiveBeforeCard = _passportActive;
+    _passportActive = { data: match.data, year: null, label: null };
+    _cardChecklistMatch = match;
+    cardData = {
+      checklistViolations: Object.assign({}, r.checklistViolations || {}),
+      checklistFilled: true,
+      checklistPassportId: r.checklistPassportId || match.passportId
+    };
+    _cardChecklistQuestionTexts = Object.assign({}, r.checklistQuestionTexts || {});
+    setCardChecklistScreenMode(false);
+    renderCardChecklistScreen();
+    showScreen('screen-card-checklist');
+  });
+}
+
 function renderCardChecklistScreen(keepScroll) {
   if (!_cardChecklistMatch) return;
   var scrollEl = document.getElementById('card-checklist-scroll');
@@ -8706,6 +8808,7 @@ function renderCardChecklistScreen(keepScroll) {
   var data = _cardChecklistMatch.data;
   var barrier = _cardChecklistMatch.barrier;
   var violations = cardData.checklistViolations || {};
+  var readOnly = _cardChecklistReadOnly;
   var titleEl = document.getElementById('card-checklist-sheet-title');
   var barrierEl = document.getElementById('card-checklist-barrier');
   var bodyEl = document.getElementById('card-checklist-body');
@@ -8713,7 +8816,7 @@ function renderCardChecklistScreen(keepScroll) {
   if (barrierEl) barrierEl.textContent = barrier.label || barrier.code || '';
   if (!bodyEl) return;
   bodyEl.innerHTML = '';
-  _cardChecklistQuestionTexts = {};
+  if (!readOnly) _cardChecklistQuestionTexts = {};
   var appendixIdSet = getPassportAppendixIdSet(data);
   (barrier.criteria || []).forEach(function(crit, ci) {
     var block = document.createElement('div');
@@ -8724,18 +8827,20 @@ function renderCardChecklistScreen(keepScroll) {
     block.appendChild(label);
     (crit.questions || []).forEach(function(q, qi) {
       var qKey = checklistQuestionKey(ci, qi);
-      _cardChecklistQuestionTexts[qKey] = q;
+      if (!readOnly || !_cardChecklistQuestionTexts[qKey]) _cardChecklistQuestionTexts[qKey] = q;
       var qEl = document.createElement('div');
       qEl.className = 'card-checklist-question';
       if (violations[qKey]) qEl.classList.add('violation');
-      fillPassportTextWithAppendixLinks(qEl, q, appendixIdSet, 'screen-card-checklist');
-      bindUiTap(qEl, function(key) {
-        return function(e) {
-          var t = e && e.target;
-          if (t && t.closest && t.closest('.passport-appendix-link')) return;
-          openChecklistViolationOverlay(key);
-        };
-      }(qKey));
+      fillPassportTextWithAppendixLinks(qEl, _cardChecklistQuestionTexts[qKey] || q, appendixIdSet, 'screen-card-checklist');
+      if (!readOnly) {
+        bindUiTap(qEl, function(key) {
+          return function(e) {
+            var t = e && e.target;
+            if (t && t.closest && t.closest('.passport-appendix-link')) return;
+            openChecklistViolationOverlay(key);
+          };
+        }(qKey));
+      }
       block.appendChild(qEl);
     });
     bodyEl.appendChild(block);
@@ -8753,6 +8858,8 @@ function renderCardChecklistScreen(keepScroll) {
 
 function openCardChecklistScreen() {
   if (!_cardChecklistMatch) return;
+  _recordChecklistView = null;
+  setCardChecklistScreenMode(true);
   _passportActiveBeforeCard = _passportActive;
   _passportActive = { data: _cardChecklistMatch.data, year: null, label: null };
   _cardChecklistSnapshot = {
@@ -8775,6 +8882,17 @@ function restorePassportActiveAfterCardChecklist() {
 }
 
 function cancelCardChecklist() {
+  if (_recordChecklistView) {
+    var rec = _recordChecklistView;
+    var src = detailSource;
+    _recordChecklistView = null;
+    _cardChecklistReadOnly = false;
+    _cardChecklistMatch = null;
+    restorePassportActiveAfterCardChecklist();
+    setCardChecklistScreenMode(true);
+    openDetail(rec, src);
+    return;
+  }
   if (_cardChecklistSnapshot) {
     cardData.checklistViolations = _cardChecklistSnapshot.violations ? Object.assign({}, _cardChecklistSnapshot.violations) : null;
     cardData.checklistFilled = _cardChecklistSnapshot.filled;

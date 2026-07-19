@@ -1,6 +1,7 @@
 const XLSX = require('xlsx');
 const { COLUMNS, COL, buildColIdx, sortAndRenumberSheet, nextCheckId, ensureCheckIdColumn, assignMissingCheckIds } = require('./excel-utils');
 const { sendViolationPush } = require('../lib/push-notify');
+const { saveChecklistForRecord } = require('../lib/checklists-lib');
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'egorchatov-jpg';
@@ -161,6 +162,14 @@ module.exports = async (req, res) => {
     }
 
     const saveResult = await appendRecord(fileName, record);
+
+    if (!saveResult.duplicate && record.checklistFilled) {
+      try {
+        await saveChecklistForRecord(record);
+      } catch (clErr) {
+        console.warn('[save] checklist save failed:', clErr.message);
+      }
+    }
 
     let notified = 0;
     if (!saveResult.duplicate && record.works === 'Нет') {

@@ -17,6 +17,7 @@ const API_ROUTES = {
   '/api/subscribe': './api/subscribe',
   '/api/update': './api/update',
   '/api/records': './api/records',
+  '/api/checklists': './api/checklists',
   '/api/export': './api/export',
   '/api/settings': './api/settings',
   '/api/backups': './api/backups',
