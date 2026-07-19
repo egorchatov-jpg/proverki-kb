@@ -4,7 +4,7 @@
   "description": "База данных проверок объектов капитального строительства",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
   "background_color": "#efefef",
   "theme_color": "#efefef",
   "icons": [

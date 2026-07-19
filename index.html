@@ -7,6 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#efefef">
+<meta name="screen-orientation" content="portrait">
+<meta name="x5-orientation" content="portrait">
 <title>Проверки КБ</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/png" href="/favicon.png">
@@ -67,29 +69,6 @@ html, body {
   opacity: 1; pointer-events: all; visibility: visible;
   z-index: 2;
   transition: opacity 0.22s ease, visibility 0s linear 0s;
-}
-/* iOS PWA: stale fixed-layer geometry after rotation breaks hit-testing. */
-.is-ios html,
-.is-ios body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  overscroll-behavior: none;
-}
-.is-ios .screen {
-  transition: none !important;
-}
-.is-ios .screen:not(.active) {
-  display: none !important;
-  pointer-events: none !important;
-  visibility: hidden !important;
-}
-.is-ios .screen.active {
-  display: flex !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-  inset: 0 !important;
-  transform: translateZ(0);
 }
 /* ===== LOBBY ===== */
 #screen-lobby { background: var(--bg); }
@@ -308,7 +287,7 @@ html, body {
 /* ===== SCREEN: КАРТОЧКА ПРОВЕРКИ ===== */
 #screen-card { background: var(--bg); }
 .card-scroll {
-  flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 16px;
+  flex: 1; overflow-y: auto; padding: 0 14px 16px;
   -webkit-overflow-scrolling: touch;
 }
 .card-title {
@@ -380,8 +359,6 @@ html, body {
   padding: 12px 14px;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   flex-shrink: 0;
-  position: relative; z-index: 5;
-  touch-action: manipulation;
   background: var(--bg);
 }
 .card-btn {
@@ -415,16 +392,15 @@ html, body {
 .card-checklist-btn[hidden] { display: none !important; }
 #screen-card-checklist {
   display: flex; flex-direction: column;
-  position: relative;
   background: var(--bg);
 }
 .is-ios #screen-card-checklist.active::before {
   content: '';
-  position: absolute;
+  position: fixed;
   top: 0; left: 0; right: 0;
   height: env(safe-area-inset-top, 0px);
   background: var(--bg);
-  z-index: 1;
+  z-index: 6;
   pointer-events: none;
 }
 .card-checklist-body { padding: 0 16px 12px; position: relative; z-index: 0; }
@@ -726,7 +702,7 @@ html, body {
 
 /* ===== CORRECTIVE EDIT SCREEN ===== */
 .corr-edit-scroll {
-  flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
   padding: 0 14px 12px;
 }
 .corr-viol-info {
@@ -794,8 +770,6 @@ html, body {
   display: flex; gap: 12px; padding: 10px 14px;
   padding-bottom: max(10px, env(safe-area-inset-bottom));
   background: var(--bg); flex-shrink: 0;
-  position: relative; z-index: 5;
-  touch-action: manipulation;
 }
 .corr-btn-cancel {
   flex: 1; height: 53px; border: none; cursor: pointer;
@@ -845,8 +819,6 @@ html, body {
   padding: 10px 14px;
   padding-bottom: max(10px, env(safe-area-inset-bottom));
   flex-shrink: 0;
-  position: relative; z-index: 5;
-  touch-action: manipulation;
 }
 .detail-back-btn {
   background: var(--gray-btn-dark); color: #fff;
@@ -859,6 +831,20 @@ html, body {
 }
 .detail-back-btn:active { opacity: 0.8; }
 .detail-back-btn:disabled { opacity: 0.5; }
+
+/* ===== PORTRAIT ORIENTATION LOCK ===== */
+#orientation-lock {
+  position: fixed; inset: 0; z-index: 50000;
+  background: var(--bg);
+  display: none; align-items: center; justify-content: center;
+  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+  pointer-events: all;
+}
+#orientation-lock.active { display: flex; }
+.orientation-lock-text {
+  font-size: 18px; font-weight: 700; line-height: 1.45;
+  text-align: center; color: #1a2035; max-width: 300px;
+}
 
 /* ===== PULL-TO-REFRESH ===== */
 #pull-indicator {
@@ -894,23 +880,6 @@ html, body {
 .lobby-content, .find-list-wrap, .detail-scroll, .card-scroll {
   overscroll-behavior-y: none;
 }
-.passport-checklist-scroll,
-.settings-screen-body,
-.detail-scroll,
-.corr-edit-scroll,
-.passport-detail-scroll,
-.passport-mub-scroll,
-.passport-appendix-scroll,
-.methods-table-wrap,
-.barriers-table-wrap,
-.pw-body {
-  min-height: 0;
-}
-.settings-footer,
-.find-bottom {
-  position: relative; z-index: 5;
-  touch-action: manipulation;
-}
 
 /* ===== SCREENS: SETTINGS FAMILY ===== */
 #screen-settings,
@@ -935,7 +904,7 @@ html, body {
 }
 /* Shared scrollable body */
 .settings-screen-body {
-  flex: 1; min-height: 0; display: flex; flex-direction: column;
+  flex: 1; display: flex; flex-direction: column;
   align-items: center; padding: 8px 16px 4px; gap: 12px;
   overflow-y: auto; -webkit-overflow-scrolling: touch;
 }
@@ -945,8 +914,6 @@ html, body {
   padding: 10px 14px;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   flex-shrink: 0;
-  position: relative; z-index: 5;
-  touch-action: manipulation;
 }
 /* Wide navy buttons in settings main screen */
 .settings-wide-btn {
@@ -968,7 +935,7 @@ html, body {
 .settings-navy-btn:active { opacity: 0.75; }
 .is-win .settings-navy-btn { width: calc((100vw - 48px) / 3); }
 .passport-detail-scroll {
-  flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   padding: 8px 16px 12px; width: 100%; box-sizing: border-box;
 }
@@ -1236,7 +1203,7 @@ html, body {
   .passport-appendix-flow-row.cols-4 { grid-template-columns: 1fr; }
 }
 .passport-checklist-scroll {
-  flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
   width: 100%;
   --checklist-criterion-top: 72px;
 }
@@ -1365,7 +1332,7 @@ html, body {
 
 /* ===== SCREEN: УПРАВЛЕНИЕ ПАРОЛЯМИ ===== */
 #screen-passwords { background: var(--bg); }
-.pw-body { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 8px 16px; }
+.pw-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 8px 16px; }
 .pw-section-title {
   font-size: 12px; font-weight: 700; color: var(--text2);
   text-transform: uppercase; letter-spacing: 0.5px;
@@ -1401,10 +1368,10 @@ html, body {
 .pw-update-btn svg, .pw-revert-btn svg { display: block; }
 
 /* ===== SCREEN: МЕТОДЫ ПРОВЕРОК ===== */
-.methods-table-wrap { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+.methods-table-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; }
 .methods-table { width: 100%; border-collapse: collapse; }
 /* Barriers table ? identical layout to methods table */
-.barriers-table-wrap { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+.barriers-table-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; }
 .barriers-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .barriers-col-passport { width: 30%; }
 .barriers-col-select  { width: 15%; }
@@ -3086,6 +3053,52 @@ if (window.visualViewport && !_isIOS) {
   window.visualViewport.addEventListener('scroll', syncOverlayHeight);
 }
 
+var _orientLockMq = null;
+
+function isLandscapeViewport() {
+  if (window.screen && window.screen.orientation && window.screen.orientation.type) {
+    return String(window.screen.orientation.type).indexOf('landscape') === 0;
+  }
+  return window.matchMedia('(orientation: landscape)').matches;
+}
+
+function updateOrientationLockOverlay() {
+  var el = document.getElementById('orientation-lock');
+  if (!el) return;
+  var landscape = isLandscapeViewport();
+  el.classList.toggle('active', landscape);
+  el.hidden = !landscape;
+  document.documentElement.classList.toggle('orientation-locked-landscape', landscape);
+}
+
+function lockPortraitOrientation() {
+  updateOrientationLockOverlay();
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('portrait-primary').catch(function() {});
+    } else if (screen.lockOrientation) {
+      screen.lockOrientation('portrait-primary');
+    } else if (screen.msLockOrientation) {
+      screen.msLockOrientation('portrait-primary');
+    } else if (screen.mozLockOrientation) {
+      screen.mozLockOrientation('portrait-primary');
+    }
+  } catch (_e) {}
+}
+
+function initOrientationLock() {
+  lockPortraitOrientation();
+  window.addEventListener('orientationchange', lockPortraitOrientation);
+  window.addEventListener('resize', lockPortraitOrientation);
+  if (window.screen && window.screen.orientation && window.screen.orientation.addEventListener) {
+    window.screen.orientation.addEventListener('change', lockPortraitOrientation);
+  }
+  if (!_orientLockMq && window.matchMedia) {
+    _orientLockMq = window.matchMedia('(orientation: landscape)');
+    if (_orientLockMq.addEventListener) _orientLockMq.addEventListener('change', lockPortraitOrientation);
+    else if (_orientLockMq.addListener) _orientLockMq.addListener(lockPortraitOrientation);
+  }
+}
 
 // Clear push notifications from the notification drawer and reset the app icon badge.
 // Called on app start and every time the app comes to the foreground.
@@ -3175,18 +3188,7 @@ window.addEventListener('DOMContentLoaded', function() {
   setTodayDate();
   setTimeout(_unlockLobbyBanners, 400);
   loadPassportManifest();
-  bindScreenFooterButtons();
-  syncScreenInert();
-  clearIOSInlineLayout();
-  window.addEventListener('orientationchange', scheduleViewportChange);
-  if (!_isIOS) window.addEventListener('resize', scheduleViewportChange);
-  if (_isIOS && window.matchMedia) {
-    var _iosOrientMq = function() { scheduleViewportChange(); };
-    try {
-      window.matchMedia('(orientation: portrait)').addEventListener('change', _iosOrientMq);
-      window.matchMedia('(orientation: landscape)').addEventListener('change', _iosOrientMq);
-    } catch (_e) {}
-  }
+  initOrientationLock();
   loadFromServer(function() { _unlockLobbyBanners(); }); // independent of SW / push permission
   setInterval(function() {
     if (hasPendingSync()) retryAllQueues();
@@ -3201,6 +3203,7 @@ window.addEventListener('DOMContentLoaded', function() {
       }
     }
     if (!document.hidden) {
+      lockPortraitOrientation();
       try {
         var savedScr = sessionStorage.getItem('pkb-active-screen');
         if (hasSession() && savedScr && document.getElementById(savedScr)) {
@@ -3320,11 +3323,9 @@ function showScreen(id) {
     return false;
   }
   el.classList.add('active');
-  syncScreenInert();
   if (prev && prev.id === 'screen-pin' && id !== 'screen-pin') setPinInputLocked(false);
   var scrollEl = el.querySelector('.passport-detail-scroll, .passport-mub-scroll, .passport-appendix-scroll, .passport-checklist-scroll, .settings-screen-body');
   if (scrollEl) scrollEl.scrollTop = 0;
-  if (_isIOS) clearIOSInlineLayout();
   return true;
 }
 
@@ -4779,7 +4780,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v215';
+var APP_BUILD = 'pkb-v216';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -4866,108 +4867,6 @@ function bindUiTap(el, handler) {
   el.addEventListener('click', function(e) {
     if (Date.now() - lastTouchEnd < 500) return;
     handler(e);
-  });
-}
-
-function bindScreenFooterButtons() {
-  if (_isIOS) return;
-  var sel = 'button.screen-back-btn, button.screen-save-btn, .card-bottom .card-btn, .detail-back-btn, .corr-footer button, .find-bottom-btn';
-  document.querySelectorAll(sel).forEach(function(btn) {
-    if (btn._uiTapBound) return;
-    var code = btn.getAttribute('onclick');
-    if (!code) return;
-    btn._uiTapBound = true;
-    btn.removeAttribute('onclick');
-    bindUiTap(btn, function() {
-      try { (new Function(code)).call(window); } catch (err) { console.error(err); }
-    });
-  });
-}
-
-var _viewportChangeTimer = null;
-var _iosOrientToken = 0;
-var _iosLastRebuildKey = '';
-
-function clearIOSInlineLayout() {
-  if (!_isIOS) return;
-  document.documentElement.style.width = '';
-  document.documentElement.style.height = '';
-  document.body.style.width = '';
-  document.body.style.height = '';
-  document.querySelectorAll('.screen').forEach(function(s) {
-    s.style.top = '';
-    s.style.left = '';
-    s.style.width = '';
-    s.style.height = '';
-    s.style.right = '';
-    s.style.bottom = '';
-    s.style.transform = '';
-  });
-  document.querySelectorAll('.overlay').forEach(function(ov) {
-    ov.style.height = '';
-    ov.style.top = '';
-  });
-}
-
-function syncScreenInert() {
-  document.querySelectorAll('.screen').forEach(function(s) {
-    if ('inert' in s) s.inert = !s.classList.contains('active');
-  });
-}
-
-function rebuildIOSActiveScreen() {
-  if (!_isIOS) return;
-  var active = document.querySelector('.screen.active');
-  if (!active || !active.parentNode) return;
-  var parent = active.parentNode;
-  var anchor = document.createComment('ios-screen-anchor');
-  parent.insertBefore(anchor, active);
-  parent.removeChild(active);
-  void document.documentElement.offsetHeight;
-  parent.insertBefore(active, anchor);
-  parent.removeChild(anchor);
-  active.classList.add('active');
-  syncScreenInert();
-}
-
-function refreshLayoutAfterRotation() {
-  hidePullIndicator(false);
-  pullState.can = false;
-  pullState.delta = 0;
-
-  if (!_isIOS) {
-    updatePassportChecklistStickyOffset();
-    updateCardChecklistStickyOffset();
-    return;
-  }
-
-  clearIOSInlineLayout();
-  window.scrollTo(0, 0);
-
-  var w = window.innerWidth;
-  var h = window.innerHeight;
-  var key = w + 'x' + h + '@' + (window.orientation || 0);
-  if (key === _iosLastRebuildKey) return;
-  _iosLastRebuildKey = key;
-
-  rebuildIOSActiveScreen();
-  updatePassportChecklistStickyOffset();
-  updateCardChecklistStickyOffset();
-}
-
-function scheduleViewportChange() {
-  if (!_isIOS) {
-    clearTimeout(_viewportChangeTimer);
-    _viewportChangeTimer = setTimeout(refreshLayoutAfterRotation, 120);
-    return;
-  }
-  _iosLastRebuildKey = '';
-  var token = ++_iosOrientToken;
-  [350, 700].forEach(function(ms) {
-    setTimeout(function() {
-      if (token !== _iosOrientToken) return;
-      refreshLayoutAfterRotation();
-    }, ms);
   });
 }
 
@@ -8762,5 +8661,8 @@ if (/Windows/.test(navigator.userAgent)) {
 }
 </script>
 
+<div id="orientation-lock" hidden aria-live="polite">
+  <p class="orientation-lock-text">Поверните устройство в вертикальное положение</p>
+</div>
 </body>
 </html>
