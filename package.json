@@ -1,7 +1,17 @@
 {
   "name": "proverki-kb",
   "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
   "dependencies": {
+    "express": "^4.21.2",
+    "node-cron": "^3.0.3",
     "web-push": "3.6.7",
     "xlsx": "0.18.5"
   },
