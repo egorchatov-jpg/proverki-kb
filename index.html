@@ -68,15 +68,16 @@ html, body {
   z-index: 2;
   transition: opacity 0.22s ease, visibility 0s linear 0s;
 }
-/* iOS PWA: after rotation WebKit keeps stale fixed-layer geometry;
-   inactive screens must leave the layout tree to stop intercepting taps. */
+/* iOS PWA: stale fixed-layer geometry after rotation breaks hit-testing. */
 .is-ios html,
 .is-ios body {
-  position: fixed;
   width: 100%;
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+}
+.is-ios .screen {
+  transition: none !important;
 }
 .is-ios .screen:not(.active) {
   display: none !important;
@@ -86,13 +87,9 @@ html, body {
 .is-ios .screen.active {
   display: flex !important;
   visibility: visible !important;
+  pointer-events: auto !important;
   inset: 0 !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: auto !important;
-  height: auto !important;
+  transform: translateZ(0);
 }
 /* ===== LOBBY ===== */
 #screen-lobby { background: var(--bg); }
@@ -3179,9 +3176,17 @@ window.addEventListener('DOMContentLoaded', function() {
   setTimeout(_unlockLobbyBanners, 400);
   loadPassportManifest();
   bindScreenFooterButtons();
+  syncScreenInert();
   clearIOSInlineLayout();
   window.addEventListener('orientationchange', scheduleViewportChange);
   if (!_isIOS) window.addEventListener('resize', scheduleViewportChange);
+  if (_isIOS && window.matchMedia) {
+    var _iosOrientMq = function() { scheduleViewportChange(); };
+    try {
+      window.matchMedia('(orientation: portrait)').addEventListener('change', _iosOrientMq);
+      window.matchMedia('(orientation: landscape)').addEventListener('change', _iosOrientMq);
+    } catch (_e) {}
+  }
   loadFromServer(function() { _unlockLobbyBanners(); }); // independent of SW / push permission
   setInterval(function() {
     if (hasPendingSync()) retryAllQueues();
@@ -3315,9 +3320,11 @@ function showScreen(id) {
     return false;
   }
   el.classList.add('active');
+  syncScreenInert();
   if (prev && prev.id === 'screen-pin' && id !== 'screen-pin') setPinInputLocked(false);
   var scrollEl = el.querySelector('.passport-detail-scroll, .passport-mub-scroll, .passport-appendix-scroll, .passport-checklist-scroll, .settings-screen-body');
   if (scrollEl) scrollEl.scrollTop = 0;
+  if (_isIOS) clearIOSInlineLayout();
   return true;
 }
 
@@ -4772,7 +4779,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v214';
+var APP_BUILD = 'pkb-v215';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -4863,6 +4870,7 @@ function bindUiTap(el, handler) {
 }
 
 function bindScreenFooterButtons() {
+  if (_isIOS) return;
   var sel = 'button.screen-back-btn, button.screen-save-btn, .card-bottom .card-btn, .detail-back-btn, .corr-footer button, .find-bottom-btn';
   document.querySelectorAll(sel).forEach(function(btn) {
     if (btn._uiTapBound) return;
@@ -4877,6 +4885,8 @@ function bindScreenFooterButtons() {
 }
 
 var _viewportChangeTimer = null;
+var _iosOrientToken = 0;
+var _iosLastRebuildKey = '';
 
 function clearIOSInlineLayout() {
   if (!_isIOS) return;
@@ -4891,6 +4901,7 @@ function clearIOSInlineLayout() {
     s.style.height = '';
     s.style.right = '';
     s.style.bottom = '';
+    s.style.transform = '';
   });
   document.querySelectorAll('.overlay').forEach(function(ov) {
     ov.style.height = '';
@@ -4898,19 +4909,66 @@ function clearIOSInlineLayout() {
   });
 }
 
+function syncScreenInert() {
+  document.querySelectorAll('.screen').forEach(function(s) {
+    if ('inert' in s) s.inert = !s.classList.contains('active');
+  });
+}
+
+function rebuildIOSActiveScreen() {
+  if (!_isIOS) return;
+  var active = document.querySelector('.screen.active');
+  if (!active || !active.parentNode) return;
+  var parent = active.parentNode;
+  var anchor = document.createComment('ios-screen-anchor');
+  parent.insertBefore(anchor, active);
+  parent.removeChild(active);
+  void document.documentElement.offsetHeight;
+  parent.insertBefore(active, anchor);
+  parent.removeChild(anchor);
+  active.classList.add('active');
+  syncScreenInert();
+}
+
 function refreshLayoutAfterRotation() {
   hidePullIndicator(false);
   pullState.can = false;
   pullState.delta = 0;
+
+  if (!_isIOS) {
+    updatePassportChecklistStickyOffset();
+    updateCardChecklistStickyOffset();
+    return;
+  }
+
   clearIOSInlineLayout();
+  window.scrollTo(0, 0);
+
+  var w = window.innerWidth;
+  var h = window.innerHeight;
+  var key = w + 'x' + h + '@' + (window.orientation || 0);
+  if (key === _iosLastRebuildKey) return;
+  _iosLastRebuildKey = key;
+
+  rebuildIOSActiveScreen();
   updatePassportChecklistStickyOffset();
   updateCardChecklistStickyOffset();
 }
 
 function scheduleViewportChange() {
-  clearTimeout(_viewportChangeTimer);
-  var delay = _isIOS ? 400 : 120;
-  _viewportChangeTimer = setTimeout(refreshLayoutAfterRotation, delay);
+  if (!_isIOS) {
+    clearTimeout(_viewportChangeTimer);
+    _viewportChangeTimer = setTimeout(refreshLayoutAfterRotation, 120);
+    return;
+  }
+  _iosLastRebuildKey = '';
+  var token = ++_iosOrientToken;
+  [350, 700].forEach(function(ms) {
+    setTimeout(function() {
+      if (token !== _iosOrientToken) return;
+      refreshLayoutAfterRotation();
+    }, ms);
+  });
 }
 
 function openPassportKBDetail(year, label) {
