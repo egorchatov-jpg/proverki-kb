@@ -41,8 +41,40 @@ async function ghPut(fileName, contentBuf, sha, message) {
     },
     body: JSON.stringify(body),
   }, 12000);
-  if (!r.ok) throw new Error(`GitHub PUT "${fileName}": HTTP ${r.status}`);
+  if (!r.ok) {
+    const err = new Error(`GitHub PUT "${fileName}": HTTP ${r.status}`);
+    err.httpStatus = r.status;
+    throw err;
+  }
   return r.json();
+}
+
+function readSubsFile(existing) {
+  if (!existing || !existing.content) return { data: { subscriptions: [] }, sha: undefined };
+  const txt = Buffer.from(existing.content.replace(/\n/g, ''), 'base64').toString('utf8');
+  const data = JSON.parse(txt);
+  if (!Array.isArray(data.subscriptions)) data.subscriptions = [];
+  return { data, sha: existing.sha };
+}
+
+async function writeSubscriptions(updater, logSuffix) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const existing = await ghGet(SUBS_FILE);
+    const { data, sha } = readSubsFile(existing);
+    const next = updater(data);
+    const content = Buffer.from(JSON.stringify(next, null, 2), 'utf8');
+    try {
+      await ghPut(SUBS_FILE, content, sha, logSuffix);
+      return next;
+    } catch (err) {
+      if (err.httpStatus === 409 && attempt < 2) {
+        console.warn(`[subscribe] 409 conflict, retry ${attempt + 1}/3`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error('Failed to save subscriptions after retries');
 }
 
 module.exports = async (req, res) => {
@@ -59,26 +91,12 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Missing subscription.endpoint' });
     }
 
-    const existing = await ghGet(SUBS_FILE);
-    let data = { subscriptions: [] };
-    let sha;
-
-    if (existing && existing.content) {
-      sha = existing.sha;
-      const txt = Buffer.from(existing.content.replace(/\n/g, ''), 'base64').toString('utf8');
-      data = JSON.parse(txt);
-      if (!Array.isArray(data.subscriptions)) data.subscriptions = [];
-    }
-
-    const idx = data.subscriptions.findIndex(s => s.endpoint === subscription.endpoint);
-    if (idx >= 0) {
-      data.subscriptions[idx] = subscription;
-    } else {
-      data.subscriptions.push(subscription);
-    }
-
-    const content = Buffer.from(JSON.stringify(data, null, 2), 'utf8');
-    await ghPut(SUBS_FILE, content, sha, `Subscribe: ${subscription.endpoint.slice(-20)}`);
+    const data = await writeSubscriptions(function(current) {
+      const idx = current.subscriptions.findIndex(s => s.endpoint === subscription.endpoint);
+      if (idx >= 0) current.subscriptions[idx] = subscription;
+      else current.subscriptions.push(subscription);
+      return current;
+    }, `Subscribe: ${subscription.endpoint.slice(-20)}`);
 
     return res.status(200).json({ success: true, total: data.subscriptions.length });
   } catch (err) {

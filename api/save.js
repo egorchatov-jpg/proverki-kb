@@ -1,5 +1,6 @@
 const XLSX = require('xlsx');
 const { COLUMNS, COL, buildColIdx, sortAndRenumberSheet, nextCheckId, ensureCheckIdColumn, assignMissingCheckIds } = require('./excel-utils');
+const { sendViolationPush } = require('../lib/push-notify');
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'egorchatov-jpg';
@@ -98,7 +99,7 @@ async function appendRecord(fileName, record) {
     });
     if (isDupe) {
       console.warn('[save] duplicate detected, skipping');
-      return; // report success to client so it clears the retry queue
+      return { duplicate: true };
     }
 
     if (!record.checkId) {
@@ -124,7 +125,7 @@ async function appendRecord(fileName, record) {
         fileName, b64, existing ? existing.sha : undefined,
         `Проверка ${record.checkId || ('№' + record.num)} — ${record.org || ''}`
       );
-      return; // success
+      return { duplicate: false };
     } catch (err) {
       if (err.httpStatus === 409 && attempt < 2) {
         console.warn(`[save] 409 conflict, retry ${attempt + 1}/3`);
@@ -145,7 +146,7 @@ module.exports = async (req, res) => {
   if (!GITHUB_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN not configured' });
 
   try {
-    const { record } = req.body || {};
+    const { record, senderEndpoint } = req.body || {};
     if (!record) return res.status(400).json({ error: 'Missing record' });
 
     const year = record.dateCheck
@@ -159,11 +160,26 @@ module.exports = async (req, res) => {
       record.dateEntry = `${p(now.getDate())}.${p(now.getMonth()+1)}.${now.getFullYear()}, ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`;
     }
 
-    await appendRecord(fileName, record);
+    const saveResult = await appendRecord(fileName, record);
 
-    // Push notifications are sent separately by the client via /api/notify,
-    // so this function stays within Vercel's 10-second limit.
-    return res.status(200).json({ success: true, num: record.num, year, checkId: record.checkId });
+    let notified = 0;
+    if (!saveResult.duplicate && record.works === 'Нет') {
+      try {
+        const pushResult = await sendViolationPush(record, senderEndpoint || null);
+        notified = pushResult.sent || 0;
+      } catch (pushErr) {
+        console.warn('[save] push notify failed:', pushErr.message);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      duplicate: !!saveResult.duplicate,
+      notified,
+      num: record.num,
+      year,
+      checkId: record.checkId,
+    });
   } catch (err) {
     console.error('[save] error:', err.message);
     return res.status(500).json({ error: err.message });

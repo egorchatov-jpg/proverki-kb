@@ -2793,64 +2793,69 @@ function retrySyncQueue() {
 }
 
 // --- Save record to server ---
+function getPushSenderEndpoint() {
+  return new Promise(function(resolve) {
+    if (!swRegistration || !swRegistration.pushManager) { resolve(null); return; }
+    swRegistration.pushManager.getSubscription()
+      .then(function(sub) { resolve(sub ? sub.endpoint : null); })
+      .catch(function() { resolve(null); });
+  });
+}
+
+function postViolationNotify(record, senderEp) {
+  fetch('/api/notify', {
+    method: 'POST',
+    keepalive: true,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ record: record, senderEndpoint: senderEp || null })
+  }).catch(function(e) { console.warn('[notify] failed:', e.message); });
+}
+
 function syncToServer(record) {
   syncStatus = 'syncing';
   updateSyncIndicator();
   var ctrl = new AbortController();
   var timer = setTimeout(function() { ctrl.abort(); }, 14000);
-  fetch('/api/save', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ record: record }),
-    signal: ctrl.signal
-  })
-  .then(function(r) { clearTimeout(timer); return r.json(); })
-  .then(function(d) {
-    if (d.success) {
-      removeFromSyncQueue(record.id);
-      updateSyncStatusFromQueues();
-      if (!hasPendingSync()) syncStatus = 'ok';
-      var shas = getServerShas();
-      delete shas['sha' + d.year];
-      saveServerShas(shas);
-      var savedRec = appState.db.find(function(r) { return r.id === record.id || r.dateEntry === record.dateEntry; });
-      if (savedRec) {
-        if (d.checkId) savedRec.checkId = d.checkId;
-        if (d.num) savedRec.num = d.num;
-        saveState();
-      }
-      console.log('[sync] сохранено на сервере ' + (d.checkId || ('№' + d.num)) + ' (' + d.year + ')');
-      // Push notifications sent via separate endpoint so /api/save stays within Vercel 10s limit.
-      // senderEndpoint is included so the server can exclude this device from recipients.
-      if (record.works === 'Нет') {
-        var doNotify = function(senderEp) {
-          fetch('/api/notify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ record: record, senderEndpoint: senderEp || null })
-          }).catch(function(e) { console.warn('[notify] failed:', e.message); });
-        };
-        if (swRegistration) {
-          swRegistration.pushManager.getSubscription()
-            .then(function(sub) { doNotify(sub ? sub.endpoint : null); })
-            .catch(function() { doNotify(null); });
-        } else {
-          doNotify(null);
+  getPushSenderEndpoint().then(function(senderEp) {
+    fetch('/api/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ record: record, senderEndpoint: senderEp || null }),
+      signal: ctrl.signal
+    })
+    .then(function(r) { clearTimeout(timer); return r.json(); })
+    .then(function(d) {
+      if (d.success) {
+        removeFromSyncQueue(record.id);
+        updateSyncStatusFromQueues();
+        if (!hasPendingSync()) syncStatus = 'ok';
+        var shas = getServerShas();
+        delete shas['sha' + d.year];
+        saveServerShas(shas);
+        var savedRec = appState.db.find(function(r) { return r.id === record.id || r.dateEntry === record.dateEntry; });
+        if (savedRec) {
+          if (d.checkId) savedRec.checkId = d.checkId;
+          if (d.num) savedRec.num = d.num;
+          saveState();
         }
+        console.log('[sync] сохранено на сервере ' + (d.checkId || ('№' + d.num)) + ' (' + d.year + ')');
+        if (record.works === 'Нет' && !d.duplicate && (!d.notified || d.notified === 0)) {
+          postViolationNotify(record, senderEp);
+        }
+      } else {
+        syncStatus = 'error';
+        addToSyncQueue(record);
+        console.warn('[sync] ошибка сервера:', d.error);
       }
-    } else {
-      syncStatus = 'error';
+      updateSyncIndicator();
+    })
+    .catch(function(e) {
+      clearTimeout(timer);
+      syncStatus = 'offline';
       addToSyncQueue(record);
-      console.warn('[sync] ошибка сервера:', d.error);
-    }
-    updateSyncIndicator();
-  })
-  .catch(function(e) {
-    clearTimeout(timer);
-    syncStatus = 'offline';
-    addToSyncQueue(record);
-    console.warn('[sync] нет соединения или таймаут, запись в очередь');
-    updateSyncIndicator();
+      console.warn('[sync] нет соединения или таймаут, запись в очередь');
+      updateSyncIndicator();
+    });
   });
 }
 
@@ -3057,11 +3062,21 @@ function urlBase64ToUint8Array(b64) {
 }
 
 function sendSubscriptionToServer(sub) {
-  fetch('/api/subscribe', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ subscription: sub.toJSON() })
-  }).catch(function(e){ console.warn('[push] subscribe POST failed:', e); });
+  var payload = JSON.stringify({ subscription: sub.toJSON() });
+  function attempt(n) {
+    fetch('/api/subscribe', {
+      method: 'POST',
+      keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: payload
+    }).then(function(r) {
+      if (!r.ok && n < 2) attempt(n + 1);
+    }).catch(function(e) {
+      if (n < 2) attempt(n + 1);
+      else console.warn('[push] subscribe POST failed:', e);
+    });
+  }
+  attempt(1);
 }
 
 function subscribeToPush(reg) {
@@ -3304,10 +3319,7 @@ function _finishInit() {
 // and defer SW registration.  Otherwise complete init immediately.
 function _showPushPromptOrFinish() {
   try {
-    var isStandalone = window.matchMedia('(display-mode: standalone)').matches
-                    || window.navigator.standalone === true;
-    if (isStandalone
-        && ('Notification' in window)
+    if (('Notification' in window)
         && (typeof Notification.requestPermission === 'function')
         && Notification.permission === 'default') {
       var overlay = document.getElementById('overlay-push-prompt');
@@ -5031,7 +5043,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v231';
+var APP_BUILD = 'pkb-v232';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
