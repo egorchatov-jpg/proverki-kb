@@ -7,8 +7,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#efefef">
-<meta name="screen-orientation" content="portrait">
-<meta name="x5-orientation" content="portrait">
 <title>Проверки КБ</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/png" href="/favicon.png">
@@ -70,24 +68,44 @@ html, body {
   z-index: 2;
   transition: opacity 0.22s ease, visibility 0s linear 0s;
 }
-/* is-ios portrait CSS lock: iOS ignores manifest orientation and orientation.lock() */
-@media (orientation: landscape) {
-  html.is-ios {
-    overflow: hidden;
-    background: var(--bg);
-  }
-  html.is-ios body {
-    position: fixed;
-    transform: rotate(-90deg);
-    transform-origin: left top;
-    -webkit-transform: rotate(-90deg);
-    -webkit-transform-origin: left top;
-    width: 100vh;
-    height: 100vw;
-    top: 100%;
-    left: 0;
-    overflow: hidden;
-  }
+/* iOS standalone PWA: WebKit keeps stale fixed layers after rotation (Safari tab is fine) */
+.is-ios-standalone .screen:not(.active) {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+.is-ios-standalone .screen.active {
+  display: flex !important;
+  visibility: visible !important;
+}
+.is-ios-standalone .screen {
+  transition: none !important;
+}
+.is-ios-standalone .passport-checklist-scroll,
+.is-ios-standalone .settings-screen-body,
+.is-ios-standalone .card-scroll,
+.is-ios-standalone .detail-scroll,
+.is-ios-standalone .corr-edit-scroll,
+.is-ios-standalone .passport-detail-scroll,
+.is-ios-standalone .passport-mub-scroll,
+.is-ios-standalone .passport-appendix-scroll,
+.is-ios-standalone .methods-table-wrap,
+.is-ios-standalone .barriers-table-wrap,
+.is-ios-standalone .pw-body {
+  min-height: 0;
+}
+.is-ios-standalone .settings-footer,
+.is-ios-standalone .card-bottom,
+.is-ios-standalone .corr-footer,
+.is-ios-standalone .detail-back,
+.is-ios-standalone .find-bottom {
+  position: relative;
+  z-index: 5;
+  flex-shrink: 0;
+}
+.is-ios-standalone #screen-card-checklist.active::before {
+  position: absolute;
+  z-index: 1;
 }
 /* ===== LOBBY ===== */
 #screen-lobby { background: var(--bg); }
@@ -411,15 +429,16 @@ html, body {
 .card-checklist-btn[hidden] { display: none !important; }
 #screen-card-checklist {
   display: flex; flex-direction: column;
+  position: relative;
   background: var(--bg);
 }
 .is-ios #screen-card-checklist.active::before {
   content: '';
-  position: fixed;
+  position: absolute;
   top: 0; left: 0; right: 0;
   height: env(safe-area-inset-top, 0px);
   background: var(--bg);
-  z-index: 6;
+  z-index: 1;
   pointer-events: none;
 }
 .card-checklist-body { padding: 0 16px 12px; position: relative; z-index: 0; }
@@ -3049,6 +3068,11 @@ var _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 if (!_isIOS) document.documentElement.classList.add('is-not-ios');
 else document.documentElement.classList.add('is-ios');
+var _isIOSStandalone = _isIOS && (
+  window.matchMedia('(display-mode: standalone)').matches ||
+  window.navigator.standalone === true
+);
+if (_isIOSStandalone) document.documentElement.classList.add('is-ios-standalone');
 if (window.visualViewport && !_isIOS) {
   function syncOverlayHeight() {
     var h = window.visualViewport.height + 'px';
@@ -3058,29 +3082,56 @@ if (window.visualViewport && !_isIOS) {
   window.visualViewport.addEventListener('scroll', syncOverlayHeight);
 }
 
-function lockPortraitOrientation() {
-  try {
-    if (screen.orientation && screen.orientation.lock) {
-      screen.orientation.lock('portrait-primary').catch(function() {});
-    } else if (screen.lockOrientation) {
-      screen.lockOrientation('portrait-primary');
-    } else if (screen.msLockOrientation) {
-      screen.msLockOrientation('portrait-primary');
-    } else if (screen.mozLockOrientation) {
-      screen.mozLockOrientation('portrait-primary');
-    }
-  } catch (_e) {}
+var _iosStandaloneOrientToken = 0;
+
+function syncScreenInert() {
+  if (!_isIOSStandalone) return;
+  document.querySelectorAll('.screen').forEach(function(s) {
+    if ('inert' in s) s.inert = !s.classList.contains('active');
+  });
 }
 
-function initOrientationLock() {
-  if (_isIOS) return;
-  lockPortraitOrientation();
-  window.addEventListener('orientationchange', lockPortraitOrientation);
-  if (window.screen && window.screen.orientation && window.screen.orientation.addEventListener) {
-    window.screen.orientation.addEventListener('change', lockPortraitOrientation);
-  }
-  document.addEventListener('touchstart', lockPortraitOrientation, { passive: true, once: true });
-  document.addEventListener('click', lockPortraitOrientation, { once: true });
+function rebuildIOSStandaloneScreen() {
+  if (!_isIOSStandalone) return;
+  var active = document.querySelector('.screen.active');
+  if (!active || !active.parentNode) return;
+  var parent = active.parentNode;
+  var anchor = document.createComment('ios-pwa-screen');
+  parent.insertBefore(anchor, active);
+  parent.removeChild(active);
+  void document.documentElement.offsetHeight;
+  parent.insertBefore(active, anchor);
+  parent.removeChild(anchor);
+  active.classList.add('active');
+  syncScreenInert();
+}
+
+function fixIOSStandaloneAfterRotation() {
+  if (!_isIOSStandalone) return;
+  hidePullIndicator(false);
+  pullState.can = false;
+  pullState.delta = 0;
+  window.scrollTo(0, 0);
+  rebuildIOSStandaloneScreen();
+  updatePassportChecklistStickyOffset();
+  updateCardChecklistStickyOffset();
+}
+
+function scheduleIOSStandaloneOrientationFix() {
+  if (!_isIOSStandalone) return;
+  var token = ++_iosStandaloneOrientToken;
+  [350, 700].forEach(function(ms) {
+    setTimeout(function() {
+      if (token !== _iosStandaloneOrientToken) return;
+      fixIOSStandaloneAfterRotation();
+    }, ms);
+  });
+}
+
+function initIOSStandaloneFix() {
+  if (!_isIOSStandalone) return;
+  syncScreenInert();
+  window.addEventListener('orientationchange', scheduleIOSStandaloneOrientationFix);
 }
 
 // Clear push notifications from the notification drawer and reset the app icon badge.
@@ -3171,7 +3222,7 @@ window.addEventListener('DOMContentLoaded', function() {
   setTodayDate();
   setTimeout(_unlockLobbyBanners, 400);
   loadPassportManifest();
-  initOrientationLock();
+  initIOSStandaloneFix();
   loadFromServer(function() { _unlockLobbyBanners(); }); // independent of SW / push permission
   setInterval(function() {
     if (hasPendingSync()) retryAllQueues();
@@ -3186,7 +3237,7 @@ window.addEventListener('DOMContentLoaded', function() {
       }
     }
     if (!document.hidden) {
-      if (!_isIOS) lockPortraitOrientation();
+      scheduleIOSStandaloneOrientationFix();
       try {
         var savedScr = sessionStorage.getItem('pkb-active-screen');
         if (hasSession() && savedScr && document.getElementById(savedScr)) {
@@ -3306,6 +3357,7 @@ function showScreen(id) {
     return false;
   }
   el.classList.add('active');
+  syncScreenInert();
   if (prev && prev.id === 'screen-pin' && id !== 'screen-pin') setPinInputLocked(false);
   var scrollEl = el.querySelector('.passport-detail-scroll, .passport-mub-scroll, .passport-appendix-scroll, .passport-checklist-scroll, .settings-screen-body');
   if (scrollEl) scrollEl.scrollTop = 0;
@@ -4763,7 +4815,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v218';
+var APP_BUILD = 'pkb-v219';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
