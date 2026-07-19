@@ -388,17 +388,18 @@ html, body {
 }
 .card-checklist-btn:active { opacity: 0.8; }
 .card-checklist-btn[hidden] { display: none !important; }
-#screen-card-checklist,
-#screen-card-checklist .card-checklist-scroll {
-  background: var(--bg);
-}
 #screen-card-checklist {
   display: flex; flex-direction: column;
+  background: var(--bg);
 }
-.card-checklist-scroll {
-  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
-  width: 100%;
-  --checklist-criterion-top: 72px;
+.is-ios #screen-card-checklist.active::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--bg);
+  z-index: 6;
+  pointer-events: none;
 }
 .card-checklist-body { padding: 0 16px 12px; position: relative; z-index: 0; }
 .card-checklist-question {
@@ -561,7 +562,7 @@ html, body {
 .violator-ctrl-btn.add { background: var(--orange); }
 .violator-ctrl-btn:active:not(:disabled) { opacity: 0.8; }
 .violator-ctrl-btn svg { width: 24px; height: 24px; }
-/* "Нет" в ячейке "Работоспособность барьера" — красный жирный текст */
+/* "Нет" в ячейке "Барьер работоспособен" — красный жирный текст */
 .field-val-works-no { color: var(--red); font-weight: 700; }
 
 /* success overlay */
@@ -1818,7 +1819,7 @@ html, body {
       </div>
 
       <div class="field-wrap">
-        <div class="field-label">Работоспособность барьера</div>
+        <div class="field-label">Барьер работоспособен</div>
         <div class="field-cell" id="cell-works" onclick="openDrumWorks()">
           <span class="placeholder" id="val-works">Выбрать</span>
         </div>
@@ -1885,7 +1886,7 @@ html, body {
 
 <!-- ===== SCREEN: ЧЕК-ЛИСТ В ПРОВЕРКЕ ===== -->
 <div class="screen" id="screen-card-checklist">
-  <div class="card-checklist-scroll" id="card-checklist-scroll">
+  <div class="passport-checklist-scroll" id="card-checklist-scroll">
     <div class="settings-screen-title" id="card-checklist-sheet-title"></div>
     <div class="passport-checklist-barrier-wrap" id="card-checklist-barrier-wrap">
       <div class="passport-checklist-barrier-sticky" id="card-checklist-barrier"></div>
@@ -3002,6 +3003,7 @@ var _cardChecklistSnapshot = null;
 var _cardChecklistViolationKey = null;
 var _cardChecklistQuestionTexts = {};
 var _cardChecklistResizeBound = false;
+var _cardChecklistScrollTop = 0;
 var _passportActiveBeforeCard = null;
 var currentDrumCallback = null;
 var currentTextCallback = null;
@@ -3257,7 +3259,7 @@ function showScreen(id) {
   }
   el.classList.add('active');
   if (prev && prev.id === 'screen-pin' && id !== 'screen-pin') setPinInputLocked(false);
-  var scrollEl = el.querySelector('.passport-detail-scroll, .passport-mub-scroll, .passport-appendix-scroll, .passport-checklist-scroll, .card-checklist-scroll, .settings-screen-body');
+  var scrollEl = el.querySelector('.passport-detail-scroll, .passport-mub-scroll, .passport-appendix-scroll, .passport-checklist-scroll, .settings-screen-body');
   if (scrollEl) scrollEl.scrollTop = 0;
   return true;
 }
@@ -4713,7 +4715,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v209';
+var APP_BUILD = 'pkb-v210';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -7742,7 +7744,7 @@ function openDetail(r, source) {
     row('Проверяемый объект', r.obj, '', editRecord) +
     row('Проверяемый барьер', r.barrier, '', editRecord) +
     row('Барьер в ПК', r.barrierInPK, '', editRecord) +
-    row('Работоспособность барьера', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', editRecord) +
+    row('Барьер работоспособен', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', editRecord) +
     (showViolationDesc ? block('Описание нарушения', r.desc, editRecord) : '') +
     corrBlock +
     contestBlock;
@@ -8214,8 +8216,10 @@ function updateCardChecklistStickyOffset() {
   scroll.style.setProperty('--checklist-criterion-top', wrap.offsetHeight + 'px');
 }
 
-function renderCardChecklistScreen() {
+function renderCardChecklistScreen(keepScroll) {
   if (!_cardChecklistMatch) return;
+  var scrollEl = document.getElementById('card-checklist-scroll');
+  var savedTop = keepScroll && scrollEl ? scrollEl.scrollTop : 0;
   var data = _cardChecklistMatch.data;
   var barrier = _cardChecklistMatch.barrier;
   var violations = cardData.checklistViolations || {};
@@ -8253,9 +8257,11 @@ function renderCardChecklistScreen() {
     });
     bodyEl.appendChild(block);
   });
-  var scrollEl = document.getElementById('card-checklist-scroll');
-  if (scrollEl) scrollEl.scrollTop = 0;
-  requestAnimationFrame(function() { updateCardChecklistStickyOffset(); });
+  if (scrollEl) scrollEl.scrollTop = keepScroll ? savedTop : 0;
+  requestAnimationFrame(function() {
+    updateCardChecklistStickyOffset();
+    if (keepScroll && scrollEl) scrollEl.scrollTop = savedTop;
+  });
   if (!_cardChecklistResizeBound) {
     _cardChecklistResizeBound = true;
     window.addEventListener('resize', updateCardChecklistStickyOffset);
@@ -8338,6 +8344,8 @@ function applyCardChecklist() {
 
 function openChecklistViolationOverlay(qKey) {
   _cardChecklistViolationKey = qKey;
+  var scrollEl = document.getElementById('card-checklist-scroll');
+  if (scrollEl) _cardChecklistScrollTop = scrollEl.scrollTop;
   var inp = document.getElementById('checklist-violation-input');
   var qEl = document.getElementById('checklist-violation-question');
   var violations = cardData.checklistViolations || {};
@@ -8361,8 +8369,11 @@ function applyChecklistViolationOverlay() {
   if (!cardData.checklistViolations) cardData.checklistViolations = {};
   if (val) cardData.checklistViolations[qKey] = val;
   else delete cardData.checklistViolations[qKey];
+  var savedTop = _cardChecklistScrollTop;
   closeChecklistViolationOverlay();
-  renderCardChecklistScreen();
+  renderCardChecklistScreen(true);
+  var scrollEl = document.getElementById('card-checklist-scroll');
+  if (scrollEl) scrollEl.scrollTop = savedTop;
 }
 
 function restoreCardChecklistFromRecord(r) {
@@ -8440,7 +8451,7 @@ function setWorksCellDisplay(value) {
 
 function openDrumWorks() {
   if (cardData.worksLockedByChecklist) return;
-  openDrumOverlay('Выберите работоспособен ли барьер', [
+  openDrumOverlay('Барьер работоспособен', [
     { id: 'works', items: ['Да','Нет'], value: cardData.works || 'Да', minWidth: 200 }
   ], function(d) {
     cardData.works = d['works'].getValue();
