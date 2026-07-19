@@ -3798,13 +3798,10 @@ function renderLobby() {
   content.querySelectorAll('.violation-card').forEach(function(el){ el.remove(); });
 
   var count = violations.length;
+  _lobbyViolCount = count;
   if (_lobbyUiReady) {
-    if (_lobbyViolCount !== count) {
-      _lobbyViolCount = count;
-      _showLobbyBanners(count);
-    }
+    _showLobbyBanners(count);
   } else {
-    _lobbyViolCount = count;
     var noBanner = document.getElementById('no-violations-banner');
     var vBanner  = document.getElementById('violations-banner');
     if (noBanner) { noBanner.style.display = 'none'; noBanner.hidden = true; }
@@ -5137,7 +5134,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v238';
+var APP_BUILD = 'pkb-v239';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
