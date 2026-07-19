@@ -4715,7 +4715,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v210';
+var APP_BUILD = 'pkb-v211';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -8219,7 +8219,7 @@ function updateCardChecklistStickyOffset() {
 function renderCardChecklistScreen(keepScroll) {
   if (!_cardChecklistMatch) return;
   var scrollEl = document.getElementById('card-checklist-scroll');
-  var savedTop = keepScroll && scrollEl ? scrollEl.scrollTop : 0;
+  var savedTop = keepScroll ? _cardChecklistScrollTop : 0;
   var data = _cardChecklistMatch.data;
   var barrier = _cardChecklistMatch.barrier;
   var violations = cardData.checklistViolations || {};
