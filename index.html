@@ -914,6 +914,8 @@ html, body {
 }
 .detail-val-red { background: rgba(192,57,43,0.15); }
 .detail-val-works-no { color: var(--red); font-weight: 700; }
+.detail-checklist-row { padding-top: 0; margin-top: -2px; align-items: center; }
+.detail-checklist-row .card-checklist-btn { flex: 1; }
 .detail-back {
   display: flex; justify-content: center;
   padding: 10px 14px;
@@ -5116,7 +5118,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v240';
+var APP_BUILD = 'pkb-v241';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -8177,15 +8179,15 @@ function openDetail(r, source) {
     row('Проверяемая организация', r.org, '', editRecord) +
     row('Проверяемый объект', r.obj, '', editRecord) +
     row('Проверяемый барьер', r.barrier, '', editRecord) +
+    (recordHasSavedChecklist(r)
+      ? '<div class="detail-row detail-checklist-row">' +
+          '<div class="detail-label field-label-spacer">Проверяемый барьер</div>' +
+          '<button type="button" class="card-checklist-btn" onclick="openRecordChecklistView(detailRecordForEdit)">Чек-лист</button>' +
+        '</div>'
+      : '') +
     row('Барьер в ПК', r.barrierInPK, '', editRecord) +
     row('Барьер работоспособен', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', editRecord) +
     (showViolationDesc ? block('Описание нарушения', formatRecordDescHtml(r), editRecord) : '') +
-    (recordHasSavedChecklist(r)
-      ? '<div class="detail-block detail-block-navy" onclick="openRecordChecklistView(detailRecordForEdit)">' +
-          '<div class="detail-block-label">Чек-лист</div>' +
-          '<div class="detail-block-val">' + (recordHasChecklistViolations(r) ? 'Открыть (есть нарушения)' : 'Открыть') + '</div>' +
-        '</div>'
-      : '') +
     corrBlock +
     contestBlock;
   document.getElementById('detail-scroll').scrollTop = 0;
