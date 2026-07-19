@@ -3807,7 +3807,7 @@ function renderLobby() {
             '</span>' +
           '</div>' +
         '</div>' +
-        '<div class="violation-card-body">' + esc(r.desc || '') + '</div>';
+        '<div class="violation-card-body">' + formatRecordDescHtml(r) + '</div>';
       card.onclick = function() {
         gateAccess('session', function() { openDetail(r, 'lobby'); });
       };
@@ -4526,7 +4526,7 @@ function saveAutocomplete(key, val) {
 function sendNotification(r) {
   if (!('Notification' in window)) return;
   if (Notification.permission === 'granted') {
-    new Notification('Нарушение КБ', { body: (r.org || '') + ' — ' + (r.barrier || '') + '\n' + (r.desc || '') });
+    new Notification('Нарушение КБ', { body: (r.org || '') + ' — ' + (r.barrier || '') + '\n' + formatRecordDescPlain(r) });
   }
 }
 
@@ -5031,7 +5031,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v230';
+var APP_BUILD = 'pkb-v231';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -7102,7 +7102,7 @@ function openSokbEdit(r) {
     '<div class="corr-info-line"><b>' + esc(checkIdLabel(r)) + '</b></div>' +
     '<div class="corr-info-line">Дата: ' + esc(r.dateCheck||'') + ' | Метод: ' + esc(r.method||'') + '</div>' +
     '<div class="corr-info-line">Организация: ' + esc(r.org||'') + ' | Барьер: ' + esc(r.barrier||'') + '</div>' +
-    (r.desc ? '<div class="corr-info-line corr-info-desc">Описание: ' + esc(r.desc) + '</div>' : '');
+    (formatRecordDescPlain(r) ? '<div class="corr-info-line corr-info-desc">Описание: ' + formatRecordDescHtml(r) + '</div>' : '');
   renderSokbAttempts();
   var sc = document.getElementById('sokb-edit-scroll');
   if (sc) sc.scrollTop = 0;
@@ -7669,7 +7669,7 @@ function openCorrectiveEdit(r) {
     '<div class="corr-info-line"><b>' + esc(checkIdLabel(r)) + '</b></div>' +
     '<div class="corr-info-line">Дата: ' + esc(r.dateCheck||'') + ' | Метод: ' + esc(r.method||'') + '</div>' +
     '<div class="corr-info-line">Организация: ' + esc(r.org||'') + ' | Барьер: ' + esc(r.barrier||'') + '</div>' +
-    (r.desc ? '<div class="corr-info-line corr-info-desc">Описание: ' + esc(r.desc) + '</div>' : '');
+    (formatRecordDescPlain(r) ? '<div class="corr-info-line corr-info-desc">Описание: ' + formatRecordDescHtml(r) + '</div>' : '');
   renderCorrMeasures();
   var sc = document.getElementById('corr-edit-scroll');
   if (sc) sc.scrollTop = 0;
@@ -8094,7 +8094,7 @@ function openDetail(r, source) {
     row('Проверяемый барьер', r.barrier, '', editRecord) +
     row('Барьер в ПК', r.barrierInPK, '', editRecord) +
     row('Барьер работоспособен', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', editRecord) +
-    (showViolationDesc ? block('Описание нарушения', r.desc, editRecord) : '') +
+    (showViolationDesc ? block('Описание нарушения', formatRecordDescHtml(r), editRecord) : '') +
     corrBlock +
     contestBlock;
   document.getElementById('detail-scroll').scrollTop = 0;
@@ -8499,6 +8499,38 @@ function violationCountWord(n) {
   if (n === 1) return 'нарушение';
   if (n >= 2 && n <= 4) return 'нарушения';
   return 'нарушений';
+}
+
+function recordHasChecklistViolations(r) {
+  if (!r || !r.checklistViolations) return false;
+  return Object.keys(r.checklistViolations).some(function(k) {
+    return String(r.checklistViolations[k] || '').trim();
+  });
+}
+
+function normalizeViolationDescText(desc) {
+  var s = String(desc || '').trim();
+  if (!s) return '';
+  if (/\n\s*\n/.test(s)) return s.replace(/\n{3,}/g, '\n\n');
+  return s.replace(/;\s+(?=[^\s;]+\.\d)/g, ';\n\n');
+}
+
+function formatRecordDescPlain(r) {
+  if (!r) return '';
+  if (recordHasChecklistViolations(r)) {
+    return buildChecklistDescPlain(r.checklistViolations, r.checklistQuestionTexts || {});
+  }
+  return normalizeViolationDescText(r.desc);
+}
+
+function formatRecordDescHtml(r) {
+  if (!r) return '';
+  if (recordHasChecklistViolations(r)) {
+    return buildChecklistDescHtml(r.checklistViolations, r.checklistQuestionTexts || {});
+  }
+  var plain = normalizeViolationDescText(r.desc);
+  if (!plain) return '';
+  return esc(plain).replace(/\n/g, '<br>');
 }
 
 function buildChecklistDescPlain(violations, questionTexts) {
