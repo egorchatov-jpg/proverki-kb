@@ -448,7 +448,20 @@ html, body {
 }
 .card-checklist-question:last-child { margin-bottom: 0; }
 .card-checklist-question.violation { color: var(--red); font-weight: 600; }
-.card-checklist-criterion { margin-bottom: 10px; }
+.card-checklist-criterion {
+  position: relative;
+  margin-bottom: 10px;
+}
+.card-checklist-criterion .passport-criterion-label::after {
+  border-radius: 0 0 14px 14px;
+}
+.card-checklist-criterion .card-checklist-question {
+  position: relative;
+  z-index: 1;
+}
+.card-checklist-criterion .card-checklist-question:first-child {
+  margin-top: calc(-1 * var(--checklist-stick-gap, 14px));
+}
 #overlay-checklist-violation .method-new-row { padding: 0; margin-top: 8px; }
 .checklist-violation-question {
   font-size: 13px; line-height: 1.45; color: #1a2035;
@@ -979,6 +992,36 @@ html, body {
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
 }
 .passport-barrier-btn:active { opacity: 0.78; }
+.passport-barrier-btn.passport-barrier-btn--pk {
+  background: var(--orange);
+}
+.settings-footer-passport-detail {
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.passport-detail-footer-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-right: auto;
+}
+.passport-pk-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--orange);
+  flex-shrink: 0;
+}
+.passport-pk-legend-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a2035;
+  white-space: nowrap;
+}
 .passport-barrier-btn,
 .passport-mub-btn,
 .passport-appendix-btn {
@@ -1227,13 +1270,14 @@ html, body {
   flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
   width: 100%;
   --checklist-criterion-top: 72px;
+  --checklist-stick-gap: 14px;
 }
 .passport-checklist-scroll .settings-screen-title {
   padding-bottom: 8px;
 }
 .passport-checklist-barrier-wrap {
-  position: sticky; top: 0; z-index: 2;
-  padding: 0 16px 10px;
+  position: sticky; top: 0; z-index: 3;
+  padding: 0 16px var(--checklist-stick-gap, 14px);
   background: var(--bg);
   pointer-events: none;
 }
@@ -1258,11 +1302,14 @@ html, body {
   padding: 0 16px 12px;
   position: relative; z-index: 0;
 }
-.passport-criterion-block { margin-bottom: 10px; }
+.passport-criterion-block {
+  position: relative;
+  margin-bottom: 10px;
+}
 .passport-criterion-label {
   position: sticky;
-  top: var(--checklist-criterion-top);
-  z-index: 1;
+  top: calc(var(--checklist-criterion-top) - var(--checklist-stick-gap, 14px));
+  z-index: 2;
   padding: 10px 12px;
   margin-bottom: 8px;
   background: #4a6fa5; color: #fff;
@@ -1270,9 +1317,21 @@ html, body {
   text-align: left; border-radius: 14px;
   box-shadow: 0 2px 6px rgba(74, 111, 165, 0.22);
 }
+.passport-criterion-label::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  bottom: calc(-1 * var(--checklist-stick-gap, 14px));
+  height: var(--checklist-stick-gap, 14px);
+  background: #4a6fa5;
+  border-radius: 0 0 14px 14px;
+}
 .passport-checklist-questions {
+  position: relative;
+  z-index: 1;
   background: #e3ecf8;
-  padding: 10px 12px 12px;
+  margin-top: calc(-1 * var(--checklist-stick-gap, 14px));
+  padding: calc(10px + var(--checklist-stick-gap, 14px)) 12px 12px;
   border-radius: 14px;
 }
 .passport-checklist-question {
@@ -2070,7 +2129,11 @@ html, body {
   <div class="passport-detail-scroll">
     <div class="passport-detail-inner" id="passport-detail-body"></div>
   </div>
-  <div class="settings-footer">
+  <div class="settings-footer settings-footer-passport-detail">
+    <div class="passport-detail-footer-legend">
+      <span class="passport-pk-dot" aria-hidden="true"></span>
+      <span class="passport-pk-legend-text">- в ПК</span>
+    </div>
     <button class="screen-back-btn" onclick="backFromPassportDetail()">Назад</button>
   </div>
 </div>
@@ -3112,16 +3175,29 @@ function fixIOSStandaloneAfterRotation() {
   rebuildIOSStandaloneScreen();
   updatePassportChecklistStickyOffset();
   updateCardChecklistStickyOffset();
+  restoreActiveListScroll();
 }
 
 function scheduleIOSStandaloneOrientationFix() {
   if (!_isIOSStandalone) return;
+  saveActiveListScroll();
   var token = ++_iosStandaloneOrientToken;
   [350, 700].forEach(function(ms) {
     setTimeout(function() {
       if (token !== _iosStandaloneOrientToken) return;
       fixIOSStandaloneAfterRotation();
     }, ms);
+  });
+}
+
+function initListScrollOnRotation() {
+  window.addEventListener('orientationchange', function() {
+    saveActiveListScroll();
+    setTimeout(restoreActiveListScroll, 150);
+    setTimeout(restoreActiveListScroll, 450);
+  });
+  window.addEventListener('resize', function() {
+    if (_listScrollRestore) restoreActiveListScroll();
   });
 }
 
@@ -3220,6 +3296,7 @@ window.addEventListener('DOMContentLoaded', function() {
   setTimeout(_unlockLobbyBanners, 400);
   loadPassportManifest();
   initIOSStandaloneFix();
+  initListScrollOnRotation();
   loadFromServer(function() { _unlockLobbyBanners(); }); // independent of SW / push permission
   setInterval(function() {
     if (hasPendingSync()) retryAllQueues();
@@ -3401,6 +3478,38 @@ function scrollCheckListToEnd(screenId) {
     var wrap = scr.querySelector('.find-list-wrap');
     if (wrap) wrap.scrollTop = wrap.scrollHeight;
   });
+}
+
+var _listScrollRestore = null;
+
+function saveActiveListScroll() {
+  var scr = document.querySelector('.screen.active');
+  if (!scr) return;
+  var wrap = scr.querySelector('.find-list-wrap');
+  if (!wrap) return;
+  var max = wrap.scrollHeight - wrap.clientHeight;
+  _listScrollRestore = {
+    screenId: scr.id,
+    atEnd: max <= 0 || wrap.scrollTop >= max - 24,
+    ratio: max > 0 ? wrap.scrollTop / max : 0
+  };
+}
+
+function restoreActiveListScroll() {
+  if (!_listScrollRestore) return;
+  var scr = document.getElementById(_listScrollRestore.screenId);
+  if (!scr || !scr.classList.contains('active')) return;
+  var wrap = scr.querySelector('.find-list-wrap');
+  if (!wrap) return;
+  var state = _listScrollRestore;
+  var apply = function() {
+    var max = wrap.scrollHeight - wrap.clientHeight;
+    if (state.atEnd) wrap.scrollTop = max;
+    else if (max > 0) wrap.scrollTop = Math.round(state.ratio * max);
+  };
+  apply();
+  requestAnimationFrame(apply);
+  setTimeout(apply, 80);
 }
 function dateNumFromStr(s) {
   s = normalizeDateStr(s);
@@ -4812,7 +4921,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v220';
+var APP_BUILD = 'pkb-v221';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -4917,9 +5026,27 @@ function openPassportKBDetail(year, label) {
   });
 }
 
+function isPassportBarrierInPK(passportBarrier, year) {
+  if (!passportBarrier || !year) return false;
+  var cfg = (appState.barriersConfig || {})[year];
+  if (cfg) {
+    for (var i = 0; i < cfg.length; i++) {
+      if (!cfg[i].inPK) continue;
+      if (passportBarrierMatchesName(passportBarrier, cfg[i].name)) return true;
+    }
+    return false;
+  }
+  var legacy = (appState.barriersPK || {})[year] || [];
+  for (var j = 0; j < legacy.length; j++) {
+    if (passportBarrierMatchesName(passportBarrier, legacy[j])) return true;
+  }
+  return false;
+}
+
 function renderPassportDetailScreen() {
   if (!_passportActive || !_passportActive.data) return;
   var data = _passportActive.data;
+  var year = _passportActive.year;
   var titleEl = document.getElementById('passport-detail-title');
   var bodyEl = document.getElementById('passport-detail-body');
   if (titleEl) titleEl.textContent = data.sheetTitle || '';
@@ -4930,7 +5057,7 @@ function renderPassportDetailScreen() {
     row.className = 'passport-barrier-row';
     var mainBtn = document.createElement('button');
     mainBtn.type = 'button';
-    mainBtn.className = 'passport-barrier-btn';
+    mainBtn.className = 'passport-barrier-btn' + (isPassportBarrierInPK(b, year) ? ' passport-barrier-btn--pk' : '');
     mainBtn.setAttribute('data-barrier-idx', String(idx));
     mainBtn.textContent = b.label || b.code || '';
     bindUiTap(mainBtn, function() { openPassportChecklist(idx); });
