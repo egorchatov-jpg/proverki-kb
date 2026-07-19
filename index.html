@@ -86,6 +86,13 @@ html, body {
 .is-ios .screen.active {
   display: flex !important;
   visibility: visible !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: auto !important;
+  height: auto !important;
 }
 /* ===== LOBBY ===== */
 #screen-lobby { background: var(--bg); }
@@ -3081,12 +3088,7 @@ if (window.visualViewport && !_isIOS) {
   window.visualViewport.addEventListener('resize', syncOverlayHeight);
   window.visualViewport.addEventListener('scroll', syncOverlayHeight);
 }
-if (window.visualViewport && _isIOS) {
-  window.visualViewport.addEventListener('resize', scheduleViewportChange);
-  window.visualViewport.addEventListener('scroll', function() {
-    window.scrollTo(0, 0);
-  });
-}
+
 
 // Clear push notifications from the notification drawer and reset the app icon badge.
 // Called on app start and every time the app comes to the foreground.
@@ -3177,12 +3179,9 @@ window.addEventListener('DOMContentLoaded', function() {
   setTimeout(_unlockLobbyBanners, 400);
   loadPassportManifest();
   bindScreenFooterButtons();
+  clearIOSInlineLayout();
   window.addEventListener('orientationchange', scheduleViewportChange);
-  window.addEventListener('resize', scheduleViewportChange);
-  if (_isIOS) {
-    requestAnimationFrame(syncIOSLayout);
-    setTimeout(syncIOSLayout, 300);
-  }
+  if (!_isIOS) window.addEventListener('resize', scheduleViewportChange);
   loadFromServer(function() { _unlockLobbyBanners(); }); // independent of SW / push permission
   setInterval(function() {
     if (hasPendingSync()) retryAllQueues();
@@ -3319,7 +3318,6 @@ function showScreen(id) {
   if (prev && prev.id === 'screen-pin' && id !== 'screen-pin') setPinInputLocked(false);
   var scrollEl = el.querySelector('.passport-detail-scroll, .passport-mub-scroll, .passport-appendix-scroll, .passport-checklist-scroll, .settings-screen-body');
   if (scrollEl) scrollEl.scrollTop = 0;
-  if (_isIOS) requestAnimationFrame(function() { syncIOSLayout(); });
   return true;
 }
 
@@ -4774,7 +4772,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v213';
+var APP_BUILD = 'pkb-v214';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -4879,76 +4877,40 @@ function bindScreenFooterButtons() {
 }
 
 var _viewportChangeTimer = null;
-var _iosViewportMeta = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
 
-function syncIOSLayout() {
+function clearIOSInlineLayout() {
+  if (!_isIOS) return;
+  document.documentElement.style.width = '';
+  document.documentElement.style.height = '';
+  document.body.style.width = '';
+  document.body.style.height = '';
+  document.querySelectorAll('.screen').forEach(function(s) {
+    s.style.top = '';
+    s.style.left = '';
+    s.style.width = '';
+    s.style.height = '';
+    s.style.right = '';
+    s.style.bottom = '';
+  });
+  document.querySelectorAll('.overlay').forEach(function(ov) {
+    ov.style.height = '';
+    ov.style.top = '';
+  });
+}
+
+function refreshLayoutAfterRotation() {
   hidePullIndicator(false);
   pullState.can = false;
   pullState.delta = 0;
-
-  if (!_isIOS) {
-    updatePassportChecklistStickyOffset();
-    updateCardChecklistStickyOffset();
-    return;
-  }
-
-  var apply = function() {
-    var vv = window.visualViewport;
-    var w = Math.round(vv ? vv.width : (document.documentElement.clientWidth || window.innerWidth));
-    var h = Math.round(vv ? vv.height : (document.documentElement.clientHeight || window.innerHeight));
-    var top = vv ? Math.round(vv.offsetTop) : 0;
-    var left = vv ? Math.round(vv.offsetLeft) : 0;
-
-    document.documentElement.style.width = w + 'px';
-    document.documentElement.style.height = h + 'px';
-    document.body.style.width = w + 'px';
-    document.body.style.height = h + 'px';
-
-    var active = document.querySelector('.screen.active');
-    if (active) {
-      active.style.top = top + 'px';
-      active.style.left = left + 'px';
-      active.style.width = w + 'px';
-      active.style.height = h + 'px';
-      active.style.right = 'auto';
-      active.style.bottom = 'auto';
-    }
-
-    document.querySelectorAll('.overlay').forEach(function(ov) {
-      ov.style.height = h + 'px';
-      ov.style.top = top + 'px';
-    });
-
-    window.scrollTo(0, 0);
-    updatePassportChecklistStickyOffset();
-    updateCardChecklistStickyOffset();
-    void document.body.offsetHeight;
-  };
-
-  apply();
-  requestAnimationFrame(apply);
-}
-
-function nudgeIOSViewportMeta() {
-  if (!_isIOS) return;
-  var meta = document.querySelector('meta[name="viewport"]');
-  if (!meta) return;
-  meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-  void document.documentElement.offsetHeight;
-  setTimeout(function() {
-    meta.setAttribute('content', _iosViewportMeta);
-    syncIOSLayout();
-  }, 50);
+  clearIOSInlineLayout();
+  updatePassportChecklistStickyOffset();
+  updateCardChecklistStickyOffset();
 }
 
 function scheduleViewportChange() {
   clearTimeout(_viewportChangeTimer);
-  _viewportChangeTimer = setTimeout(function() {
-    nudgeIOSViewportMeta();
-    syncIOSLayout();
-    setTimeout(syncIOSLayout, 150);
-    setTimeout(syncIOSLayout, 400);
-  }, 50);
+  var delay = _isIOS ? 400 : 120;
+  _viewportChangeTimer = setTimeout(refreshLayoutAfterRotation, delay);
 }
 
 function openPassportKBDetail(year, label) {
