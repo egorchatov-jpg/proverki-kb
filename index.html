@@ -512,7 +512,7 @@ html, body {
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 .card-checklist-question:last-child { margin-bottom: 0; }
-.card-checklist-question.violation { color: var(--red); font-weight: 600; }
+.card-checklist-question.violation { color: var(--red); }
 .card-checklist-criterion { margin-bottom: 10px; }
 #overlay-checklist-violation .method-new-row { padding: 0; margin-top: 8px; }
 .checklist-violation-question {
@@ -523,6 +523,9 @@ html, body {
 .card-checklist-question .passport-appendix-link { position: relative; z-index: 1; }
 #val-desc .checklist-desc-line { margin-bottom: 6px; }
 #val-desc .checklist-desc-line:last-child { margin-bottom: 0; }
+.checklist-desc-code, .checklist-question-code { font-weight: 400; }
+.card-checklist-question.violation .checklist-question-code,
+.card-checklist-question.violation .checklist-question-text { font-weight: 400; }
 
 /* ===== OVERLAYS ===== */
 .overlay {
@@ -3393,7 +3396,12 @@ window.addEventListener('DOMContentLoaded', function() {
   setTodayDate();
   loadPassportManifest();
   initIOSStandaloneFix();
-  loadFromServer(function() {}); // independent of SW / push permission
+  syncSettingsFromServer(function() {
+    refreshSettingsDependentUi();
+    loadFromServer(function() {
+      renderLobby();
+    });
+  });
   setInterval(function() {
     if (hasPendingSync()) retryAllQueues();
   }, 30000);
@@ -4175,6 +4183,15 @@ function applyBarriersPKToConfig(barriersPK, config) {
  * Calls callback() when done (or on error — still proceeds).
  * Settings never touch existing Excel records (data preservation rule).
  */
+function refreshSettingsDependentUi() {
+  renderLobby();
+  if (_passportActive && _passportActive.data) renderPassportDetailScreen();
+  if (_bpkYear) {
+    var bl = document.getElementById('screen-barriers-list');
+    if (bl && bl.classList.contains('active')) renderBarriersTable(_bpkYear);
+  }
+}
+
 function syncSettingsFromServer(callback) {
   var errEl = document.getElementById('pin-error');
   if (errEl) errEl.textContent = 'Загрузка настроек…';
@@ -4427,8 +4444,9 @@ function resetCard() {
   setWorksCellDisplay('Выбрать');
   setDimmed('desc', true);
   updateCardDescEditable(true);
-  unlockWorksCell();
+  lockWorksCell();
   setCardChecklistButtonVisible(false);
+  syncWorksCellState();
   updateValidation();
 }
 
@@ -4450,6 +4468,7 @@ function cardBarrierHasChecklist() {
 
 function cardChecklistReadyForViolation() {
   if (!cardData.checklistFilled || !cardData.descFromChecklist) return false;
+  if (cardData.works && cardData.works !== 'Нет') return true;
   return recordHasChecklistViolations(cardData);
 }
 
@@ -4470,7 +4489,7 @@ function finalizeCardChecklistForSave() {
 function updateCardChecklistButtonHint() {
   var btn = document.getElementById('btn-card-checklist');
   if (!btn) return;
-  var need = cardData.works === 'Нет' && cardUsesChecklistFlow() && !cardChecklistReadyForViolation();
+  var need = cardUsesChecklistFlow() && !cardChecklistReadyForViolation();
   btn.classList.toggle('card-checklist-btn-required', need);
 }
 
@@ -4479,12 +4498,10 @@ function updateValidation() {
   var ok = required.every(function(k) {
     return cardData[k] && cardData[k].trim && cardData[k].trim() !== '' || (cardData[k] && typeof cardData[k] === 'string' && cardData[k] !== '');
   });
-  if (cardData.works === 'Нет') {
-    if (cardUsesChecklistFlow()) {
-      ok = ok && cardChecklistReadyForViolation();
-    } else {
-      ok = ok && cardData.desc && String(cardData.desc).trim() !== '';
-    }
+  if (cardUsesChecklistFlow()) {
+    ok = ok && cardChecklistReadyForViolation();
+  } else if (cardData.works === 'Нет') {
+    ok = ok && cardData.desc && String(cardData.desc).trim() !== '';
   }
   var el = document.getElementById('card-validation');
   var btn = document.getElementById('btn-submit');
@@ -4494,7 +4511,7 @@ function updateValidation() {
     el.className = 'card-validation ok';
     btn.disabled = false;
   } else {
-    if (cardData.works === 'Нет' && cardUsesChecklistFlow() && !cardChecklistReadyForViolation()) {
+    if (cardUsesChecklistFlow() && !cardChecklistReadyForViolation()) {
       el.textContent = cardData.checklistFilled ? 'Укажите нарушения в чек-листе' : 'Заполните чек-лист';
     } else {
       el.textContent = 'Заполнены не все поля';
@@ -5123,7 +5140,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v242';
+var APP_BUILD = 'pkb-v246';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -5284,8 +5301,8 @@ function renderPassportDetailScreen() {
     mubBtn.setAttribute('data-barrier-idx', String(idx));
     mubBtn.textContent = 'МУБ';
     bindUiTap(mubBtn, function() { openPassportMub(idx); });
-    row.appendChild(mainBtn);
     row.appendChild(mubBtn);
+    row.appendChild(mainBtn);
     bodyEl.appendChild(row);
   });
   getPassportAppendixList(data).forEach(function(app, i) {
@@ -8492,11 +8509,49 @@ function clearCardChecklistState() {
   cardData.checklistPassportId = null;
   cardData.worksLockedByChecklist = false;
   cardData.descFromChecklist = false;
+  cardData.works = '';
   _cardChecklistMatch = null;
-  unlockWorksCell();
-  unlockDescCell();
-  updateCardDescEditable(true);
   setCardChecklistButtonLabel();
+}
+
+function syncWorksCellState() {
+  if (!cardBarrierSelected()) {
+    cardData.works = '';
+    setWorksCellDisplay('Выбрать');
+    lockWorksCell();
+    setDimmed('desc', true);
+    lockDescCell();
+    updateCardDescEditable(false);
+    return;
+  }
+  if (cardUsesChecklistFlow()) {
+    lockWorksCell();
+    updateCardDescEditable(false);
+    if (!cardData.checklistFilled) {
+      cardData.works = '';
+      setWorksCellDisplay('Выбрать');
+      setDimmed('desc', true);
+      lockDescCell();
+      var emptyDesc = document.getElementById('val-desc');
+      if (emptyDesc) { emptyDesc.textContent = '—'; emptyDesc.classList.add('placeholder'); }
+      return;
+    }
+    setWorksCellDisplay(cardData.works || 'Да');
+    lockDescCell();
+    setDimmed('desc', cardData.works !== 'Нет');
+    return;
+  }
+  cardData.worksLockedByChecklist = false;
+  cardData.descFromChecklist = false;
+  unlockWorksCell();
+  setDimmed('desc', cardData.works !== 'Нет');
+  if (cardData.works === 'Нет') {
+    unlockDescCell();
+    updateCardDescEditable(true);
+  } else {
+    unlockDescCell();
+    updateCardDescEditable(true);
+  }
 }
 
 function unlockWorksCell() {
@@ -8565,11 +8620,13 @@ function updateCardChecklistButton() {
   if (!cardBarrierSelected()) {
     setCardChecklistButtonVisible(false);
     _cardChecklistMatch = null;
+    syncWorksCellState();
     return;
   }
   if (cardEditRecord && !cardEditRecord.checklistFilled) {
     setCardChecklistButtonVisible(false);
     _cardChecklistMatch = null;
+    syncWorksCellState();
     return;
   }
   var barrier = String(cardData.barrier || '').trim();
@@ -8582,11 +8639,8 @@ function updateCardChecklistButton() {
     var ok = !!match;
     _cardChecklistMatch = ok ? match : null;
     setCardChecklistButtonVisible(ok);
-    if (cardEditRecord && cardEditRecord.checklistFilled && ok) {
-      lockWorksCell();
-      lockDescCell();
-      updateCardDescEditable(false);
-    }
+    syncWorksCellState();
+    updateValidation();
   });
 }
 
@@ -8595,11 +8649,48 @@ function checklistQuestionKey(ci, qi) {
 }
 
 function extractQuestionCodePrefix(questionText) {
-  var m = String(questionText || '').match(/^([^\s]+)/);
+  var s = String(questionText || '').trim();
+  if (!s) return '';
+  var m = s.match(/^([A-Za-zА-Яа-яЁё0-9]+(?:\.[A-Za-zА-Яа-яЁё0-9]+)*\.?)\s*/);
+  if (!m) m = s.match(/^([^\s]+)/);
   if (!m) return '';
   var code = m[1];
   if (code.charAt(code.length - 1) !== '.') code += '.';
   return code;
+}
+
+function splitQuestionCodeAndText(questionText) {
+  var code = extractQuestionCodePrefix(questionText);
+  var rest = String(questionText || '').trim();
+  if (code && rest.indexOf(code) === 0) rest = rest.slice(code.length).replace(/^\s+/, '');
+  return { code: code, rest: rest };
+}
+
+function stripLeadingQuestionCode(text, code) {
+  var s = String(text || '').trim();
+  if (!code || !s) return s;
+  if (s.indexOf(code) === 0) return s.slice(code.length).replace(/^\s+/, '');
+  return s;
+}
+
+function fillChecklistQuestionText(container, text, appendixIdSet, returnScreen) {
+  var parts = splitQuestionCodeAndText(text);
+  container.textContent = '';
+  if (parts.code) {
+    var codeEl = document.createElement('span');
+    codeEl.className = 'checklist-question-code';
+    codeEl.textContent = parts.code;
+    container.appendChild(codeEl);
+    if (parts.rest) {
+      container.appendChild(document.createTextNode(' '));
+      var restEl = document.createElement('span');
+      restEl.className = 'checklist-question-text';
+      fillPassportTextWithAppendixLinks(restEl, parts.rest, appendixIdSet, returnScreen);
+      container.appendChild(restEl);
+    }
+    return;
+  }
+  fillPassportTextWithAppendixLinks(container, text, appendixIdSet, returnScreen);
 }
 
 function escapeHtmlText(s) {
@@ -8690,12 +8781,17 @@ function buildChecklistDescPlain(violations, questionTexts) {
     var desc = String(violations[k] || '').trim();
     if (!desc) return;
     var qText = (questionTexts && questionTexts[k]) || k;
-    items.push({ key: k, desc: desc, prefix: extractQuestionCodePrefix(qText) });
+    var parts = splitQuestionCodeAndText(qText);
+    items.push({
+      key: k,
+      desc: stripLeadingQuestionCode(desc, parts.code),
+      prefix: parts.code
+    });
   });
   if (!items.length) return '';
   items.sort(function(a, b) { return a.key.localeCompare(b.key, 'ru'); });
   return items.map(function(item) {
-    return item.prefix + ' ' + item.desc;
+    return (item.prefix ? item.prefix + ' ' : '') + item.desc;
   }).join(';\n\n');
 }
 
@@ -8705,12 +8801,20 @@ function buildChecklistDescHtml(violations, questionTexts) {
     var desc = String(violations[k] || '').trim();
     if (!desc) return;
     var qText = (questionTexts && questionTexts[k]) || k;
-    items.push({ key: k, desc: desc, prefix: extractQuestionCodePrefix(qText) });
+    var parts = splitQuestionCodeAndText(qText);
+    items.push({
+      key: k,
+      desc: stripLeadingQuestionCode(desc, parts.code),
+      prefix: parts.code
+    });
   });
   if (!items.length) return '';
   items.sort(function(a, b) { return a.key.localeCompare(b.key, 'ru'); });
   return items.map(function(item) {
-    return '<span class="checklist-desc-line"><strong>' + escapeHtmlText(item.prefix) + '</strong> ' + escapeHtmlText(item.desc) + '</span>';
+    var codeHtml = item.prefix
+      ? '<span class="checklist-desc-code">' + escapeHtmlText(item.prefix) + '</span> '
+      : '';
+    return '<span class="checklist-desc-line">' + codeHtml + escapeHtmlText(item.desc) + '</span>';
   }).join('<br><br>');
 }
 
@@ -8743,6 +8847,7 @@ function applyChecklistToCardFields(violations, questionTexts) {
     updateCardDescEditable(false);
   }
   setCardChecklistButtonLabel();
+  syncWorksCellState();
   updateValidation();
 }
 
@@ -8830,7 +8935,7 @@ function renderCardChecklistScreen(keepScroll) {
       var qEl = document.createElement('div');
       qEl.className = 'card-checklist-question';
       if (violations[qKey]) qEl.classList.add('violation');
-      fillPassportTextWithAppendixLinks(qEl, _cardChecklistQuestionTexts[qKey] || q, appendixIdSet, 'screen-card-checklist');
+      fillChecklistQuestionText(qEl, _cardChecklistQuestionTexts[qKey] || q, appendixIdSet, 'screen-card-checklist');
       if (!readOnly) {
         bindUiTap(qEl, function(key) {
           return function(e) {
@@ -8935,13 +9040,6 @@ function cancelCardChecklist() {
 
 function applyCardChecklist() {
   var violations = cardData.checklistViolations || {};
-  var hasViol = Object.keys(violations).some(function(k) {
-    return String(violations[k] || '').trim();
-  });
-  if (cardData.works === 'Нет' && !hasViol) {
-    alert('Укажите нарушения: нажмите на пункт чек-листа и опишите нарушение');
-    return;
-  }
   cardData.checklistPassportId = _cardChecklistMatch ? _cardChecklistMatch.passportId : null;
   applyChecklistToCardFields(violations, _cardChecklistQuestionTexts);
   cardData.checklistQuestionTexts = Object.assign({}, _cardChecklistQuestionTexts);
@@ -9058,22 +9156,12 @@ function setWorksCellDisplay(value) {
 }
 
 function openDrumWorks() {
-  if (cardData.worksLockedByChecklist) return;
+  if (cardData.worksLockedByChecklist || cardUsesChecklistFlow() || !cardBarrierSelected()) return;
   openDrumOverlay('Барьер работоспособен', [
     { id: 'works', items: ['Да','Нет'], value: cardData.works || 'Да', minWidth: 200 }
   ], function(d) {
     var newWorks = d['works'].getValue();
     var broken = newWorks === 'Нет';
-    if (broken && cardUsesChecklistFlow()) {
-      openCardChecklistScreen();
-      cardData.works = 'Нет';
-      setWorksCellDisplay('Нет');
-      setDimmed('desc', true);
-      lockDescCell();
-      updateCardDescEditable(false);
-      updateValidation();
-      return;
-    }
     cardData.works = newWorks;
     setWorksCellDisplay(cardData.works);
     setDimmed('desc', !broken);
@@ -9081,6 +9169,9 @@ function openDrumWorks() {
       cardData.desc = '';
       document.getElementById('val-desc').textContent = '—';
       document.getElementById('val-desc').classList.add('placeholder');
+    } else {
+      unlockDescCell();
+      updateCardDescEditable(true);
     }
     updateValidation();
   });

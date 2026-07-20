@@ -21,6 +21,7 @@ const API_ROUTES = {
   '/api/export': './api/export',
   '/api/settings': './api/settings',
   '/api/backups': './api/backups',
+  '/api/purge-records': './api/purge-records',
 };
 
 function mountHandler(app, routePath, handler) {
