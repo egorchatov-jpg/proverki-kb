@@ -22,6 +22,7 @@ const API_ROUTES = {
   '/api/settings': './api/settings',
   '/api/backups': './api/backups',
   '/api/purge-records': './api/purge-records',
+  '/api/delete-record': './api/delete-record',
 };
 
 function mountHandler(app, routePath, handler) {

@@ -471,6 +471,7 @@ html, body {
 }
 .card-btn:active { opacity: 0.8; transform: scale(0.97); }
 .card-btn-cancel { background: var(--gray-btn-dark); }
+.card-btn-delete { background: var(--red); }
 .card-btn-submit { background: var(--orange); }
 .card-btn-submit:disabled { opacity: 0.4; pointer-events: none; }
 #field-wrap-barrier { align-items: flex-start; }
@@ -488,7 +489,6 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 .card-checklist-btn:active { opacity: 0.8; }
-.card-checklist-btn-required { box-shadow: 0 0 0 2px var(--red); }
 .card-checklist-btn[hidden] { display: none !important; }
 #screen-card-checklist {
   display: flex; flex-direction: column;
@@ -1402,6 +1402,7 @@ html, body {
   text-align: center; color: var(--text2); font-size: 14px; padding: 24px 0;
 }
 #overlay-restore-confirm .overlay-title { text-align: center; line-height: 1.4; }
+#overlay-delete-record .overlay-title { text-align: center; line-height: 1.4; }
 /* Navy year action button — same width as a single nav-btn */
 .year-action-btn {
   width: calc((100vw - 48px) / 3);
@@ -2014,6 +2015,7 @@ html, body {
     <div class="card-validation error" id="card-validation">Заполнены не все поля</div>
   </div>
   <div class="card-bottom">
+    <button type="button" class="card-btn card-btn-delete" id="btn-card-delete" hidden onclick="openDeleteRecordConfirm()">Удалить</button>
     <button class="card-btn card-btn-cancel" onclick="cancelCard()">Отмена</button>
     <button class="card-btn card-btn-submit" id="btn-submit" disabled onclick="submitCard()">Готово</button>
   </div>
@@ -2419,6 +2421,17 @@ html, body {
   </div>
 </div>
 
+<!-- ===== OVERLAY: ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ ПРОВЕРКИ ===== -->
+<div class="overlay" id="overlay-delete-record">
+  <div class="overlay-box">
+    <div class="overlay-title">Вы точно хотите удалить проверку?</div>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="closeDeleteRecordConfirm()">Нет</button>
+      <button class="overlay-btn overlay-btn-apply" onclick="confirmDeleteRecord()">Да</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== OVERLAY: ПОДТВЕРЖДЕНИЕ ВОССТАНОВЛЕНИЯ ===== -->
 <div class="overlay" id="overlay-restore-confirm">
   <div class="overlay-box">
@@ -2501,6 +2514,11 @@ function normalizeDbDates() {
 // Sort by cmpRecords, then assign sequential numbers: oldest=1, newest=N
 function checkIdLabel(r) {
   return (r && r.checkId) ? String(r.checkId) : '—';
+}
+
+function checkIdBannerLabel(r) {
+  var id = checkIdLabel(r);
+  return id === '—' ? id : ('Проверка ' + id);
 }
 
 function renumberDb() {
@@ -4380,7 +4398,7 @@ function openCardForEdit(r) {
   setCardVal('org', r.org || 'Выбрать', !r.org);
   setCardVal('obj', r.obj || '—', !r.obj);
   setCardVal('barrier', r.barrier || 'Выбрать', !r.barrier);
-  setWorksCellDisplay(r.works || 'Выбрать');
+  setWorksCellDisplay(r.works || '');
   setCardVal('desc', r.desc || '—', !r.desc);
   setDimmed('desc', r.works !== 'Нет');
   updateCardDescEditable(true);
@@ -4393,6 +4411,7 @@ function openCardForEdit(r) {
     _cardChecklistQuestionTexts = r.checklistQuestionTexts ? Object.assign({}, r.checklistQuestionTexts) : {};
     lockWorksCell();
     lockDescCell();
+    setDimmed('desc', true);
     updateCardDescEditable(false);
     if (r.works === 'Нет' && r.desc) {
       var descEl = document.getElementById('val-desc');
@@ -4410,8 +4429,75 @@ function openCardForEdit(r) {
   var titleEl = document.querySelector('#screen-card .card-title');
   if (titleEl) titleEl.textContent = 'Измените проведенную проверку ' + checkIdLabel(r);
   setCardSubtitle('');
+  syncCardBottomButtons();
   updateValidation();
   showScreen('screen-card');
+}
+
+function syncCardBottomButtons() {
+  var del = document.getElementById('btn-card-delete');
+  if (del) del.hidden = !cardEditRecord;
+}
+
+function openDeleteRecordConfirm() {
+  if (!cardEditRecord) return;
+  document.getElementById('overlay-delete-record').classList.add('active');
+}
+
+function closeDeleteRecordConfirm() {
+  document.getElementById('overlay-delete-record').classList.remove('active');
+}
+
+function confirmDeleteRecord() {
+  if (!cardEditRecord) return;
+  closeDeleteRecordConfirm();
+  deleteRecordFromApp(cardEditRecord);
+}
+
+function deleteRecordFromApp(r) {
+  if (!r) return;
+  var year = r.year || (r.dateCheck ? r.dateCheck.split('.')[2] : String(new Date().getFullYear()));
+  appState.db = appState.db.filter(function(x) {
+    if (r.checkId && x.checkId === r.checkId) return false;
+    if (r.dateEntry && x.dateEntry === r.dateEntry) return false;
+    return true;
+  });
+  renumberDb();
+  saveState();
+  if (r.id) removeFromSyncQueue(r.id);
+  removeFromUpdateQueue(r.dateEntry);
+  var shas = getServerShas();
+  delete shas['sha' + year];
+  saveServerShas(shas);
+  cardEditRecord = null;
+  syncCardBottomButtons();
+  applyFindFilters();
+  renderCorrectiveList();
+  renderLobby();
+  goLobby();
+  fetch('/api/delete-record', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      record: {
+        checkId: r.checkId || '',
+        dateEntry: r.dateEntry,
+        year: year,
+        dateCheck: r.dateCheck || '',
+        method: r.method || '',
+        org: r.org || '',
+        barrier: r.barrier || ''
+      }
+    })
+  }).then(function(res) { return res.json(); }).then(function(d) {
+    if (d.success) {
+      console.log('[delete] removed from server:', r.checkId || r.dateEntry);
+    } else {
+      console.warn('[delete] server error:', d.error || 'unknown');
+    }
+  }).catch(function(e) {
+    console.warn('[delete] request failed:', e.message || e);
+  });
 }
 
 function cancelCard() {
@@ -4422,6 +4508,7 @@ function cancelCard() {
     var rec = cardEditRecord;
     var src = detailSource;
     cardEditRecord = null;
+    syncCardBottomButtons();
     openDetail(rec, src);
     return;
   }
@@ -4441,12 +4528,13 @@ function resetCard() {
     var isPick = k === 'method' || k === 'org' || k === 'barrier' || k === 'works';
     setCardVal(k, isPick ? 'Выбрать' : '—', isPick);
   });
-  setWorksCellDisplay('Выбрать');
+  setWorksCellDisplay('');
   setDimmed('desc', true);
   updateCardDescEditable(true);
   lockWorksCell();
   setCardChecklistButtonVisible(false);
   syncWorksCellState();
+  syncCardBottomButtons();
   updateValidation();
 }
 
@@ -4487,10 +4575,7 @@ function finalizeCardChecklistForSave() {
 }
 
 function updateCardChecklistButtonHint() {
-  var btn = document.getElementById('btn-card-checklist');
-  if (!btn) return;
-  var need = cardUsesChecklistFlow() && !cardChecklistReadyForViolation();
-  btn.classList.toggle('card-checklist-btn-required', need);
+  /* red outline removed */
 }
 
 function updateValidation() {
@@ -5140,7 +5225,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v246';
+var APP_BUILD = 'pkb-v247';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -7208,7 +7293,7 @@ function openSokbEdit(r) {
   if (!sokbAttempts.length) sokbAttempts = [newEmptySokbAttempt()];
   var infoEl = document.getElementById('sokb-viol-info');
   infoEl.innerHTML =
-    '<div class="corr-info-line"><b>' + esc(checkIdLabel(r)) + '</b></div>' +
+    '<div class="corr-info-line"><b>' + esc(checkIdBannerLabel(r)) + '</b></div>' +
     '<div class="corr-info-line">Дата: ' + esc(r.dateCheck||'') + ' | Метод: ' + esc(r.method||'') + '</div>' +
     '<div class="corr-info-line">Организация: ' + esc(r.org||'') + ' | Барьер: ' + esc(r.barrier||'') + '</div>' +
     (formatRecordDescPlain(r) ? '<div class="corr-info-line corr-info-desc">Описание: ' + formatRecordDescHtml(r) + '</div>' : '');
@@ -7775,7 +7860,7 @@ function openCorrectiveEdit(r) {
   if (!correctiveMeasures.length) correctiveMeasures = [newEmptyMeasure(1)];
   var infoEl = document.getElementById('corr-viol-info');
   infoEl.innerHTML =
-    '<div class="corr-info-line"><b>' + esc(checkIdLabel(r)) + '</b></div>' +
+    '<div class="corr-info-line"><b>' + esc(checkIdBannerLabel(r)) + '</b></div>' +
     '<div class="corr-info-line">Дата: ' + esc(r.dateCheck||'') + ' | Метод: ' + esc(r.method||'') + '</div>' +
     '<div class="corr-info-line">Организация: ' + esc(r.org||'') + ' | Барьер: ' + esc(r.barrier||'') + '</div>' +
     (formatRecordDescPlain(r) ? '<div class="corr-info-line corr-info-desc">Описание: ' + formatRecordDescHtml(r) + '</div>' : '');
@@ -8517,7 +8602,7 @@ function clearCardChecklistState() {
 function syncWorksCellState() {
   if (!cardBarrierSelected()) {
     cardData.works = '';
-    setWorksCellDisplay('Выбрать');
+    setWorksCellDisplay('');
     lockWorksCell();
     setDimmed('desc', true);
     lockDescCell();
@@ -8529,7 +8614,7 @@ function syncWorksCellState() {
     updateCardDescEditable(false);
     if (!cardData.checklistFilled) {
       cardData.works = '';
-      setWorksCellDisplay('Выбрать');
+      setWorksCellDisplay('');
       setDimmed('desc', true);
       lockDescCell();
       var emptyDesc = document.getElementById('val-desc');
@@ -8538,7 +8623,7 @@ function syncWorksCellState() {
     }
     setWorksCellDisplay(cardData.works || 'Да');
     lockDescCell();
-    setDimmed('desc', cardData.works !== 'Нет');
+    setDimmed('desc', true);
     return;
   }
   cardData.worksLockedByChecklist = false;
@@ -9005,9 +9090,10 @@ function cancelCardChecklist() {
     cardData.worksLockedByChecklist = _cardChecklistSnapshot.worksLocked;
     cardData.descFromChecklist = _cardChecklistSnapshot.descFromChecklist;
     _cardChecklistQuestionTexts = Object.assign({}, _cardChecklistSnapshot.questionTexts || {});
-    setWorksCellDisplay(cardData.works || 'Выбрать');
+    setWorksCellDisplay(cardData.works || '');
     if (cardData.worksLockedByChecklist) lockWorksCell(); else unlockWorksCell();
     if (cardData.descFromChecklist) {
+      setDimmed('desc', true);
       if (cardData.works === 'Нет') {
         var el = document.getElementById('val-desc');
         if (el) {
@@ -9150,8 +9236,13 @@ function setWorksCellDisplay(value) {
   if (!el) return;
   if (value === 'Нет') {
     el.innerHTML = '<span class="field-val-works-no">Нет</span>';
+    el.classList.remove('placeholder');
+  } else if (value === 'Да') {
+    el.textContent = 'Да';
+    el.classList.remove('placeholder');
   } else {
-    el.textContent = value || 'Выбрать';
+    el.textContent = '—';
+    el.classList.add('placeholder');
   }
 }
 
