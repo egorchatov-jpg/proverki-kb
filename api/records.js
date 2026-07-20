@@ -115,7 +115,8 @@ function cellToStr(val, key) {
     return key === 'dateEntry' ? fmtDateTime(val) : fmtDate(val);
   }
   if (typeof val === 'number' && key === 'dateEntry' && val > 30000) {
-    const d = new Date((Math.floor(val) - 25569) * 86400 * 1000);
+    const epoch = new Date(Date.UTC(1899, 11, 30));
+    const d = new Date(epoch.getTime() + Math.round(val * 86400000));
     return fmtDateTime(d);
   }
   if (typeof val === 'number' && key === 'dateCheck' && val > 30000) {

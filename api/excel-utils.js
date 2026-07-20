@@ -60,10 +60,39 @@ function toDateNum(s) {
   return p.length >= 3 ? parseInt(p[2].slice(0, 4) + p[1] + p[0], 10) : 0;
 }
 
-function toDateEntryNum(s) {
-  const m = String(s || '').match(/(\d{1,2})\.(\d{1,2})\.(\d{4}),?\s*(\d{1,2}):(\d{2}):(\d{2})/);
-  if (!m) return 0;
-  return +m[3] * 10000000000 + +m[2] * 100000000 + +m[1] * 1000000 + +m[4] * 10000 + +m[5] * 100 + +m[6];
+function dateEntryPartsToNum(y, mo, d, h, mi, se) {
+  return +y * 10000000000 + +mo * 100000000 + +d * 1000000 + +h * 10000 + +mi * 100 + +se;
+}
+
+function excelSerialToDateTime(n) {
+  const epoch = new Date(Date.UTC(1899, 11, 30));
+  return new Date(epoch.getTime() + Math.round(+n * 86400000));
+}
+
+function toDateEntryNum(val) {
+  if (val == null || val === '') return 0;
+  if (val instanceof Date && !Number.isNaN(val.getTime())) {
+    return dateEntryPartsToNum(
+      val.getFullYear(), val.getMonth() + 1, val.getDate(),
+      val.getHours(), val.getMinutes(), val.getSeconds()
+    );
+  }
+  if (typeof val === 'number' && val > 30000) {
+    const dt = excelSerialToDateTime(val);
+    if (Number.isNaN(dt.getTime())) return 0;
+    return dateEntryPartsToNum(
+      dt.getFullYear(), dt.getMonth() + 1, dt.getDate(),
+      dt.getHours(), dt.getMinutes(), dt.getSeconds()
+    );
+  }
+  const s = String(val).trim();
+  let m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4}),?\s*(\d{1,2}):(\d{2}):(\d{2})/);
+  if (m) return dateEntryPartsToNum(+m[3], +m[2], +m[1], +m[4], +m[5], +m[6]);
+  m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4}),?\s*(\d{1,2}):(\d{2})/);
+  if (m) return dateEntryPartsToNum(+m[3], +m[2], +m[1], +m[4], +m[5], 0);
+  m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (m) return dateEntryPartsToNum(+m[3], +m[2], +m[1], 0, 0, 0);
+  return 0;
 }
 
 function buildColIdx(header) {

@@ -1,5 +1,5 @@
 const XLSX = require('xlsx');
-const { sortAndRenumberSheet, COLUMNS, buildColIdx } = require('./excel-utils');
+const { sortAndRenumberSheet, COLUMNS, buildColIdx, toDateEntryNum } = require('./excel-utils');
 const { saveChecklistForRecord } = require('../lib/checklists-lib');
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -49,9 +49,7 @@ async function ghPut(fileName, base64Content, sha, message) {
 function pad(n) { return String(n).padStart(2, '0'); }
 
 function dateEntryToNum(s) {
-  const m = String(s || '').match(/(\d{1,2})\.(\d{1,2})\.(\d{4}),?\s*(\d{1,2}):(\d{2}):(\d{2})/);
-  if (!m) return 0;
-  return +m[3] * 10000000000 + +m[2] * 100000000 + +m[1] * 1000000 + +m[4] * 10000 + +m[5] * 100 + +m[6];
+  return toDateEntryNum(s);
 }
 
 function normDateEntry(s) {
