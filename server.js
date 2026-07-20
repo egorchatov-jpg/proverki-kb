@@ -2,6 +2,8 @@
  * Timeweb Cloud / standalone Node server for Проверки КБ.
  * Wraps existing api/*.js handlers and serves static PWA assets.
  */
+require('./lib/load-env');
+
 const express = require('express');
 const path = require('path');
 const cron = require('node-cron');
@@ -95,5 +97,7 @@ if (process.env.ENABLE_BACKUP_CRON !== '0') {
 }
 
 app.listen(PORT, HOST, function() {
+  const dataRepo = process.env.GITHUB_DATA_REPO || 'proverki-kb-data';
   console.log('proverki-kb listening on http://' + HOST + ':' + PORT);
+  console.log('[data] GITHUB_DATA_REPO=' + dataRepo);
 });

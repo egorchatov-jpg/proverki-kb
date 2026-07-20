@@ -8,7 +8,10 @@
   },
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "setup:dev-data": "node scripts/setup-dev-data-repo.js",
+    "release": "node scripts/release-prod.js",
+    "release:dry-run": "node scripts/release-prod.js --dry-run"
   },
   "dependencies": {
     "express": "^4.21.2",

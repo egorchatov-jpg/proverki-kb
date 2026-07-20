@@ -6,7 +6,7 @@ Write-Host "=== Деплой Проверки КБ на Timeweb Cloud ===" -Fore
 Write-Host ""
 
 Write-Host "1. Timeweb Cloud -> App Platform -> Добавить -> Backend" -ForegroundColor Yellow
-Write-Host "   - Репозиторий: GitHub -> proverki-kb (ветка master)"
+Write-Host "   - Репозиторий: GitHub -> proverki-kb (production: ветка master, деплой вручную)"
 Write-Host "   - Среда: Node.js 20 или 22"
 Write-Host "   - Команда сборки: npm install"
 Write-Host "   - Команда запуска: npm start"
@@ -51,5 +51,5 @@ Write-Host "   - Встроен в server.js (cron 00:00 MSK)"
 Write-Host "   - Отключить: ENABLE_BACKUP_CRON=0"
 Write-Host ""
 
-Write-Host "Готово. Закоммитьте server.js и запушьте в GitHub — Timeweb подхватит автодеплой." -ForegroundColor Green
+Write-Host "Готово. Разработка — ветка develop; production — ручной релиз (см. docs/release-workflow.md)." -ForegroundColor Green
 Write-Host ""

@@ -1005,6 +1005,13 @@ html, body {
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   flex-shrink: 0;
 }
+.settings-app-version {
+  flex-shrink: 0;
+  font-size: 12px; font-weight: 500; color: var(--text3);
+  text-align: center; line-height: 1.35;
+  padding: 0 16px 6px;
+  user-select: none;
+}
 /* Wide navy buttons in settings main screen */
 .settings-wide-btn {
   width: 100%; padding: 16px 20px;
@@ -2175,6 +2182,7 @@ html, body {
     <button class="settings-wide-btn" onclick="openPasswordsScreen()">Управление паролями</button>
     <button class="settings-wide-btn" onclick="openRestorePointsScreen()">Резервные копии</button>
   </div>
+  <div class="settings-app-version" id="settings-app-version"></div>
   <div class="settings-footer">
     <!-- exitSettings syncs settings to server before returning to lobby -->
     <button class="screen-back-btn" onclick="exitSettings()">Выход</button>
@@ -3393,6 +3401,7 @@ window.addEventListener('beforeinstallprompt', function(e) {
 
 window.addEventListener('DOMContentLoaded', function() {
   ensureAppBuildFresh();
+  renderAppVersionLabel();
   updateLobbyInstallButton();
   initInstallDeviceIcons();
   initPassportImageViewer();
@@ -4422,7 +4431,8 @@ function openCardForEdit(r) {
     }
     setCardChecklistButtonLabel();
   } else {
-    clearCardChecklistState();
+    resetCardChecklistMetaOnly();
+    syncWorksCellState();
   }
   updateCardChecklistButton();
   var titleEl = document.querySelector('#screen-card .card-title');
@@ -5231,7 +5241,12 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v250';
+var APP_BUILD = 'pkb-v252';
+var APP_VERSION = '1.01';
+function renderAppVersionLabel() {
+  var el = document.getElementById('settings-app-version');
+  if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
+}
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -8594,15 +8609,20 @@ function findPassportBarrierForName(barrierName) {
   });
 }
 
-function clearCardChecklistState() {
+function resetCardChecklistMetaOnly() {
   cardData.checklistViolations = null;
   cardData.checklistFilled = false;
   cardData.checklistPassportId = null;
   cardData.worksLockedByChecklist = false;
   cardData.descFromChecklist = false;
-  cardData.works = '';
   _cardChecklistMatch = null;
+  _cardChecklistQuestionTexts = {};
   setCardChecklistButtonLabel();
+}
+
+function clearCardChecklistState() {
+  resetCardChecklistMetaOnly();
+  cardData.works = '';
 }
 
 function syncWorksCellState() {
