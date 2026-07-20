@@ -472,6 +472,7 @@ html, body {
 .card-btn:active { opacity: 0.8; transform: scale(0.97); }
 .card-btn-cancel { background: var(--gray-btn-dark); }
 .card-btn-delete { background: var(--red); }
+#screen-card:not(.card-mode-edit) #btn-card-delete { display: none !important; }
 .card-btn-submit { background: var(--orange); }
 .card-btn-submit:disabled { opacity: 0.4; pointer-events: none; }
 #field-wrap-barrier { align-items: flex-start; }
@@ -4351,6 +4352,7 @@ function setTodayDate() {
 function openCard() {
   cardEditRecord = null;
   resetCard();
+  setCardScreenMode(false);
   showScreen('screen-card');
 }
 
@@ -4400,8 +4402,6 @@ function openCardForEdit(r) {
   setCardVal('barrier', r.barrier || 'Выбрать', !r.barrier);
   setWorksCellDisplay(r.works || '');
   setCardVal('desc', r.desc || '—', !r.desc);
-  setDimmed('desc', r.works !== 'Нет');
-  updateCardDescEditable(true);
   if (r.checklistFilled) {
     cardData.checklistViolations = Object.assign({}, r.checklistViolations || {});
     cardData.checklistFilled = true;
@@ -4423,15 +4423,20 @@ function openCardForEdit(r) {
     setCardChecklistButtonLabel();
   } else {
     clearCardChecklistState();
-    setDimmed('desc', r.works !== 'Нет');
   }
   updateCardChecklistButton();
   var titleEl = document.querySelector('#screen-card .card-title');
   if (titleEl) titleEl.textContent = 'Измените проведенную проверку ' + checkIdLabel(r);
   setCardSubtitle('');
-  syncCardBottomButtons();
+  setCardScreenMode(true);
   updateValidation();
   showScreen('screen-card');
+}
+
+function setCardScreenMode(edit) {
+  var screen = document.getElementById('screen-card');
+  if (screen) screen.classList.toggle('card-mode-edit', !!edit);
+  syncCardBottomButtons();
 }
 
 function syncCardBottomButtons() {
@@ -4470,7 +4475,7 @@ function deleteRecordFromApp(r) {
   delete shas['sha' + year];
   saveServerShas(shas);
   cardEditRecord = null;
-  syncCardBottomButtons();
+  setCardScreenMode(false);
   applyFindFilters();
   renderCorrectiveList();
   renderLobby();
@@ -4508,7 +4513,7 @@ function cancelCard() {
     var rec = cardEditRecord;
     var src = detailSource;
     cardEditRecord = null;
-    syncCardBottomButtons();
+    setCardScreenMode(false);
     openDetail(rec, src);
     return;
   }
@@ -4530,7 +4535,8 @@ function resetCard() {
   });
   setWorksCellDisplay('');
   setDimmed('desc', true);
-  updateCardDescEditable(true);
+  lockDescCell();
+  updateCardDescEditable(false);
   lockWorksCell();
   setCardChecklistButtonVisible(false);
   syncWorksCellState();
@@ -5225,7 +5231,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v247';
+var APP_BUILD = 'pkb-v248';
 var PASSPORT_JSON_VERSION = 'v24';
 var _passportCache = {};
 try {
@@ -8629,13 +8635,14 @@ function syncWorksCellState() {
   cardData.worksLockedByChecklist = false;
   cardData.descFromChecklist = false;
   unlockWorksCell();
-  setDimmed('desc', cardData.works !== 'Нет');
-  if (cardData.works === 'Нет') {
+  var broken = cardData.works === 'Нет';
+  setDimmed('desc', !broken);
+  if (broken) {
     unlockDescCell();
     updateCardDescEditable(true);
   } else {
-    unlockDescCell();
-    updateCardDescEditable(true);
+    lockDescCell();
+    updateCardDescEditable(false);
   }
 }
 
@@ -9115,8 +9122,15 @@ function cancelCardChecklist() {
         el3.textContent = cardData.desc || '—';
         if (cardData.desc) el3.classList.remove('placeholder'); else el3.classList.add('placeholder');
       }
-      setDimmed('desc', cardData.works !== 'Нет');
-      updateCardDescEditable(true);
+      var brokenCancel = cardData.works === 'Нет';
+      setDimmed('desc', !brokenCancel);
+      if (brokenCancel) {
+        unlockDescCell();
+        updateCardDescEditable(true);
+      } else {
+        lockDescCell();
+        updateCardDescEditable(false);
+      }
     }
   }
   _cardChecklistSnapshot = null;
@@ -9260,6 +9274,8 @@ function openDrumWorks() {
       cardData.desc = '';
       document.getElementById('val-desc').textContent = '—';
       document.getElementById('val-desc').classList.add('placeholder');
+      lockDescCell();
+      updateCardDescEditable(false);
     } else {
       unlockDescCell();
       updateCardDescEditable(true);
@@ -9318,6 +9334,7 @@ function applyTextOverlay() {
 function openDescOverlay() {
   if (cardData.descFromChecklist) return;
   if (cardUsesChecklistFlow() && cardData.works === 'Нет') return;
+  if (!cardUsesChecklistFlow() && cardData.works !== 'Нет') return;
   document.getElementById('desc-input').value = cardData.desc || '';
   document.getElementById('overlay-desc').classList.add('active');
   setTimeout(function(){ document.getElementById('desc-input').focus(); }, 300);
