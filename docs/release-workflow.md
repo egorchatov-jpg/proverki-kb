@@ -11,6 +11,9 @@ Production-сайт: **https://kbcheck.webtm.ru/**
 Репозиторий приложения: `proverki-kb`  
 База данных (Excel): `proverki-kb-data` (общая для всех пользователей).
 
+**Версия для пользователей:** `APP_VERSION` в `index.html` (например `1.01`), показывается в Настройках.  
+После `npm run release` скрипт автоматически поднимает `APP_VERSION` на `develop` для следующего релиза (`1.01` → `1.02`).
+
 ---
 
 ## Однократная настройка Timeweb (важно)
@@ -61,7 +64,16 @@ node scripts/release-prod.js --dry-run
 
 ---
 
-## Опционально: dev-сервер
+## Локальная разработка (тестовая база)
+
+Подробно: [local-dev.md](./local-dev.md).
+
+```bash
+npm run setup:dev-data   # proverki-kb-data-dev + .env.local
+npm start                # http://localhost:3000
+```
+
+## Опционально: dev-сервер на Timeweb
 
 Для тестов без риска для боевой Excel-базы:
 

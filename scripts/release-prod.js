@@ -5,6 +5,7 @@
  * Usage:
  *   node scripts/release-prod.js
  *   node scripts/release-prod.js --dry-run
+ *   node scripts/release-prod.js --keep-version   # не поднимать APP_VERSION на develop после релиза
  */
 const { execSync } = require('child_process');
 const path = require('path');
@@ -13,6 +14,7 @@ const ROOT = path.join(__dirname, '..');
 const PROD_BRANCH = 'master';
 const DEV_BRANCH = 'develop';
 const dryRun = process.argv.includes('--dry-run');
+const keepVersion = process.argv.includes('--keep-version');
 
 function run(cmd, inherit) {
   return execSync(cmd, {
@@ -77,6 +79,7 @@ try {
 
   if (dryRun) {
     console.log('\n[dry-run] merge develop → ' + PROD_BRANCH + ' и push не выполнялись.');
+    if (keepVersion) console.log('[dry-run] --keep-version: APP_VERSION на develop не будет изменён.');
     process.exit(0);
   }
 
@@ -94,24 +97,42 @@ try {
   step('git checkout ' + DEV_BRANCH);
   run('git checkout ' + DEV_BRANCH, true);
 
+  const htmlPath = path.join(ROOT, 'index.html');
+  const htmlBeforeBump = require('fs').readFileSync(htmlPath, 'utf8');
+  const versionMatch = htmlBeforeBump.match(/var APP_VERSION = '([\d.]+)';/);
+  const releasedVersion = versionMatch ? versionMatch[1] : '?';
+
+  let nextVersion = null;
+  let nextBuild = null;
+  if (keepVersion) {
+    console.log('\n  --keep-version: APP_VERSION остаётся ' + releasedVersion + ' на develop.');
+  } else {
+    step('Подготовка следующей версии на develop');
+    const { bumpReleaseVersions } = require('./bump-app-version');
+    ({ nextVersion, nextBuild } = bumpReleaseVersions());
+    run('git add index.html sw.js', true);
+    run('git commit --no-trailer -m "Bump APP_VERSION to ' + nextVersion + ' (' + nextBuild + ')"', true);
+    run('git push origin ' + DEV_BRANCH, true);
+  }
+
   const build = (() => {
     try {
-      const html = require('fs').readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-      const m = html.match(/var APP_BUILD = '(pkb-v\d+)'/);
+      const m = htmlBeforeBump.match(/var APP_BUILD = '(pkb-v\d+)'/);
       return m ? m[1] : '?';
     } catch (_) {
       return '?';
     }
   })();
 
-  console.log('\n✓ Ветка ' + PROD_BRANCH + ' обновлена на GitHub (' + build + ').');
+  console.log('\n✓ Ветка ' + PROD_BRANCH + ' обновлена на GitHub (' + build + ', версия ' + releasedVersion + ').');
+  if (nextVersion) console.log('  develop подготовлен к следующему релизу: APP_VERSION ' + nextVersion);
   console.log('\n--- Деплой на Timeweb (вручную) ---');
   console.log('1. Timeweb Cloud → App Platform → ваше приложение «Проверки КБ»');
   console.log('2. Убедитесь, что автодеплой при push выключён (см. docs/release-workflow.md).');
   console.log('3. Раздел «Деплой» / Deployments → «Запустить деплой» / Redeploy');
   console.log('   Ветка: master, последний коммит.');
   console.log('4. После деплоя: https://kbcheck.webtm.ru/health → { ok: true }');
-  console.log('5. Сообщите пользователям: перезапустить PWA или обновить страницу (' + build + ').');
+  console.log('5. Сообщите пользователям: перезапустить PWA или обновить страницу (версия ' + releasedVersion + ', ' + build + ').');
   console.log('');
 } catch (e) {
   fail((e.stderr || e.stdout || e.message || String(e)).trim());
