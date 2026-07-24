@@ -15,6 +15,8 @@ Write-Host ""
 
 Write-Host "2. Переменные окружения (Настройки приложения -> Переменные):" -ForegroundColor Yellow
 $vars = @(
+  'DATABASE_PATH',
+  'BACKUPS_DIR',
   'GITHUB_TOKEN',
   'GITHUB_OWNER',
   'GITHUB_DATA_REPO',

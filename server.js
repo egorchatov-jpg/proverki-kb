@@ -10,6 +10,7 @@ const path = require('path');
 const cron = require('node-cron');
 const { createBackupFromLive } = require('./lib/backups-lib');
 const { getDb, getDbPath, getDbStatus } = require('./lib/db');
+const { migrateFromGithubIfEmpty } = require('./lib/migrate-from-github');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 3000);
@@ -130,6 +131,12 @@ app.listen(PORT, HOST, function() {
   const db = getDbStatus();
   if (db.ok) {
     console.log('[data] SQLite:', db.path);
+    if (db.ephemeral) {
+      console.warn('[data] Ephemeral storage — database resets on Timeweb redeploy');
+    }
+    migrateFromGithubIfEmpty().catch(function(e) {
+      console.error('[migrate] auto-import failed:', e.message);
+    });
   } else {
     console.error('[data] SQLite init failed:', db.error);
     console.error('[data] Static UI is served; API will return errors until DATABASE_PATH is writable and Node >= 22.5');
