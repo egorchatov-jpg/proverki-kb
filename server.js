@@ -67,6 +67,7 @@ app.get('/health', function(_req, res) {
     node: process.version,
     database: db.ok ? path.basename(db.path) : path.basename(getDbPath()),
   };
+  if (db.ephemeral) payload.ephemeral = true;
   if (!db.ok) payload.error = db.error;
   res.status(db.ok ? 200 : 503).json(payload);
 });

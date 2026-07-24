@@ -45,10 +45,10 @@ foreach ($k in $keys) {
 }
 $outLines += 'ENABLE_BACKUP_CRON=1'
 if (-not $found.ContainsKey('DATABASE_PATH')) {
-  $outLines += 'DATABASE_PATH=/var/www/data/proverki.db'
+  $outLines += 'DATABASE_PATH=/tmp/proverki-kb/proverki.db'
 }
 if (-not $found.ContainsKey('BACKUPS_DIR')) {
-  $outLines += 'BACKUPS_DIR=/var/www/data/backups'
+  $outLines += 'BACKUPS_DIR=/tmp/proverki-kb/backups'
 }
 
 Set-Content -Path $out -Value ($outLines -join "`n") -Encoding UTF8 -NoNewline
