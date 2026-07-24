@@ -3796,9 +3796,7 @@ function openPin() {
 var findFilters = { dateFrom: '', dateTo: '', method: '', org: '', barrier: '' };
 
 function sortByDateCheckAsc(recs) {
-  return recs.slice().sort(function(a, b) {
-    return dateNumFromStr(a.dateCheck) - dateNumFromStr(b.dateCheck);
-  });
+  return recs.slice().sort(cmpRecords);
 }
 var _listScrollCache = {};
 var LIST_SCROLL_SCREENS = ['screen-find', 'screen-corrective-list', 'screen-sokb-list'];
@@ -5572,7 +5570,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v262';
+var APP_BUILD = 'pkb-v263';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -9802,11 +9800,11 @@ function dateEntryToMs(val) {
 }
 
 // Master comparator:
-// 1. дата проверки ↑  2. дата+время внесения ↓  3. орг А-Я  4. метод А-Я  5. барьер А-Я
+// 1. дата проверки ↑  2. дата+время внесения ↑  3. орг А-Я  4. метод А-Я  5. барьер А-Я
 function cmpRecords(a, b) {
   var d = dateToMs(a.dateCheck) - dateToMs(b.dateCheck);
   if (d) return d;
-  d = dateEntryToMs(b.dateEntry) - dateEntryToMs(a.dateEntry);
+  d = dateEntryToMs(a.dateEntry) - dateEntryToMs(b.dateEntry);
   if (d) return d;
   d = (a.org     || '').localeCompare(b.org     || '', 'ru');
   if (d) return d;

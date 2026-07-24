@@ -119,7 +119,7 @@ function buildColIdx(header) {
 }
 
 // Sort priority:
-// 1. dateCheck asc  2. dateEntry desc  3. org  4. method  5. barrier
+// 1. dateCheck asc  2. dateEntry asc  3. org  4. method  5. barrier
 function sortDataRows(data, colIdx) {
   const dc = colIdx.dateCheck ?? COL.dateCheck;
   const de = colIdx.dateEntry ?? COL.dateEntry;
@@ -131,7 +131,7 @@ function sortDataRows(data, colIdx) {
   data.sort((a, b) => {
     let d = toDateNum(a[dc]) - toDateNum(b[dc]);
     if (d) return d;
-    d = toDateEntryNum(b[de]) - toDateEntryNum(a[de]);
+    d = toDateEntryNum(a[de]) - toDateEntryNum(b[de]);
     if (d) return d;
     d = String(a[org] || '').localeCompare(String(b[org] || ''), 'ru');
     if (d) return d;
