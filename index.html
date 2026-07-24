@@ -3502,59 +3502,91 @@ function _showPushPromptOrFinish() {
 // ===== INIT =====
 var _appUpdateApplying = false;
 var _appUpdateOverlayShown = false;
+var _updateReloadDone = false;
+var _lastUpdateCheckMs = 0;
 
 function showAppUpdateOverlay() {
-  if (_appUpdateOverlayShown) return;
+  if (_appUpdateOverlayShown || _appUpdateApplying) return;
   _appUpdateOverlayShown = true;
   var el = document.getElementById('overlay-app-update');
   if (el) el.classList.add('active');
 }
 
+function clearUpdateInProgressFlag() {
+  try { sessionStorage.removeItem('pkb-update-in-progress'); } catch (_e) {}
+}
+
+function reloadForAppUpdate() {
+  if (_updateReloadDone) return;
+  _updateReloadDone = true;
+  window.location.replace('/?v=' + Date.now());
+}
+
 function applyAppUpdate() {
+  if (_appUpdateApplying) return;
   _appUpdateApplying = true;
+  _appUpdateOverlayShown = true;
+  try { sessionStorage.setItem('pkb-update-in-progress', '1'); } catch (_e) {}
   try { localStorage.removeItem('pkb-app-build'); } catch (_e) {}
-  var reload = function() {
-    window.location.href = '/?v=' + Date.now();
-  };
+
+  var hasWaitingSw = !!(swRegistration && swRegistration.waiting);
   var activateWaitingSw = function() {
     if (swRegistration && swRegistration.waiting) {
       swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
-    }
-    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+    } else if (navigator.serviceWorker && navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_ALL_CACHES' });
     }
   };
+
+  var finishUpdate = function() {
+    activateWaitingSw();
+    if (hasWaitingSw) {
+      setTimeout(function() {
+        if (_appUpdateApplying && !_updateReloadDone) reloadForAppUpdate();
+      }, 4000);
+    } else {
+      reloadForAppUpdate();
+    }
+  };
+
   if ('caches' in window) {
     caches.keys().then(function(keys) {
       return Promise.all(keys.map(function(k) { return caches.delete(k); }));
-    }).then(function() {
-      activateWaitingSw();
-      setTimeout(reload, 250);
-    }).catch(function() {
-      activateWaitingSw();
-      reload();
-    });
+    }).then(finishUpdate).catch(finishUpdate);
   } else {
-    activateWaitingSw();
-    reload();
+    finishUpdate();
   }
 }
 
-function checkForAppUpdate() {
+function evaluateAppUpdate(reg) {
   if (_appUpdateOverlayShown || _appUpdateApplying) return;
+  var now = Date.now();
+  if (now - _lastUpdateCheckMs < 5000) return;
+  _lastUpdateCheckMs = now;
+
+  var swWaiting = !!(reg && reg.waiting && navigator.serviceWorker.controller);
   fetch('/api/version', { cache: 'no-store' })
     .then(function(r) { return r.ok ? r.json() : null; })
     .then(function(d) {
-      if (d && d.build && d.build !== APP_BUILD && d.build !== 'unknown' && d.build !== 'local') {
+      var serverBuild = d && d.build;
+      var htmlStale = serverBuild && serverBuild !== APP_BUILD && serverBuild !== 'unknown' && serverBuild !== 'local';
+      if (htmlStale || swWaiting) {
         showAppUpdateOverlay();
+      } else {
+        clearUpdateInProgressFlag();
       }
     })
-    .catch(function() {});
+    .catch(function() {
+      if (swWaiting) showAppUpdateOverlay();
+    });
+}
+
+function checkForAppUpdate() {
+  evaluateAppUpdate(swRegistration);
 }
 
 function noteWaitingServiceWorker(reg) {
-  if (!reg || !reg.waiting || !navigator.serviceWorker.controller) return;
-  showAppUpdateOverlay();
+  evaluateAppUpdate(reg || swRegistration);
 }
 
 function ensureAppBuildFresh() {
@@ -3635,9 +3667,8 @@ window.addEventListener('DOMContentLoaded', function() {
         }
       }, { forceFull: true });
       clearNotificationsAndBadge();
-      checkForAppUpdate();
       if (swRegistration) {
-        swRegistration.update().then(function() { noteWaitingServiceWorker(swRegistration); });
+        swRegistration.update().then(function() { evaluateAppUpdate(swRegistration); });
         subscribeToPush(swRegistration);
       }
     }
@@ -3714,12 +3745,9 @@ function saveState() {
 
 function registerSW() {
   if ('serviceWorker' in navigator) {
-    var reloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange', function() {
-      if (reloaded) return;
-      if (!_appUpdateApplying) return;
-      reloaded = true;
-      window.location.href = '/?v=' + Date.now();
+      if (!_appUpdateApplying || _updateReloadDone) return;
+      reloadForAppUpdate();
     });
     navigator.serviceWorker.addEventListener('message', function(e) {
       var data = e.data || {};
@@ -3728,19 +3756,16 @@ function registerSW() {
         loadFromServer(function() { refreshActiveRecordLists(); }, { forceFull: true });
       }
     });
-    navigator.serviceWorker.register('/sw.js?v=' + APP_BUILD).then(function(reg) {
+    navigator.serviceWorker.register('/sw.js').then(function(reg) {
       swRegistration = reg;
       subscribeToPush(reg);
-      reg.update().then(function() { noteWaitingServiceWorker(reg); });
+      reg.update().then(function() { evaluateAppUpdate(reg); });
       if (reg.active) prefetchPassportAssets();
       reg.addEventListener('updatefound', function() {
         var nw = reg.installing;
         if (!nw) return;
         nw.addEventListener('statechange', function() {
-          if (nw.state === 'installed') {
-            noteWaitingServiceWorker(reg);
-            checkForAppUpdate();
-          }
+          if (nw.state === 'installed') evaluateAppUpdate(reg);
           if (nw.state === 'activated') prefetchPassportAssets();
         });
       });
@@ -5570,7 +5595,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v263';
+var APP_BUILD = 'pkb-v264';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');

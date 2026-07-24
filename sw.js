@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'pkb-static-v263';
-const API_CACHE = 'pkb-api-v263';
+const STATIC_CACHE = 'pkb-static-v264';
+const API_CACHE = 'pkb-api-v264';
 
 const SHELL_PRECACHE = [
   '/',
@@ -187,7 +187,21 @@ self.addEventListener('fetch', function(e) {
     return;
   }
 
-  if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/sw.js') {
+  if (url.pathname === '/' || url.pathname === '/index.html') {
+    if (url.search.indexOf('v=') >= 0) {
+      e.respondWith(fetch(e.request, { cache: 'no-store' }).then(function(res) {
+        if (!res || !res.ok) return res;
+        return caches.open(STATIC_CACHE).then(function(cache) {
+          return cache.put(new Request(url.pathname), res.clone()).then(function() { return res; });
+        });
+      }));
+      return;
+    }
+    e.respondWith(cacheFirst(e.request, true));
+    return;
+  }
+
+  if (url.pathname === '/sw.js') {
     e.respondWith(cacheFirst(e.request, true));
     return;
   }
