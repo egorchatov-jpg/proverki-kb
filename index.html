@@ -483,11 +483,19 @@ html, body {
 #field-wrap-checklist-btn[hidden] { display: none !important; }
 .field-label-spacer { visibility: hidden; pointer-events: none; }
 #screen-card .card-checklist-btn {
+  flex: 1 1 0; min-width: 0; box-sizing: border-box;
+  min-height: 36px; padding: 6px 10px;
+  border: none; border-radius: 10px;
+  background: var(--orange); color: #fff;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  box-shadow: var(--btn-shadow);
+  display: flex; align-items: center; justify-content: center;
   appearance: none; -webkit-appearance: none;
-  margin: 0; text-align: left; font-family: inherit;
-  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  margin: 0; font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
 }
-#screen-card .card-checklist-btn:active { border-color: var(--orange); }
+#screen-card .card-checklist-btn:active { opacity: 0.8; }
 .card-checklist-btn[hidden] { display: none !important; }
 #screen-card-checklist {
   display: flex; flex-direction: column;
@@ -922,11 +930,19 @@ html, body {
 }
 .detail-checklist-row { padding-top: 0; margin-top: -2px; align-items: center; }
 #screen-detail .card-checklist-btn {
+  flex: 1 1 0; min-width: 0; box-sizing: border-box;
+  min-height: 36px; padding: 6px 10px;
+  border: none; border-radius: 10px;
+  background: var(--orange); color: #fff;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  box-shadow: var(--btn-shadow);
+  display: flex; align-items: center; justify-content: center;
   appearance: none; -webkit-appearance: none;
-  margin: 0; text-align: left; font-family: inherit;
-  cursor: pointer; -webkit-tap-highlight-color: transparent;
-  width: auto;
+  margin: 0; font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
 }
+#screen-detail .card-checklist-btn:active { opacity: 0.8; }
 .detail-block-val.detail-block-val-editable {
   border: 2px solid var(--orange); cursor: pointer; background: #fff;
 }
@@ -2023,7 +2039,7 @@ html, body {
       </div>
       <div class="field-wrap field-wrap-checklist" id="field-wrap-checklist-btn" hidden>
         <div class="field-label field-label-spacer">Проверяемый барьер</div>
-        <button type="button" class="field-cell card-checklist-btn" id="btn-card-checklist" onclick="openCardChecklistScreen()">Заполнить чек-лист</button>
+        <button type="button" class="card-checklist-btn" id="btn-card-checklist" onclick="openCardChecklistScreen()">Заполнить чек-лист</button>
       </div>
 
       <div class="field-wrap">
@@ -5612,7 +5628,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v272';
+var APP_BUILD = 'pkb-v273';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -8745,7 +8761,7 @@ function openDetail(r, source) {
     (recordHasSavedChecklist(r)
       ? '<div class="detail-row detail-checklist-row">' +
           '<div class="detail-label field-label-spacer">Проверяемый барьер</div>' +
-          '<button type="button" class="detail-val detail-val-editable card-checklist-btn" onclick="openRecordChecklistView(detailRecordForEdit)">Чек-лист</button>' +
+          '<button type="button" class="card-checklist-btn" onclick="openRecordChecklistView(detailRecordForEdit)">Чек-лист</button>' +
         '</div>'
       : '') +
     row('Барьер в ПК', r.barrierInPK, '', editRecord) +
