@@ -2014,7 +2014,7 @@ html, body {
       <div class="field-wrap">
         <div class="field-label" id="lbl-inspectorOrg">Проверяющая организация</div>
         <div class="field-cell" id="cell-inspectorOrg" onclick="openDrumInspectorOrg()">
-          <span class="placeholder" id="val-inspectorOrg">—</span>
+          <span class="placeholder" id="val-inspectorOrg">Выбрать</span>
         </div>
       </div>
 
@@ -4683,7 +4683,7 @@ function syncInspectorOrgCellState() {
     if (cardData.inspectorOrg) {
       setCardVal('inspectorOrg', cardData.inspectorOrg, false);
     } else {
-      setCardVal('inspectorOrg', '—', false);
+      setCardVal('inspectorOrg', 'Выбрать', true);
     }
   }
 }
@@ -4775,7 +4775,7 @@ function openCardForEdit(r) {
   };
   setCardVal('date', r.dateCheck || '—', !r.dateCheck);
   setCardVal('method', r.method || 'Выбрать', !r.method);
-  setCardVal('inspectorOrg', r.inspector || '—', !r.inspector);
+  setCardVal('inspectorOrg', r.inspector || 'Выбрать', !r.inspector);
   setCardVal('org', r.org || 'Выбрать', !r.org);
   setDimmed('method', false);
   setDimmed('org', false);
@@ -4914,8 +4914,8 @@ function resetCard() {
   setCardSubtitle('');
   setTodayDate();
   ['method','inspectorOrg','org','obj','barrier','works','desc'].forEach(function(k) {
-    var isPick = k === 'method' || k === 'org' || k === 'barrier' || k === 'works';
-    setCardVal(k, k === 'inspectorOrg' ? '—' : (isPick ? 'Выбрать' : '—'), isPick);
+    var isPick = k === 'method' || k === 'org' || k === 'barrier' || k === 'works' || k === 'inspectorOrg';
+    setCardVal(k, isPick ? 'Выбрать' : '—', isPick);
   });
   setDimmed('method', false);
   setDimmed('inspectorOrg', false);
@@ -5628,7 +5628,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v275';
+var APP_BUILD = 'pkb-v276';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
