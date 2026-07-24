@@ -1,100 +1,81 @@
 # Релиз и деплой «Проверки КБ»
 
-## Две ветки
+## Подход
 
-| Ветка | Назначение | Когда обновляется |
-|-------|------------|-------------------|
-| **develop** | Ежедневная разработка | Каждый ваш push |
-| **master** | Production (пользователи) | Только когда вы запускаете релиз |
+| Что | Где |
+|-----|-----|
+| **Код приложения** | одна ветка **`master`** (тот же код, что у пользователей) |
+| **Локальные тесты** | `npm start` на компьютере → http://localhost:3000 |
+| **Тестовая Excel локально** | репозиторий `proverki-kb-data-dev` (см. [local-dev.md](./local-dev.md)) |
+| **Боевая Excel** | репозиторий `proverki-kb-data` (только на kbcheck.webtm.ru) |
+| **Обновление для пользователей** | push в `master` + **ручной деплой** в Timeweb |
 
-Production-сайт: **https://kbcheck.webtm.ru/**  
-Репозиторий приложения: `proverki-kb`  
-База данных (Excel): `proverki-kb-data` (общая для всех пользователей).
+Отдельная ветка `develop`, стенды Timeweb и второе приложение **не нужны**.
+
+Production: **https://kbcheck.webtm.ru/**  
+Репозиторий: `egorchatov-jpg/proverki-kb`, ветка **`master`**.
 
 **Версия для пользователей:** `APP_VERSION` в `index.html` (например `1.01`), показывается в Настройках.  
-После `npm run release` скрипт автоматически поднимает `APP_VERSION` на `develop` для следующего релиза (`1.01` → `1.02`).
+Перед деплоем для пользователей поднимите `APP_VERSION` и `APP_BUILD` / кэш в `sw.js`.
 
 ---
 
-## Однократная настройка Timeweb (важно)
+## Timeweb (один раз)
 
-Чтобы push в `master` **не деплоил** приложение автоматически:
+Чтобы push в `master` **не деплоил** приложение сам:
 
-1. **Timeweb Cloud** → **App Platform** → приложение «Проверки КБ».
-2. **Настройки** → раздел про Git / деплой.
-3. **Отключите** «Автоматический деплой при push» / **Auto deploy** (формулировка зависит от панели).
-4. Оставьте привязку к репозиторию и ветке **master** — деплой будет **вручную** из панели.
-
-После этого только вы решаете, когда пользователи получат новую версию.
+1. **Timeweb Cloud** → **App Platform** → приложение «Проверки КБ» (`kbcheck.webtm.ru`).
+2. **Настройки** → Git: репозиторий `proverki-kb`, ветка **`master`**.
+3. **Отключите** автодеплой при push.
+4. **Не создавайте стенды** для production — деплой только из основного приложения.
 
 ---
 
-## Ежедневная работа (develop)
+## Ежедневная работа
 
 ```powershell
-git checkout develop
-# ... правки, коммиты ...
-git push origin develop
+git checkout master
+git pull origin master
+
+# правки в index.html, sw.js, api/ ...
+
+npm start
+# тест на http://localhost:3000 (данные из proverki-kb-data-dev)
+
+git add ...
+git commit -m "..."
+git push origin master
 ```
 
-Push в `develop` **не трогает** production и пользователей.
+Push в GitHub **не обновляет** сайт для пользователей, пока вы не нажмёте деплой в Timeweb.
+
+Подробнее про локальную базу: [local-dev.md](./local-dev.md).
 
 ---
 
-## Пакетный релиз (когда сами решите)
+## Деплой для пользователей (когда готовы)
 
-```powershell
-git checkout develop
-git push origin develop          # всё готово на develop
-node scripts/release-prod.js     # merge develop → master, push master
-```
-
-Просмотр без изменений:
-
-```powershell
-node scripts/release-prod.js --dry-run
-```
-
-### После скрипта — деплой в Timeweb вручную
-
-1. Timeweb → App Platform → «Проверки КБ» → **Деплой**.
-2. **Запустить деплой** / Redeploy из ветки **master** (последний коммит).
-3. Проверка: https://kbcheck.webtm.ru/health → `{ "ok": true }`.
-4. Сообщите пользователям: закрыть и открыть приложение (или обновить страницу).
+1. Протестировано локально на `localhost:3000`.
+2. При необходимости подняты `APP_VERSION`, `APP_BUILD`, кэш в `sw.js`.
+3. Коммиты запушены в **`master`**.
+4. **Timeweb** → App Platform → «Проверки КБ» → **Деплой** → **Запустить деплой** / Redeploy (ветка `master`, последний коммит).
+5. Проверка: https://kbcheck.webtm.ru/health → `{ "ok": true }`.
+6. В приложении: **Настройки** → нужная **«Версия приложения X.XX»**.
+7. Сообщите пользователям: перезапустить PWA или обновить страницу.
 
 ---
 
-## Локальная разработка (тестовая база)
+## Чеклист перед деплоем
 
-Подробно: [local-dev.md](./local-dev.md).
-
-```bash
-npm run setup:dev-data   # proverki-kb-data-dev + .env.local
-npm start                # http://localhost:3000
-```
-
-## Опционально: dev-сервер на Timeweb
-
-Для тестов без риска для боевой Excel-базы:
-
-- Второе приложение Timeweb (например `dev.kbcheck.webtm.ru`).
-- Автодеплой из ветки **develop**.
-- Отдельный репозиторий данных: `GITHUB_DATA_REPO=proverki-kb-data-dev`.
-
----
-
-## Чеклист перед релизом
-
-- [ ] Протестировано локально или на dev
-- [ ] `node scripts/release-prod.js --dry-run` — список коммитов OK
-- [ ] `node scripts/release-prod.js` — master обновлён
+- [ ] Локально всё проверено (`npm start`, тестовая Excel)
+- [ ] `APP_VERSION` / `APP_BUILD` / `sw.js` обновлены (если менялся UI)
+- [ ] `git push origin master`
 - [ ] Ручной деплой в Timeweb выполнен
-- [ ] `/health` отвечает
-- [ ] На телефоне подтянулась новая версия (APP_BUILD в настройках / консоли)
+- [ ] `/health` и версия в настройках на production OK
 
 ---
 
 ## Если что-то пошло не так
 
-- **Откат кода:** в Timeweb выбрать деплой предыдущего коммита `master` или `git revert` + новый релиз.
-- **Откат данных:** Настройки → «Резервные копии базы данных» (только Excel).
+- **Откат кода:** в Timeweb выбрать предыдущий деплой или `git revert` + push + новый деплой.
+- **Откат данных:** Настройки → «Резервные копии базы данных» (только Excel на production).

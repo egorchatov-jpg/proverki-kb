@@ -1,56 +1,47 @@
-# Локальная разработка (безопасная тестовая база)
+# Локальная разработка
 
-Production (`kbcheck.webtm.ru`) читает Excel из репозитория **`proverki-kb-data`**.  
-Локально на `http://localhost:3000` нужно использовать отдельную базу **`proverki-kb-data-dev`**, чтобы тесты (удаление, purge, миграции) не затрагивали боевые данные.
+Код — из ветки **`master`** (тот же, что у пользователей).  
+Данные локально — из **`proverki-kb-data-dev`**, чтобы не трогать боевую Excel.
+
+| | Код | Excel / настройки |
+|---|-----|-------------------|
+| **localhost:3000** | `master` на диске | `proverki-kb-data-dev` |
+| **kbcheck.webtm.ru** | деплой из `master` | `proverki-kb-data` |
+
+Push в `master` на GitHub **не обновляет** production, пока вы не задеплоите в Timeweb вручную.
 
 ## Быстрый старт
 
-```bash
+```powershell
+git checkout master
 npm install
-npm run setup:dev-data   # создаёт GitHub-репо и .env.local
+npm run setup:dev-data   # один раз: репо proverki-kb-data-dev + .env.local
 npm start
 ```
 
-Откройте http://localhost:3000 — приложение подключится к тестовой Excel.
+Откройте http://localhost:3000.
 
-## Что создаёт setup:dev-data
+## .env.local
 
-| Файл в proverki-kb-data-dev | Содержимое |
-|-----------------------------|------------|
-| `Проверки КБ 2026.xlsx` | Пустая таблица с актуальными заголовками |
-| `settings.json` | Синтетические организации, методы, барьеры; PIN 3333/1111 |
-| `checklists.json` | Пустой `{ "items": {} }` |
-| `README.md` | Описание назначения репозитория |
-
-Скрипт также пишет **`.env.local`**:
+Создаётся скриптом `setup:dev-data` или из `env.local.example`:
 
 - `GITHUB_DATA_REPO=proverki-kb-data-dev`
-- `ENABLE_BACKUP_CRON=0` (ночной бэкап не нужен локально)
+- `ENABLE_BACKUP_CRON=0`
 
-Секреты (`GITHUB_TOKEN`, VAPID) берутся из `.env.prod`, если он есть.
+Секреты (`GITHUB_TOKEN`, VAPID) — из `.env.prod`.
 
-## Переменные окружения
+## Перед деплоем для пользователей
 
-| Переменная | Production | Local dev |
-|------------|------------|-----------|
-| `GITHUB_DATA_REPO` | `proverki-kb-data` | `proverki-kb-data-dev` |
-| `ENABLE_BACKUP_CRON` | `1` | `0` |
-
-Шаблон: `env.local.example` → скопировать в `.env.local`.
-
-## Повторная инициализация
-
-Перезаписать файлы в dev-репо (осторожно — удалит тестовые записи в Excel):
-
-```bash
-node scripts/setup-dev-data-repo.js --force
-```
+1. Проверить доработки на localhost.
+2. Закоммитить и `git push origin master`.
+3. Ручной деплой в Timeweb (см. [release-workflow.md](./release-workflow.md)).
 
 ## Кэш PWA локально
 
-Если видите старую версию UI — в DevTools → Application: Unregister service worker, Clear site data, или incognito.
+Старая версия UI — DevTools → Application → Unregister service worker, Clear site data, или incognito.
 
-## Связь с release-workflow
+## Повторная инициализация тестовой базы
 
-Production деплоится вручную из `master` ([release-workflow.md](./release-workflow.md)).  
-Ветка `develop` и localhost всегда могут указывать на `proverki-kb-data-dev`.
+```powershell
+node scripts/setup-dev-data-repo.js --force
+```
