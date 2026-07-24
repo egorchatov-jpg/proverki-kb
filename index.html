@@ -5628,7 +5628,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v273';
+var APP_BUILD = 'pkb-v274';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -8686,7 +8686,7 @@ function syncRecordFieldLabelWidths(root, selector) {
 function syncCardFieldLabelWidths() {
   syncRecordFieldLabelWidths(
     document.querySelector('#screen-card .card-grid'),
-    '.field-wrap:not(.field-block):not(.field-wrap-checklist) .field-label'
+    '.field-wrap:not(.field-block) .field-label'
   );
 }
 
@@ -9195,6 +9195,7 @@ function setCardChecklistButtonVisible(visible) {
   var wrap = document.getElementById('field-wrap-checklist-btn');
   if (wrap) wrap.hidden = !visible;
   setCardChecklistButtonLabel();
+  if (visible) requestAnimationFrame(syncCardFieldLabelWidths);
 }
 
 function updateCardDescEditable(editable) {
