@@ -3537,6 +3537,7 @@ function applyAppUpdate() {
   };
 
   var finishUpdate = function() {
+    if (isSettingsDirty()) syncSettingsToServer();
     activateWaitingSw();
     if (hasWaitingSw) {
       setTimeout(function() {
@@ -3691,9 +3692,8 @@ function loadState() {
       } else {
         appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true, inspects: false }; });
       }
-      // Migrate old 2-item org list to DEFAULT_ORGS
-      if (appState.orgs.length <= 2 ||
-          appState.orgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; })) {
+      // Migrate legacy org names with guillemets to DEFAULT_ORGS
+      if (appState.orgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; })) {
         appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true, inspects: false }; });
       }
       appState.barriers = parsed.barriers || ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
@@ -4521,13 +4521,17 @@ function syncSettingsFromServer(callback) {
         if (typeof serverOrgs[0] === 'string') {
           serverOrgs = serverOrgs.map(function(n) { return { name: n, show: true, inspects: false }; });
         }
-        if (!preferLocal && (serverOrgs.length <= 2 ||
-            serverOrgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; }))) {
+        if (serverOrgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; })) {
           serverOrgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true, inspects: false }; });
         }
-        appState.orgs = preferLocal
-          ? mergeOrgs(serverOrgs, localOrgs)
-          : serverOrgs.map(function(o) { return Object.assign({}, o); });
+        var serverOrgsSnap = orgsSnapForCompare(serverOrgs);
+        appState.orgs = mergeOrgs(serverOrgs, localOrgs);
+        if (orgsSnapForCompare(appState.orgs) !== serverOrgsSnap) markSettingsDirty();
+      } else if (localOrgs && localOrgs.length) {
+        appState.orgs = (localOrgs || []).map(function(o) {
+          return normalizeOrgRoleFlags(Object.assign({}, typeof o === 'string' ? { name: o, show: true, inspects: false } : o));
+        });
+        markSettingsDirty();
       }
       if (data.barriers && data.barriers.length) appState.barriers = data.barriers;
       if (data.barriersConfig || data.barriersPK) {
@@ -4569,7 +4573,7 @@ function syncSettingsFromServer(callback) {
         serverUsed.forEach(function(p) { if (merged.indexOf(p) < 0) merged.push(p); });
         appState.usedPasswords = merged;
       }
-      if (!preferLocal) clearSettingsDirty();
+      if (!isSettingsDirty()) clearSettingsDirty();
       saveState();
       if (callback) callback();
     })
@@ -4594,7 +4598,9 @@ function syncSettingsToServer() {
     barriersPK:    appState.barriersPK    || {},
     barriersConfig: normalizeBarriersConfigForSave(),
     barriersCustomPassports: appState.barriersCustomPassports || {},
-    orgs:          appState.orgs          || [],
+    orgs:          (appState.orgs || []).map(function(o) {
+      return normalizeOrgRoleFlags(Object.assign({}, o));
+    }),
     barriers:      appState.barriers      || [],
     settingsUpdatedAt: updatedAt,
     passwords:     (function(){ var p=Object.assign({},appState.passwords||getDefaultPasswords()); delete p.superuser; return p; })(),
@@ -5243,6 +5249,13 @@ function snapOrgsList() {
   });
 }
 
+function orgsSnapForCompare(list) {
+  return JSON.stringify((list || []).map(function(o) {
+    if (typeof o === 'string') return { name: o, show: true, inspects: false };
+    return { name: o.name, show: o.show !== false, inspects: o.inspects === true };
+  }).sort(function(a, b) { return String(a.name).localeCompare(String(b.name), 'ru'); }));
+}
+
 function snapPasswordsState() {
   var pw = getPw();
   var out = { admin: pw.admin, inspector: pw.inspector, orgs: {} };
@@ -5595,7 +5608,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v269';
+var APP_BUILD = 'pkb-v270';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
