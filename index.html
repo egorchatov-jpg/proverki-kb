@@ -477,10 +477,11 @@ html, body {
 .card-btn-submit { background: var(--orange); }
 .card-btn-submit:disabled { opacity: 0.4; pointer-events: none; }
 #field-wrap-barrier { align-items: flex-start; }
-#field-wrap-barrier > .field-label { align-self: center; }
-.field-wrap-checklist { display: none; }
-#field-wrap-checklist-btn:not([hidden]) { display: flex; }
-#field-wrap-checklist-btn[hidden] { display: none !important; }
+#field-wrap-barrier > .field-label { align-self: flex-start; margin-top: 10px; }
+#field-wrap-barrier .field-barrier-col {
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
 .field-label-spacer { visibility: hidden; pointer-events: none; }
 #screen-card .card-checklist-btn {
   flex: 1 1 0; min-width: 0; box-sizing: border-box;
@@ -488,7 +489,7 @@ html, body {
   border: none; border-radius: 10px;
   background: var(--orange); color: #fff;
   font-size: 13px; font-weight: 700; cursor: pointer;
-  box-shadow: var(--btn-shadow);
+  box-shadow: none;
   display: flex; align-items: center; justify-content: center;
   appearance: none; -webkit-appearance: none;
   margin: 0; font-family: inherit;
@@ -928,7 +929,7 @@ html, body {
 .detail-val.detail-val-editable {
   border: 2px solid var(--orange); cursor: pointer; background: #fff;
 }
-.detail-checklist-row { padding-top: 0; margin-top: -2px; align-items: center; }
+.detail-checklist-row { align-items: center; }
 #screen-detail .card-checklist-btn {
   flex: 1 1 0; min-width: 0; box-sizing: border-box;
   min-height: 36px; padding: 6px 10px;
@@ -2033,13 +2034,12 @@ html, body {
 
       <div class="field-wrap" id="field-wrap-barrier">
         <div class="field-label">Проверяемый барьер</div>
-        <div class="field-cell" id="cell-barrier" onclick="openDrumBarrier()">
-          <span class="placeholder" id="val-barrier">Выбрать</span>
+        <div class="field-barrier-col">
+          <div class="field-cell" id="cell-barrier" onclick="openDrumBarrier()">
+            <span class="placeholder" id="val-barrier">Выбрать</span>
+          </div>
+          <button type="button" class="card-checklist-btn" id="btn-card-checklist" hidden onclick="openCardChecklistScreen()">Заполнить чек-лист</button>
         </div>
-      </div>
-      <div class="field-wrap field-wrap-checklist" id="field-wrap-checklist-btn" hidden>
-        <div class="field-label field-label-spacer">Проверяемый барьер</div>
-        <button type="button" class="card-checklist-btn" id="btn-card-checklist" onclick="openCardChecklistScreen()">Заполнить чек-лист</button>
       </div>
 
       <div class="field-wrap">
@@ -5628,7 +5628,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v274';
+var APP_BUILD = 'pkb-v275';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -9192,10 +9192,9 @@ function setCardChecklistButtonLabel() {
 }
 
 function setCardChecklistButtonVisible(visible) {
-  var wrap = document.getElementById('field-wrap-checklist-btn');
-  if (wrap) wrap.hidden = !visible;
+  var btn = document.getElementById('btn-card-checklist');
+  if (btn) btn.hidden = !visible;
   setCardChecklistButtonLabel();
-  if (visible) requestAnimationFrame(syncCardFieldLabelWidths);
 }
 
 function updateCardDescEditable(editable) {
