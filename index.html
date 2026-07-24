@@ -422,32 +422,21 @@ html, body {
 #screen-card .field-wrap {
   flex-direction: row; align-items: center; gap: 8px; padding: 4px 0;
 }
-#screen-card .field-wrap:not(.field-block):not(.field-wrap-checklist) {
-  display: grid;
-  grid-template-columns: 44% 51%;
-  align-items: center;
-}
 #screen-card .field-wrap.field-block {
   flex-direction: column; align-items: stretch;
-  display: flex;
 }
 #screen-card .field-label {
-  width: 44%; flex-shrink: 0; font-size: 13px; font-weight: 500;
+  flex: 0 0 auto; width: auto; white-space: nowrap;
+  font-size: 13px; font-weight: 500;
   line-height: 1.3; padding-left: 0;
 }
-#screen-card .field-wrap:not(.field-block):not(.field-wrap-checklist) .field-label {
-  width: auto; max-width: 100%;
-}
 #screen-card .field-wrap.field-block .field-label {
-  width: auto; margin-bottom: 4px;
+  width: auto; white-space: normal; margin-bottom: 4px;
 }
 #screen-card .field-cell {
-  flex: 1; min-height: 36px; padding: 6px 10px; font-size: 13px;
+  flex: 1 1 0; min-width: 0; min-height: 36px; padding: 6px 10px; font-size: 13px;
   border: 2px solid var(--orange); border-radius: 10px;
-  box-shadow: none; font-weight: 500;
-}
-#screen-card .field-wrap:not(.field-block):not(.field-wrap-checklist) .field-cell {
-  flex: none; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+  box-shadow: none; font-weight: 500; box-sizing: border-box;
 }
 #screen-card .field-cell.tall {
   min-height: 36px; align-items: flex-start; white-space: pre-wrap;
@@ -910,17 +899,14 @@ html, body {
 #screen-detail { background: var(--bg); }
 .detail-scroll { flex: 1; overflow-y: auto; padding: 0 14px 16px; -webkit-overflow-scrolling: touch; }
 .detail-title { font-size: 16px; font-weight: 700; color: #1a2035; text-align: center; padding: 12px 0 8px; }
-.detail-row {
-  display: grid;
-  grid-template-columns: 44% 51%;
-  gap: 8px;
-  align-items: center;
-  padding: 4px 0;
+.detail-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.detail-label {
+  flex: 0 0 auto; width: auto; white-space: nowrap;
+  font-size: 13px; color: var(--text2); font-weight: 500; line-height: 1.3;
 }
-.detail-label { font-size: 13px; color: var(--text2); font-weight: 500; width: auto; max-width: 100%; flex-shrink: 0; line-height: 1.3; }
 .detail-val {
   font-size: 13px; color: #1a2035; font-weight: 500;
-  width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+  flex: 1 1 0; min-width: 0; box-sizing: border-box;
   line-height: 1.3;
   background: #fff; border-radius: 10px; padding: 6px 10px;
   border: 1px solid var(--border); min-height: 36px;
@@ -4718,6 +4704,7 @@ function openCard() {
   applyCardSessionFields();
   setCardScreenMode(false);
   showScreen('screen-card');
+  requestAnimationFrame(syncCardFieldLabelWidths);
 }
 
 function openRecordEditPIN() {
@@ -4801,6 +4788,7 @@ function openCardForEdit(r) {
   setCardScreenMode(true);
   updateValidation();
   showScreen('screen-card');
+  requestAnimationFrame(syncCardFieldLabelWidths);
 }
 
 function setCardScreenMode(edit) {
@@ -5607,7 +5595,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v268';
+var APP_BUILD = 'pkb-v269';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -8648,6 +8636,42 @@ function renderFindList(records, preserveScroll) {
   finishListScroll('screen-find', preserveScroll);
 }
 
+function syncRecordFieldLabelWidths(root, selector) {
+  if (!root) return;
+  var labels = root.querySelectorAll(selector);
+  if (!labels.length) return;
+  labels.forEach(function(el) { el.style.width = ''; });
+  var maxW = 0;
+  labels.forEach(function(el) {
+    maxW = Math.max(maxW, el.scrollWidth);
+  });
+  if (!maxW) return;
+  var w = Math.ceil(maxW) + 'px';
+  labels.forEach(function(el) { el.style.width = w; });
+}
+
+function syncCardFieldLabelWidths() {
+  syncRecordFieldLabelWidths(
+    document.querySelector('#screen-card .card-grid'),
+    '.field-wrap:not(.field-block):not(.field-wrap-checklist) .field-label'
+  );
+}
+
+function syncDetailFieldLabelWidths() {
+  syncRecordFieldLabelWidths(document.getElementById('detail-body'), '.detail-row .detail-label');
+}
+
+var _labelWidthResizeTimer;
+window.addEventListener('resize', function() {
+  clearTimeout(_labelWidthResizeTimer);
+  _labelWidthResizeTimer = setTimeout(function() {
+    var detailScreen = document.getElementById('screen-detail');
+    if (detailScreen && detailScreen.classList.contains('active')) syncDetailFieldLabelWidths();
+    var cardScreen = document.getElementById('screen-card');
+    if (cardScreen && cardScreen.classList.contains('active')) syncCardFieldLabelWidths();
+  }, 150);
+});
+
 // ===== DETAIL =====
 var detailRecordForEdit = null;
 function openDetail(r, source) {
@@ -8708,6 +8732,7 @@ function openDetail(r, source) {
     contestBlock;
   document.getElementById('detail-scroll').scrollTop = 0;
   showScreen('screen-detail');
+  requestAnimationFrame(syncDetailFieldLabelWidths);
 }
 
 // ===== DRUM PICKER =====
