@@ -7,6 +7,8 @@ $src = Join-Path $root '.env.prod'
 $out = Join-Path $root 'timeweb-upload.env'
 
 $keys = @(
+  'DATABASE_PATH',
+  'BACKUPS_DIR',
   'GITHUB_TOKEN',
   'GITHUB_OWNER',
   'GITHUB_DATA_REPO',
@@ -42,6 +44,12 @@ foreach ($k in $keys) {
   if ($found.ContainsKey($k)) { $outLines += "$k=$($found[$k])" }
 }
 $outLines += 'ENABLE_BACKUP_CRON=1'
+if (-not $found.ContainsKey('DATABASE_PATH')) {
+  $outLines += 'DATABASE_PATH=/var/www/data/proverki.db'
+}
+if (-not $found.ContainsKey('BACKUPS_DIR')) {
+  $outLines += 'BACKUPS_DIR=/var/www/data/backups'
+}
 
 Set-Content -Path $out -Value ($outLines -join "`n") -Encoding UTF8 -NoNewline
 Write-Host ""

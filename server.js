@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const cron = require('node-cron');
 const { createBackupFromLive } = require('./lib/backups-lib');
-const { getDb, getDbPath } = require('./lib/db');
+const { getDb, getDbPath, getDbStatus } = require('./lib/db');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 3000);
@@ -60,21 +60,24 @@ app.set('trust proxy', 1);
 app.use(express.json({ limit: '4mb' }));
 
 app.get('/health', function(_req, res) {
-  try {
-    getDb();
-    res.status(200).json({
-      ok: true,
-      build: readAppBuildTag(),
-      database: path.basename(getDbPath()),
-    });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
+  const db = getDbStatus();
+  const payload = {
+    ok: db.ok,
+    build: readAppBuildTag(),
+    node: process.version,
+    database: db.ok ? path.basename(db.path) : path.basename(getDbPath()),
+  };
+  if (!db.ok) payload.error = db.error;
+  res.status(db.ok ? 200 : 503).json(payload);
 });
 
 app.get('/api/version', function(_req, res) {
   setNoCache(res);
-  res.status(200).json({ build: readAppBuildTag() });
+  const db = getDbStatus();
+  res.status(200).json({
+    build: readAppBuildTag(),
+    databaseOk: db.ok,
+  });
 });
 
 Object.keys(API_ROUTES).forEach(function(routePath) {
@@ -122,12 +125,12 @@ if (process.env.ENABLE_BACKUP_CRON !== '0') {
 }
 
 app.listen(PORT, HOST, function() {
-  try {
-    getDb();
-    console.log('proverki-kb listening on http://' + HOST + ':' + PORT);
-    console.log('[data] SQLite:', getDbPath());
-  } catch (e) {
-    console.error('[data] SQLite init failed:', e.message);
-    process.exit(1);
+  console.log('proverki-kb listening on http://' + HOST + ':' + PORT + ' (Node ' + process.version + ')');
+  const db = getDbStatus();
+  if (db.ok) {
+    console.log('[data] SQLite:', db.path);
+  } else {
+    console.error('[data] SQLite init failed:', db.error);
+    console.error('[data] Static UI is served; API will return errors until DATABASE_PATH is writable and Node >= 22.5');
   }
 });
