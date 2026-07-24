@@ -657,6 +657,18 @@ html, body {
 #overlay-push-prompt .overlay-box { background: #fff; }
 #overlay-push-prompt .overlay-btns { justify-content: center; }
 #overlay-push-prompt .overlay-btn { flex: 0 0 auto; width: calc(33.333% - 7px); }
+#overlay-app-update { z-index: 10050; }
+#overlay-app-update .overlay-box {
+  display: flex; flex-direction: column; align-items: center;
+  min-height: 220px; padding-bottom: 28px;
+}
+#overlay-app-update .overlay-title { text-align: center; margin-bottom: auto; padding-top: 8px; }
+.overlay-app-update-footer {
+  width: 100%; display: flex; justify-content: center; padding-top: 32px;
+}
+.overlay-app-update-footer .overlay-btn {
+  flex: 0 0 auto; min-width: 220px; max-width: 320px; width: 72%;
+}
 .violator-ctrl-btn {
   width: 53px; height: 53px; border: none; cursor: pointer;
   border-radius: 14px; display: flex; align-items: center; justify-content: center;
@@ -1534,7 +1546,7 @@ html, body {
   cursor: pointer; flex-shrink: 0;
   accent-color: var(--gray-btn);
 }
-/* Right checkbox (Показывать) — fills ORANGE when checked */
+/* Right checkbox (Показать) — fills ORANGE when checked */
 .method-square-cb {
   width: 22px; height: 22px; margin: 0;
   cursor: pointer; flex-shrink: 0;
@@ -1981,7 +1993,14 @@ html, body {
       </div>
 
       <div class="field-wrap">
-        <div class="field-label">Проверяемая организация</div>
+        <div class="field-label" id="lbl-inspectorOrg">Проверяющая организация</div>
+        <div class="field-cell" id="cell-inspectorOrg" onclick="openDrumInspectorOrg()">
+          <span class="placeholder" id="val-inspectorOrg">—</span>
+        </div>
+      </div>
+
+      <div class="field-wrap">
+        <div class="field-label" id="lbl-org">Проверяемая организация</div>
         <div class="field-cell" id="cell-org" onclick="openDrumOrg()">
           <span class="placeholder" id="val-org">Выбрать</span>
         </div>
@@ -2178,7 +2197,7 @@ html, body {
     <button class="settings-wide-btn" onclick="openPassportsKBYearsScreen()">Паспорта КБ</button>
     <button class="settings-wide-btn" onclick="openBarriersPKYearsScreen()">Барьеры ПК</button>
     <button class="settings-wide-btn" onclick="openMethodsScreen()">Методы проверок</button>
-    <button class="settings-wide-btn" onclick="openOrgsScreen()">Проверяемые организации</button>
+    <button class="settings-wide-btn" onclick="openOrgsScreen()">Организации</button>
     <button class="settings-wide-btn" onclick="openPasswordsScreen()">Управление паролями</button>
     <button class="settings-wide-btn" onclick="openRestorePointsScreen()">Резервные копии</button>
   </div>
@@ -2369,14 +2388,15 @@ html, body {
 
 <!-- ===== SCREEN: ПРОВЕРЯЕМЫЕ ОРГАНИЗАЦИИ ===== -->
 <div class="screen" id="screen-orgs">
-  <div class="settings-screen-title">Проверяемые организации</div>
+  <div class="settings-screen-title">Организации</div>
   <div class="methods-table-wrap">
     <table class="methods-table">
       <thead>
         <tr>
           <th class="methods-th methods-th-cb-col" style="width:44px;">Выбрать<span class="methods-th-count methods-th-count-gray" id="orgs-count-sel">0</span></th>
           <th class="methods-th methods-th-name methods-th-count-col">Организация<span class="methods-th-count methods-th-count-label" id="orgs-count-items">0</span></th>
-          <th class="methods-th methods-th-cb-col" style="width:74px;">Показывать<span class="methods-th-count methods-th-count-orange" id="orgs-count-show">0</span></th>
+          <th class="methods-th methods-th-cb-col" style="width:74px;">Проверяет<span class="methods-th-count methods-th-count-orange" id="orgs-count-inspects">0</span></th>
+          <th class="methods-th methods-th-cb-col" style="width:74px;">Проверяемая<span class="methods-th-count methods-th-count-orange" id="orgs-count-show">0</span></th>
         </tr>
       </thead>
       <tbody id="orgs-tbody"></tbody>
@@ -2448,6 +2468,16 @@ html, body {
     <div class="overlay-btns">
       <button class="overlay-btn overlay-btn-cancel" onclick="closeRestoreConfirm()">Отмена</button>
       <button class="overlay-btn overlay-btn-apply" onclick="applyRestoreBackup()">Применить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== APP UPDATE OVERLAY ===== -->
+<div class="overlay" id="overlay-app-update">
+  <div class="overlay-box">
+    <div class="overlay-title">Необходимо обновить приложение</div>
+    <div class="overlay-app-update-footer">
+      <button type="button" class="overlay-btn overlay-btn-apply" onclick="applyAppUpdate()">Обновить</button>
     </div>
   </div>
 </div>
@@ -2544,16 +2574,54 @@ var SERVER_SHA_KEY   = 'pkb-server-shas';
 var DATA_VERSION_KEY = 'pkb-data-version';
 var CURRENT_DATA_VERSION = 'v13-no-pii-runtime';
 
+function renameSamoproverkaText(text) {
+  return String(text || '').replace(/([Сс])амопроверк/g, function(_, c) { return c + 'амооценк'; });
+}
+
+function migrateSamoproverkaToSamootsenka() {
+  var changed = false;
+  function touchMethod(obj) {
+    if (obj && obj.method) {
+      var n = renameSamoproverkaText(obj.method);
+      if (n !== obj.method) { obj.method = n; changed = true; }
+    }
+  }
+  (appState.methods || []).forEach(function(m) {
+    if (m && m.name) {
+      var n = renameSamoproverkaText(m.name);
+      if (n !== m.name) { m.name = n; changed = true; }
+    }
+  });
+  (appState.db || []).forEach(touchMethod);
+  try {
+    var sq = getSyncQueue();
+    var sqChanged = false;
+    sq.forEach(function(r) {
+      if (!r || !r.method) return;
+      var n = renameSamoproverkaText(r.method);
+      if (n !== r.method) { r.method = n; sqChanged = true; changed = true; }
+    });
+    if (sqChanged) localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(sq));
+    var uq = getUpdateQueue();
+    var uqChanged = false;
+    uq.forEach(function(item) {
+      if (!item || !item.method) return;
+      var n = renameSamoproverkaText(item.method);
+      if (n !== item.method) { item.method = n; uqChanged = true; changed = true; }
+    });
+    if (uqChanged) localStorage.setItem(UPDATE_QUEUE_KEY, JSON.stringify(uq));
+  } catch (_e) {}
+  return changed;
+}
+
 // One-time cleanup for devices that cached PII before fields were removed from UI.
 function migrateLocalPiiOnce() {
   (appState.db || []).forEach(function(r) {
     if (!r) return;
-    r.inspector = '';
     r.curator = '';
     r.violator = '';
   });
   if (appState.autocomplete) {
-    delete appState.autocomplete.inspector;
     delete appState.autocomplete.curator;
   }
 }
@@ -2915,23 +2983,78 @@ function mergeWithQueue(serverRecords) {
   return merged;
 }
 
+function recordStableKey(r) {
+  if (r && r.checkId) return 'c:' + r.checkId;
+  if (r && r.dateEntry) return 'e:' + r.dateEntry;
+  return '';
+}
+
+// Merge server snapshot with offline queue; keep server-confirmed rows missing from a stale response.
+function mergeServerRecords(serverRecords) {
+  var merged = mergeWithQueue(serverRecords);
+  var keys = {};
+  merged.forEach(function(r) {
+    var k = recordStableKey(r);
+    if (k) keys[k] = true;
+  });
+  var added = false;
+  (appState.db || []).forEach(function(local) {
+    var k = recordStableKey(local);
+    if (!k || keys[k]) return;
+    if (local.checkId) {
+      merged.push(local);
+      keys[k] = true;
+      added = true;
+    }
+  });
+  if (added) {
+    merged = merged.filter(function(r) { return r.dateCheck && r.dateCheck.trim(); });
+    merged.forEach(function(r) { if (r.dateCheck) r.dateCheck = normalizeDateStr(r.dateCheck); });
+    merged.sort(cmpRecords);
+  }
+  return merged;
+}
+
+function refreshActiveRecordLists() {
+  renderLobby();
+  var fs = document.getElementById('screen-find');
+  if (fs && fs.classList.contains('active')) applyFindFilters(true);
+  var cs = document.getElementById('screen-corrective-list');
+  if (cs && cs.classList.contains('active')) renderCorrectiveList(true);
+  var ss = document.getElementById('screen-sokb-list');
+  if (ss && ss.classList.contains('active')) renderSokbList(true);
+}
+
+function clearApiCacheViaSw() {
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_API_CACHE' });
+    }
+  } catch (_e) {}
+}
+
 // --- Load ALL records from server (source of truth) → onDone(ok:bool) ---
 // Uses a shared-callbacks pattern: if a load is already in flight, new callers
 // are queued and all receive the same result when the single request completes.
 var _loadCallbacks = null; // null = idle; array = request in flight
+var _loadForceFull = false;
 
-function loadFromServer(onDone) {
+function loadFromServer(onDone, opts) {
+  opts = opts || {};
   if (_loadCallbacks !== null) {
-    // Reuse the in-flight request instead of firing a duplicate
     if (onDone) _loadCallbacks.push(onDone);
+    if (opts.forceFull) _loadForceFull = true;
     return;
   }
   _loadCallbacks = onDone ? [onDone] : [];
+  _loadForceFull = !!opts.forceFull;
 
   function finish(ok) {
     clearTimeout(safetyTimer);
     var cbs = _loadCallbacks;
+    var forceFull = _loadForceFull;
     _loadCallbacks = null;
+    _loadForceFull = false;
     cbs.forEach(function(cb) { cb(ok); });
   }
 
@@ -2943,12 +3066,15 @@ function loadFromServer(onDone) {
 
   // Build URL with per-year SHA params for conditional GET (ETag optimisation).
   // Server returns {unchanged:true} when file SHA matches → skips file transfer + parse.
-  var shas = getServerShas();
-  var params = [];
-  Object.keys(shas).forEach(function(k) {
-    if (shas[k]) params.push(k + '=' + encodeURIComponent(shas[k]));
-  });
-  var url = '/api/records' + (params.length ? '?' + params.join('&') : '');
+  // forceFull skips SHA (resume / pull / online) so other users' saves are always fetched.
+  var params = ['_=' + Date.now()];
+  if (!_loadForceFull) {
+    var shas = getServerShas();
+    Object.keys(shas).forEach(function(k) {
+      if (shas[k]) params.push(k + '=' + encodeURIComponent(shas[k]));
+    });
+  }
+  var url = '/api/records?' + params.join('&');
 
   fetch(url, { cache: 'no-store' })
   .then(function(r) {
@@ -2959,9 +3085,9 @@ function loadFromServer(onDone) {
     if (d.shas) saveServerShas(d.shas);
 
     if (d.unchanged) {
-      // File unchanged on server — cached data is already current
       console.log('[server] без изменений, данные актуальны');
       retryAllQueues();
+      refreshActiveRecordLists();
       finish(true);
       return;
     }
@@ -2969,25 +3095,20 @@ function loadFromServer(onDone) {
     if (d && Array.isArray(d.records)) {
       var localDb = appState.db.slice();
       seedUpdateQueueFromLocalDb(d.records);
-      appState.db = mergeWithQueue(d.records);
+      appState.db = mergeServerRecords(d.records);
       preserveLocalChecklists(appState.db, localDb);
       appState.db = applyPendingUpdates(appState.db);
       purgeSyncedUpdates(appState.db);
       normalizeDbDates();
       renumberDb();
-      fetch('/api/checklists', { cache: 'no-store' })
+      fetch('/api/checklists?_=' + Date.now(), { cache: 'no-store' })
         .then(function(r) { return r.ok ? r.json() : { items: {} }; })
         .catch(function() { return { items: {} }; })
         .then(function(cl) {
           applyChecklistsMap(appState.db, cl.items || {});
+          if (migrateSamoproverkaToSamootsenka()) markSettingsDirty();
           saveState();
-          renderLobby();
-          var fs = document.getElementById('screen-find');
-          if (fs && fs.classList.contains('active')) applyFindFilters();
-          var cs = document.getElementById('screen-corrective-list');
-          if (cs && cs.classList.contains('active')) renderCorrectiveList();
-          var ss = document.getElementById('screen-sokb-list');
-          if (ss && ss.classList.contains('active')) renderSokbList();
+          refreshActiveRecordLists();
           retryAllQueues();
           finish(true);
         });
@@ -3054,10 +3175,11 @@ function triggerManualSync() {
   animatePullIndicator(0, true);
   retrySyncQueue();
   flushUpdateQueue(function() {
+    clearApiCacheViaSw();
     loadFromServer(function(ok) {
       setPullIndicator('done', ok ? 'Обновлено' : 'Офлайн: данные из кэша');
       setTimeout(function() { hidePullIndicator(true); }, 1400);
-    });
+    }, { forceFull: true });
   });
 }
 
@@ -3205,7 +3327,7 @@ var DEFAULT_BARRIERS_LIST = [
 var DEFAULT_METHODS = [
   { name: 'ОСИР',         show: true },
   { name: 'ЦРПО',         show: true },
-  { name: 'Самопроверка', show: true },
+  { name: 'Самооценка', show: true },
   { name: 'Прочее',       show: true, fixed: true }
 ];
 
@@ -3291,6 +3413,7 @@ function syncScreenInert() {
 
 function rebuildIOSStandaloneScreen() {
   if (!_isIOSStandalone) return;
+  saveListScrollPositions();
   var active = document.querySelector('.screen.active');
   if (!active || !active.parentNode) return;
   var parent = active.parentNode;
@@ -3302,6 +3425,7 @@ function rebuildIOSStandaloneScreen() {
   parent.removeChild(anchor);
   active.classList.add('active');
   syncScreenInert();
+  restoreListScrollPosition(active.id);
 }
 
 function fixIOSStandaloneAfterRotation() {
@@ -3355,6 +3479,7 @@ function clearNotificationsAndBadge() {
 
 function _finishInit() {
   registerSW();
+  checkForAppUpdate();
   clearNotificationsAndBadge();
 }
 
@@ -3375,21 +3500,67 @@ function _showPushPromptOrFinish() {
 }
 
 // ===== INIT =====
+var _appUpdateApplying = false;
+var _appUpdateOverlayShown = false;
+
+function showAppUpdateOverlay() {
+  if (_appUpdateOverlayShown) return;
+  _appUpdateOverlayShown = true;
+  var el = document.getElementById('overlay-app-update');
+  if (el) el.classList.add('active');
+}
+
+function applyAppUpdate() {
+  _appUpdateApplying = true;
+  try { localStorage.removeItem('pkb-app-build'); } catch (_e) {}
+  var reload = function() {
+    window.location.href = '/?v=' + Date.now();
+  };
+  var activateWaitingSw = function() {
+    if (swRegistration && swRegistration.waiting) {
+      swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_ALL_CACHES' });
+    }
+  };
+  if ('caches' in window) {
+    caches.keys().then(function(keys) {
+      return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+    }).then(function() {
+      activateWaitingSw();
+      setTimeout(reload, 250);
+    }).catch(function() {
+      activateWaitingSw();
+      reload();
+    });
+  } else {
+    activateWaitingSw();
+    reload();
+  }
+}
+
+function checkForAppUpdate() {
+  if (_appUpdateOverlayShown || _appUpdateApplying) return;
+  fetch('/api/version', { cache: 'no-store' })
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(d) {
+      if (d && d.build && d.build !== APP_BUILD && d.build !== 'unknown' && d.build !== 'local') {
+        showAppUpdateOverlay();
+      }
+    })
+    .catch(function() {});
+}
+
+function noteWaitingServiceWorker(reg) {
+  if (!reg || !reg.waiting || !navigator.serviceWorker.controller) return;
+  showAppUpdateOverlay();
+}
+
 function ensureAppBuildFresh() {
   try {
     var prev = localStorage.getItem('pkb-app-build');
-    if (prev && prev !== APP_BUILD) {
-      localStorage.setItem('pkb-app-build', APP_BUILD);
-      if ('caches' in window) {
-        caches.keys().then(function(keys) {
-          return Promise.all(keys.map(function(k) { return caches.delete(k); }));
-        }).then(function() { window.location.reload(); });
-      } else {
-        window.location.reload();
-      }
-      return;
-    }
-    if (!prev) localStorage.setItem('pkb-app-build', APP_BUILD);
+    if (!prev || prev !== APP_BUILD) localStorage.setItem('pkb-app-build', APP_BUILD);
   } catch (_e) {}
 }
 
@@ -3414,6 +3585,7 @@ window.addEventListener('DOMContentLoaded', function() {
     }
   } catch(e) {}
   loadState();
+  if (migrateSamoproverkaToSamootsenka()) saveState();
   if (needDataMigration) {
     migrateLocalPiiOnce();
     saveState();
@@ -3436,6 +3608,7 @@ window.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('online', syncWhenOnline);
   document.addEventListener('visibilitychange', function() {
     if (document.hidden) {
+      saveListScrollPositions();
       if (isSettingsDirty()) syncSettingsToServer();
       var activeScr = document.querySelector('.screen.active');
       if (activeScr && activeScr.id && activeScr.id !== 'screen-pin') {
@@ -3443,21 +3616,30 @@ window.addEventListener('DOMContentLoaded', function() {
       }
     }
     if (!document.hidden) {
-      scheduleIOSStandaloneOrientationFix();
       try {
         var savedScr = sessionStorage.getItem('pkb-active-screen');
         if (hasSession() && savedScr && document.getElementById(savedScr)) {
-          showScreen(savedScr);
+          var currentScr = document.querySelector('.screen.active');
+          if (!currentScr || currentScr.id !== savedScr) showScreen(savedScr);
         }
       } catch (_) {}
+      clearApiCacheViaSw();
       loadFromServer(function() {
         retryAllQueues();
         if (isSettingsDirty()) syncSettingsToServer();
         prefetchPassportAssets();
         loadPassportManifest();
-      });
+        var activeScr2 = document.querySelector('.screen.active');
+        if (activeScr2 && LIST_SCROLL_SCREENS.indexOf(activeScr2.id) >= 0) {
+          restoreListScrollPosition(activeScr2.id);
+        }
+      }, { forceFull: true });
       clearNotificationsAndBadge();
-      if (swRegistration) subscribeToPush(swRegistration);
+      checkForAppUpdate();
+      if (swRegistration) {
+        swRegistration.update().then(function() { noteWaitingServiceWorker(swRegistration); });
+        subscribeToPush(swRegistration);
+      }
     }
   });
   _showPushPromptOrFinish();
@@ -3471,15 +3653,19 @@ function loadState() {
       appState.db = parsed.db || [];
       if (parsed.orgs && parsed.orgs.length) {
         if (typeof parsed.orgs[0] === 'string') {
-          appState.orgs = parsed.orgs.map(function(n) { return { name: n, show: true }; });
-        } else { appState.orgs = parsed.orgs; }
+          appState.orgs = parsed.orgs.map(function(n) { return { name: n, show: true, inspects: false }; });
+        } else {
+          appState.orgs = parsed.orgs.map(function(o) {
+            return normalizeOrgRoleFlags({ name: o.name, show: o.show !== false, inspects: o.inspects === true });
+          });
+        }
       } else {
-        appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
+        appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true, inspects: false }; });
       }
       // Migrate old 2-item org list to DEFAULT_ORGS
       if (appState.orgs.length <= 2 ||
           appState.orgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; })) {
-        appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
+        appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true, inspects: false }; });
       }
       appState.barriers = parsed.barriers || ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
       appState.autocomplete = parsed.autocomplete || {};
@@ -3496,7 +3682,7 @@ function loadState() {
       normalizeDbDates();
       renumberDb();
     } else {
-      appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
+      appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true, inspects: false }; });
       appState.barriers = ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
       appState.barriersPK = {};
       appState.methods = DEFAULT_METHODS.map(function(m) { return Object.assign({}, m); });
@@ -3531,18 +3717,30 @@ function registerSW() {
     var reloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange', function() {
       if (reloaded) return;
+      if (!_appUpdateApplying) return;
       reloaded = true;
-      window.location.reload();
+      window.location.href = '/?v=' + Date.now();
+    });
+    navigator.serviceWorker.addEventListener('message', function(e) {
+      var data = e.data || {};
+      if (data.type === 'RECORDS_CHANGED') {
+        clearApiCacheViaSw();
+        loadFromServer(function() { refreshActiveRecordLists(); }, { forceFull: true });
+      }
     });
     navigator.serviceWorker.register('/sw.js?v=' + APP_BUILD).then(function(reg) {
       swRegistration = reg;
       subscribeToPush(reg);
-      reg.update();
+      reg.update().then(function() { noteWaitingServiceWorker(reg); });
       if (reg.active) prefetchPassportAssets();
       reg.addEventListener('updatefound', function() {
         var nw = reg.installing;
         if (!nw) return;
         nw.addEventListener('statechange', function() {
+          if (nw.state === 'installed') {
+            noteWaitingServiceWorker(reg);
+            checkForAppUpdate();
+          }
           if (nw.state === 'activated') prefetchPassportAssets();
         });
       });
@@ -3602,6 +3800,35 @@ function sortByDateCheckAsc(recs) {
     return dateNumFromStr(a.dateCheck) - dateNumFromStr(b.dateCheck);
   });
 }
+var _listScrollCache = {};
+var LIST_SCROLL_SCREENS = ['screen-find', 'screen-corrective-list', 'screen-sokb-list'];
+
+function getListScrollWrap(screenId) {
+  var scr = document.getElementById(screenId);
+  return scr ? scr.querySelector('.find-list-wrap') : null;
+}
+
+function saveListScrollPositions() {
+  LIST_SCROLL_SCREENS.forEach(function(id) {
+    var wrap = getListScrollWrap(id);
+    if (wrap) _listScrollCache[id] = wrap.scrollTop;
+  });
+}
+
+function restoreListScrollPosition(screenId) {
+  var top = _listScrollCache[screenId];
+  if (top == null) return;
+  requestAnimationFrame(function() {
+    var wrap = getListScrollWrap(screenId);
+    if (wrap) wrap.scrollTop = top;
+  });
+}
+
+function finishListScroll(screenId, preserveScroll) {
+  if (preserveScroll) restoreListScrollPosition(screenId);
+  else scrollCheckListToEnd(screenId);
+}
+
 function scrollCheckListToEnd(screenId) {
   requestAnimationFrame(function() {
     var scr = document.getElementById(screenId);
@@ -3683,7 +3910,7 @@ function openFind() {
   showScreen('screen-find');
 }
 
-function applyFindFilters() {
+function applyFindFilters(preserveScroll) {
   var recs = appState.db.filter(function(r) {
     if (!r.dateCheck || !r.dateCheck.trim()) return false;
     var dateOk = true;
@@ -3698,7 +3925,7 @@ function applyFindFilters() {
         && (!findFilters.org     || r.org     === findFilters.org)
         && matchBarrierFilter(r, findFilters.barrier);
   });
-  renderFindList(recs);
+  renderFindList(recs, preserveScroll);
   updateFilterIcons();
 }
 
@@ -3881,7 +4108,7 @@ function canAccessSettings() {
 }
 
 function canEnterNewCheck() {
-  return _sessionAccess.superuser || _sessionAccess.admin || _sessionAccess.inspector;
+  return _sessionAccess.superuser || _sessionAccess.admin || _sessionAccess.inspector || hasAnyOrgSession();
 }
 
 function canEditRecord() {
@@ -4006,6 +4233,22 @@ function generateUniquePassword() {
 }
 function getDefaultUsedPasswords() { return [SUPERUSER_PIN, '3333', '1111', '2222']; }
 /** Ensure every current org has a password entry (default '2222'). */
+function orgUsesInspectorPassword(o) {
+  return !!(o && o.inspects === true);
+}
+
+function orgShowsInPasswordScreen(o) {
+  return !orgUsesInspectorPassword(o);
+}
+
+function normalizeOrgRoleFlags(org) {
+  if (!org) return org;
+  if (org.inspects === true) org.show = false;
+  else if (org.show !== false) org.inspects = false;
+  return org;
+}
+
+/** Ensure every org has a password entry kept in memory (even inspecting orgs). */
 function ensureOrgPasswords() {
   var pw = getPw();
   if (!pw.orgs) pw.orgs = {};
@@ -4139,19 +4382,21 @@ function mergeOrgs(server, local) {
   var out = server.map(function(o) {
     if (typeof o === 'string') {
       var loc = localMap[o];
-      return loc && typeof loc !== 'string' ? { name: o, show: loc.show !== false } : { name: o, show: true };
+      return loc && typeof loc !== 'string' ? { name: o, show: loc.show !== false, inspects: loc.inspects === true } : { name: o, show: true, inspects: false };
     }
     var loc = localMap[o.name];
     if (!loc || typeof loc === 'string') return Object.assign({}, o);
-    return { name: o.name, show: loc.show !== undefined ? loc.show : (o.show !== false) };
+    return { name: o.name, show: loc.show !== undefined ? loc.show : (o.show !== false), inspects: loc.inspects !== undefined ? (loc.inspects === true) : (o.inspects === true) };
   });
   local.forEach(function(o) {
     var n = (typeof o === 'string') ? o : o.name;
     if (n && !out.some(function(x) { return x.name === n; })) {
-      out.push(typeof o === 'string' ? { name: o, show: true } : Object.assign({}, o));
+      out.push(typeof o === 'string' ? { name: o, show: true, inspects: false } : Object.assign({}, o));
     }
   });
-  return out;
+  return out.map(function(o) {
+    return normalizeOrgRoleFlags(Object.assign({}, o));
+  });
 }
 function mergeBarriersConfig(server, local, preferLocal) {
   if (!server) return local || {};
@@ -4240,6 +4485,11 @@ function syncSettingsFromServer(callback) {
       var localBarriersConfig = appState.barriersConfig;
       // Merge server settings — never rewrite Excel records (values used only for NEW entries)
       if (data.methods && data.methods.length) {
+        data.methods = data.methods.map(function(m) {
+          var copy = Object.assign({}, m);
+          if (copy.name) copy.name = renameSamoproverkaText(copy.name);
+          return copy;
+        });
         appState.methods = preferLocal
           ? mergeMethods(data.methods, localMethods)
           : data.methods.map(function(m) { return Object.assign({}, m); });
@@ -4248,11 +4498,11 @@ function syncSettingsFromServer(callback) {
       if (data.orgs && data.orgs.length) {
         var serverOrgs = data.orgs;
         if (typeof serverOrgs[0] === 'string') {
-          serverOrgs = serverOrgs.map(function(n) { return { name: n, show: true }; });
+          serverOrgs = serverOrgs.map(function(n) { return { name: n, show: true, inspects: false }; });
         }
         if (!preferLocal && (serverOrgs.length <= 2 ||
             serverOrgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; }))) {
-          serverOrgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
+          serverOrgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true, inspects: false }; });
         }
         appState.orgs = preferLocal
           ? mergeOrgs(serverOrgs, localOrgs)
@@ -4351,6 +4601,75 @@ function exitSettings() {
 }
 
 // ===== CARD =====
+function getActiveOrgSessionName() {
+  var o = _sessionAccess.orgs || {};
+  for (var k in o) { if (o[k]) return k; }
+  return null;
+}
+
+function isOrgSession() {
+  return !!getActiveOrgSessionName();
+}
+
+function isStaffSession() {
+  return _sessionAccess.superuser || _sessionAccess.admin || _sessionAccess.inspector;
+}
+
+function methodDisablesInspectorOrg(method) {
+  return method === 'ОСИР' || method === 'ЦРПО';
+}
+
+function getInspectingOrgsList() {
+  return (appState.orgs || []).filter(function(o) { return o.inspects === true; })
+    .map(function(o) { return o.name; })
+    .sort(function(a, b) { return a.localeCompare(b, 'ru'); });
+}
+
+function syncInspectorOrgCellState() {
+  if (isOrgSession()) return;
+  if (methodDisablesInspectorOrg(cardData.method)) {
+    cardData.inspectorOrg = '';
+    setCardVal('inspectorOrg', '—', false);
+    setDimmed('inspectorOrg', true);
+  } else {
+    setDimmed('inspectorOrg', false);
+    if (cardData.inspectorOrg) {
+      setCardVal('inspectorOrg', cardData.inspectorOrg, false);
+    } else {
+      setCardVal('inspectorOrg', '—', false);
+    }
+  }
+}
+
+function applyCardSessionFields() {
+  if (cardEditRecord) {
+    syncInspectorOrgCellState();
+    return;
+  }
+  if (isOrgSession()) {
+    var orgName = getActiveOrgSessionName();
+    cardData.method = 'Самооценка';
+    cardData.inspectorOrg = orgName;
+    cardData.org = orgName;
+    setCardVal('method', 'Самооценка', false);
+    setCardVal('inspectorOrg', orgName, false);
+    setCardVal('org', orgName, false);
+    setDimmed('method', true);
+    setDimmed('inspectorOrg', true);
+    setDimmed('org', true);
+    return;
+  }
+  setDimmed('method', false);
+  setDimmed('org', false);
+  syncInspectorOrgCellState();
+}
+
+function isInspectorOrgSatisfied() {
+  if (isOrgSession()) return true;
+  if (methodDisablesInspectorOrg(cardData.method)) return true;
+  return !!(cardData.inspectorOrg && String(cardData.inspectorOrg).trim());
+}
+
 function setTodayDate() {
   var d = new Date();
   cardData.dateCheck = formatDate(d);
@@ -4361,6 +4680,7 @@ function setTodayDate() {
 function openCard() {
   cardEditRecord = null;
   resetCard();
+  applyCardSessionFields();
   setCardScreenMode(false);
   showScreen('screen-card');
 }
@@ -4398,6 +4718,7 @@ function openCardForEdit(r) {
   cardData = {
     dateCheck: r.dateCheck || '',
     method: r.method || '',
+    inspectorOrg: r.inspector || '',
     org: r.org || '',
     obj: r.obj || '',
     barrier: r.barrier || '',
@@ -4406,7 +4727,10 @@ function openCardForEdit(r) {
   };
   setCardVal('date', r.dateCheck || '—', !r.dateCheck);
   setCardVal('method', r.method || 'Выбрать', !r.method);
+  setCardVal('inspectorOrg', r.inspector || '—', !r.inspector);
   setCardVal('org', r.org || 'Выбрать', !r.org);
+  setDimmed('method', false);
+  setDimmed('org', false);
   setCardVal('obj', r.obj || '—', !r.obj);
   setCardVal('barrier', r.barrier || 'Выбрать', !r.barrier);
   setWorksCellDisplay(r.works || '');
@@ -4435,6 +4759,7 @@ function openCardForEdit(r) {
     syncWorksCellState();
   }
   updateCardChecklistButton();
+  syncInspectorOrgCellState();
   var titleEl = document.querySelector('#screen-card .card-title');
   if (titleEl) titleEl.textContent = 'Измените проведенную проверку ' + checkIdLabel(r);
   setCardSubtitle('');
@@ -4539,10 +4864,13 @@ function resetCard() {
   if (titleEl) titleEl.textContent = 'Внесите результат проведенной проверки';
   setCardSubtitle('');
   setTodayDate();
-  ['method','org','obj','barrier','works','desc'].forEach(function(k) {
+  ['method','inspectorOrg','org','obj','barrier','works','desc'].forEach(function(k) {
     var isPick = k === 'method' || k === 'org' || k === 'barrier' || k === 'works';
-    setCardVal(k, isPick ? 'Выбрать' : '—', isPick);
+    setCardVal(k, k === 'inspectorOrg' ? '—' : (isPick ? 'Выбрать' : '—'), isPick);
   });
+  setDimmed('method', false);
+  setDimmed('inspectorOrg', false);
+  setDimmed('org', false);
   setWorksCellDisplay('');
   setDimmed('desc', true);
   lockDescCell();
@@ -4599,6 +4927,7 @@ function updateValidation() {
   var ok = required.every(function(k) {
     return cardData[k] && cardData[k].trim && cardData[k].trim() !== '' || (cardData[k] && typeof cardData[k] === 'string' && cardData[k] !== '');
   });
+  ok = ok && isInspectorOrgSatisfied();
   if (cardUsesChecklistFlow()) {
     ok = ok && cardChecklistReadyForViolation();
   } else if (cardData.works === 'Нет') {
@@ -4633,7 +4962,7 @@ function submitCardEdit() {
   var fields = {
     dateCheck: cardData.dateCheck,
     method: cardData.method,
-    inspector: '',
+    inspector: cardData.inspectorOrg || '',
     org: cardData.org,
     obj: cardData.obj,
     curator: '',
@@ -4673,6 +5002,7 @@ function submitCard() {
   cardData.dateEntry = dateTimeStr();
   var year = cardData.dateCheck ? cardData.dateCheck.split('.')[2] : new Date().getFullYear();
   cardData.year = year;
+  cardData.inspector = cardData.inspectorOrg || '';
   // Барьер в ПК (auto) — проверяем по году даты проверки
 // barrierInPK uses barriersConfig (data preserved — only set on NEW records)
   var _bCfg = (appState.barriersConfig || {})[year];
@@ -4712,8 +5042,9 @@ function sendNotification(r) {
 // Collect unique years from appState.db + current year, newest first.
 function getSettingsYears() {
   var ySet = {};
-  ySet[String(new Date().getFullYear())] = true;
-  (appState.db || []).forEach(function(r) { if (r.year) ySet[String(r.year)] = true; });
+  (appState.db || []).forEach(function(r) {
+    if (r.year && r.dateCheck) ySet[String(r.year)] = true;
+  });
   return Object.keys(ySet).sort(function(a, b) { return +b - +a; });
 }
 
@@ -4796,7 +5127,7 @@ function cancelOrgsChanges() {
   try {
     var snap = JSON.parse(_settingsSnap.orgs || '[]');
     appState.orgs = snap.map(function(o) {
-      return { name: o.name, show: o.show !== false };
+      return { name: o.name, show: o.show !== false, inspects: o.inspects === true };
     });
   } catch (e) {}
   saveState();
@@ -4885,7 +5216,7 @@ function snapMethodsList() {
 
 function snapOrgsList() {
   return (appState.orgs || []).map(function(o) {
-    return { name: o.name, show: o.show !== false };
+    return { name: o.name, show: o.show !== false, inspects: o.inspects === true };
   });
 }
 
@@ -5241,8 +5572,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v252';
-var APP_VERSION = '1.01';
+var APP_BUILD = 'pkb-v262';
+var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
@@ -5288,12 +5619,13 @@ function prefetchPassportAssets() {
 }
 
 function syncWhenOnline() {
+  clearApiCacheViaSw();
   loadFromServer(function() {
     retryAllQueues();
     if (isSettingsDirty()) syncSettingsToServer();
     prefetchPassportAssets();
     loadPassportManifest();
-  });
+  }, { forceFull: true });
 }
 
 function loadPassportJson(id, force) {
@@ -6715,6 +7047,9 @@ function backFromBarriersList() {
 function openOrgsScreen() {
   document.getElementById('org-new-row').style.display = 'none';
   document.getElementById('org-new-input').value = '';
+  (appState.orgs || []).forEach(function(o, i) {
+    appState.orgs[i] = normalizeOrgRoleFlags(o);
+  });
   renderOrgsTable();
   takeSettingsSnap('orgs', snapOrgsList());
   setSettingsBackLabel('screen-orgs', false);
@@ -6738,19 +7073,45 @@ function renderOrgsTable() {
     tdSel.appendChild(cbSel);
     var tdName = document.createElement('td');
     tdName.className = 'methods-td methods-td-name'; tdName.textContent = o.name;
+    var tdInspects = document.createElement('td');
+    tdInspects.className = 'methods-td methods-td-cb';
+    var cbInspects = document.createElement('input');
+    cbInspects.type = 'checkbox'; cbInspects.className = 'method-square-cb method-org-inspects-cb';
+    cbInspects.checked = (o.inspects === true); cbInspects.dataset.idx = idx;
+    cbInspects.addEventListener('change', function() {
+      var org = (appState.orgs || [])[+this.dataset.idx];
+      org.inspects = this.checked;
+      if (this.checked) org.show = false;
+      var row = this.closest('tr');
+      if (row) {
+        var showCb = row.querySelector('td:last-child .method-square-cb');
+        if (showCb) showCb.checked = org.show !== false;
+      }
+      saveState();
+      markOrgsDirty();
+      updateOrgsCheckboxCounts();
+    });
+    tdInspects.appendChild(cbInspects);
     var tdShow = document.createElement('td');
     tdShow.className = 'methods-td methods-td-cb';
     var cbShow = document.createElement('input');
     cbShow.type = 'checkbox'; cbShow.className = 'method-square-cb';
     cbShow.checked = (o.show !== false); cbShow.dataset.idx = idx;
     cbShow.addEventListener('change', function() {
-      (appState.orgs || [])[+this.dataset.idx].show = this.checked;
+      var org = (appState.orgs || [])[+this.dataset.idx];
+      org.show = this.checked;
+      if (this.checked) org.inspects = false;
+      var row = this.closest('tr');
+      if (row) {
+        var inspCb = row.querySelector('.method-org-inspects-cb');
+        if (inspCb) inspCb.checked = org.inspects === true;
+      }
       saveState();
       markOrgsDirty();
       updateOrgsCheckboxCounts();
     });
     tdShow.appendChild(cbShow);
-    tr.appendChild(tdSel); tr.appendChild(tdName); tr.appendChild(tdShow);
+    tr.appendChild(tdSel); tr.appendChild(tdName); tr.appendChild(tdInspects); tr.appendChild(tdShow);
     tbody.appendChild(tr);
   });
   updateOrgMinusBtnState();
@@ -6759,12 +7120,15 @@ function renderOrgsTable() {
 
 function updateOrgsCheckboxCounts() {
   var sel = document.querySelectorAll('#orgs-tbody .method-circle-cb:checked').length;
-  var show = document.querySelectorAll('#orgs-tbody .method-square-cb:checked').length;
+  var inspects = document.querySelectorAll('#orgs-tbody .method-org-inspects-cb:checked').length;
+  var show = document.querySelectorAll('#orgs-tbody .method-square-cb:checked:not(.method-org-inspects-cb)').length;
   var items = document.querySelectorAll('#orgs-tbody tr').length;
   var elSel = document.getElementById('orgs-count-sel');
+  var elInspects = document.getElementById('orgs-count-inspects');
   var elShow = document.getElementById('orgs-count-show');
   var elItems = document.getElementById('orgs-count-items');
   if (elSel) elSel.textContent = sel;
+  if (elInspects) elInspects.textContent = inspects;
   if (elShow) elShow.textContent = show;
   if (elItems) elItems.textContent = items;
 }
@@ -6807,8 +7171,8 @@ function saveNewOrg() {
   var input = document.getElementById('org-new-input');
   var name = input.value.trim();
   if (!name) return;
-  if (!appState.orgs) appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true }; });
-  appState.orgs.push({ name: name, show: true });
+  if (!appState.orgs) appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true, inspects: false }; });
+  appState.orgs.push(normalizeOrgRoleFlags({ name: name, show: true, inspects: false }));
   // Generate unique password for the new org
   var pw = getPw();
   if (!pw.orgs) pw.orgs = {};
@@ -6909,13 +7273,8 @@ function applyRestoreBackup() {
       _restoreBackupsState.backups = data.backups || [];
       renderRestorePointsList();
       loadFromServer(function() {
-        var fs = document.getElementById('screen-find');
-        if (fs && fs.classList.contains('active')) applyFindFilters();
-        var cs = document.getElementById('screen-corrective-list');
-        if (cs && cs.classList.contains('active')) renderCorrectiveList();
-        var ss = document.getElementById('screen-sokb-list');
-        if (ss && ss.classList.contains('active')) renderSokbList();
-      });
+        refreshActiveRecordLists();
+      }, { forceFull: true });
     })
     .catch(function(e) {
       if (list) list.innerHTML = '<div class="restore-points-empty">Ошибка: ' + esc(e.message) + '</div>';
@@ -7023,7 +7382,7 @@ function renderPasswordsScreen() {
   secTitle.textContent = 'Проверяемые организации';
   body.appendChild(secTitle);
 
-  var orgs = (appState.orgs || []).slice().sort(function(a, b) {
+  var orgs = (appState.orgs || []).filter(orgShowsInPasswordScreen).slice().sort(function(a, b) {
     return a.name.localeCompare(b.name, 'ru');
   });
   orgs.forEach(function(o) {
@@ -7151,7 +7510,7 @@ function sokbStatusClass(key) {
   return '';
 }
 
-function renderSokbList() {
+function renderSokbList(preserveScroll) {
   var violations = (appState.db || []).filter(isSokbListRecord);
   var f = sokbListFilters;
   if (f.dateFrom || f.dateTo) {
@@ -7184,7 +7543,7 @@ function renderSokbList() {
   updateSokbFilterCounts(violations);
   var cntR = document.getElementById('sokb-entered-count');
   if (cntR) cntR.innerHTML = enteredCount + '<br>' + pluralOsparivanie(enteredCount);
-  scrollCheckListToEnd('screen-sokb-list');
+  finishListScroll('screen-sokb-list', preserveScroll);
 }
 
 function openSokbFilter(col) {
@@ -7663,7 +8022,7 @@ function getCorrectiveStatus(r) {
   return 'entered';
 }
 
-function renderCorrectiveList() {
+function renderCorrectiveList(preserveScroll) {
   var violations = (appState.db || []).filter(isCorrectiveListRecord);
   var f = correctiveListFilters;
   if (f.dateFrom || f.dateTo) {
@@ -7701,7 +8060,7 @@ function renderCorrectiveList() {
   var enteredCount = violations.filter(function(r) { return r.works === 'Нет' && getCorrectiveStatus(r) !== 'none'; }).length;
   var cntR = document.getElementById('corr-entered-count');
   if (cntR) cntR.innerHTML = enteredCount + '<br>внесено';
-  scrollCheckListToEnd('screen-corrective-list');
+  finishListScroll('screen-corrective-list', preserveScroll);
 }
 
 function openCorrFilter(col) {
@@ -7955,7 +8314,7 @@ function createCorrMeasureEl(m, idx) {
   respInput.className = 'corr-m-input';
   respInput.style.cssText = 'width:100%;margin-top:6px;box-sizing:border-box;';
   respInput.type = 'text';
-  respInput.placeholder = 'Ответственный';
+  respInput.placeholder = 'Ответственный департамент, организация';
   respInput.value = m.responsible || '';
   respInput.addEventListener('input', (function(i){ return function() {
     correctiveMeasures[i].responsible = this.value;
@@ -8232,7 +8591,7 @@ function updateCorrFilterCounts(records) {
   setFilterColCount('cfl-count-status', countColumnValues(records, function(r) { return statusLabel[getCorrectiveStatus(r)] || ''; }));
 }
 
-function renderFindList(records) {
+function renderFindList(records, preserveScroll) {
   var tbody = document.getElementById('find-tbody');
   tbody.innerHTML = '';
   records = sortByDateCheckAsc(records);
@@ -8251,7 +8610,7 @@ function renderFindList(records) {
     tr.onclick = (function(rec){ return function(){ openDetail(rec, 'find'); }; })(r);
     tbody.appendChild(tr);
   });
-  scrollCheckListToEnd('screen-find');
+  finishListScroll('screen-find', preserveScroll);
 }
 
 // ===== DETAIL =====
@@ -8502,6 +8861,7 @@ function sortMethodsForDrum(methods) {
 }
 
 function openDrumMethod() {
+  if (isOrgSession()) return;
   var visibleMethods = sortMethodsForDrum((appState.methods || DEFAULT_METHODS)
     .filter(function(m) { return m.show !== false; })
     .map(function(m) { return m.name; }));
@@ -8513,11 +8873,31 @@ function openDrumMethod() {
     cardData.method = d['method'].getValue();
     document.getElementById('val-method').textContent = cardData.method;
     document.getElementById('val-method').classList.remove('placeholder');
+    syncInspectorOrgCellState();
+    updateValidation();
+  });
+}
+
+function openDrumInspectorOrg() {
+  if (isOrgSession()) return;
+  if (methodDisablesInspectorOrg(cardData.method)) return;
+  var orgs = getInspectingOrgsList();
+  if (!orgs.length) {
+    alert('Нет проверяющих организаций. Отметьте их в настройках «Организации», столбец «Проверяет».');
+    return;
+  }
+  var cur = cardData.inspectorOrg && orgs.indexOf(cardData.inspectorOrg) >= 0 ? cardData.inspectorOrg : orgs[0];
+  openDrumOverlay('Выберите проверяющую организацию', [
+    { id: 'inspectorOrg', items: orgs, value: cur, fullWidth: true, widthFactor: 0.8, leftAlign: true }
+  ], function(d) {
+    cardData.inspectorOrg = d['inspectorOrg'].getValue();
+    setCardVal('inspectorOrg', cardData.inspectorOrg, false);
     updateValidation();
   });
 }
 
 function openDrumOrg() {
+  if (isOrgSession()) return;
   var orgs = (appState.orgs || []).filter(function(o) { return o.show !== false; })
     .map(function(o) { return o.name; })
     .sort(function(a,b){ return a.localeCompare(b,'ru'); });
@@ -9118,7 +9498,7 @@ function cancelCardChecklist() {
     cardData.descFromChecklist = _cardChecklistSnapshot.descFromChecklist;
     _cardChecklistQuestionTexts = Object.assign({}, _cardChecklistSnapshot.questionTexts || {});
     setWorksCellDisplay(cardData.works || '');
-    if (cardData.worksLockedByChecklist) lockWorksCell(); else unlockWorksCell();
+    if (cardData.worksLockedByChecklist || cardUsesChecklistFlow()) lockWorksCell(); else unlockWorksCell();
     if (cardData.descFromChecklist) {
       setDimmed('desc', true);
       if (cardData.works === 'Нет') {

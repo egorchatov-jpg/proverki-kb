@@ -1,47 +1,41 @@
 # Локальная разработка
 
-Код — из ветки **`master`** (тот же, что у пользователей).  
-Данные локально — из **`proverki-kb-data-dev`**, чтобы не трогать боевую Excel.
+Код — ветка **`master`**. Данные — **SQLite** (не Excel на GitHub).
 
-| | Код | Excel / настройки |
-|---|-----|-------------------|
-| **localhost:3000** | `master` на диске | `proverki-kb-data-dev` |
-| **kbcheck.webtm.ru** | деплой из `master` | `proverki-kb-data` |
+| | Код | База данных |
+|---|-----|----------------|
+| **localhost:3000** | `master` на диске | `data/proverki-dev.db` |
+| **kbcheck.webtm.ru** | деплой из `master` | `DATABASE_PATH` на Timeweb (persistent disk) |
 
-Push в `master` на GitHub **не обновляет** production, пока вы не задеплоите в Timeweb вручную.
+Excel пользователи получают **только через «Выгрузить проверки КБ»** — по годам, когда в базе есть записи за этот год.
 
 ## Быстрый старт
 
 ```powershell
 git checkout master
 npm install
-npm run setup:dev-data   # один раз: репо proverki-kb-data-dev + .env.local
+npm run migrate:from-github-dev
 npm start
 ```
 
 Откройте http://localhost:3000.
 
-## .env.local
-
-Создаётся скриптом `setup:dev-data` или из `env.local.example`:
-
-- `GITHUB_DATA_REPO=proverki-kb-data-dev`
-- `ENABLE_BACKUP_CRON=0`
-
-Секреты (`GITHUB_TOKEN`, VAPID) — из `.env.prod`.
-
-## Перед деплоем для пользователей
-
-1. Проверить доработки на localhost.
-2. Закоммитить и `git push origin master`.
-3. Ручной деплой в Timeweb (см. [release-workflow.md](./release-workflow.md)).
-
-## Кэш PWA локально
-
-Старая версия UI — DevTools → Application → Unregister service worker, Clear site data, или incognito.
-
-## Повторная инициализация тестовой базы
+## Обновить локальную базу из production (архив на GitHub)
 
 ```powershell
-node scripts/setup-dev-data-repo.js --force
+npm run sync:dev-from-prod
+npm start
 ```
+
+Скрипт читает Excel + settings + checklists с GitHub и пересобирает SQLite.
+
+## Перед деплоем на Timeweb
+
+1. Протестировать на localhost.
+2. На сервере один раз: `npm run migrate:from-github` (или скопировать готовый `.db`).
+3. Указать `DATABASE_PATH` и `BACKUPS_DIR` на **постоянный диск** Timeweb.
+4. Push + ручной деплoy (см. [release-workflow.md](./release-workflow.md)).
+
+## Кэш PWA
+
+DevTools → Application → Clear site data после смены версии.

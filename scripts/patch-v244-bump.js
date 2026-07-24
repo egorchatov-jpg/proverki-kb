@@ -1,0 +1,12 @@
+const fs = require('fs');
+const path = require('path');
+const indexPath = path.join(__dirname, '..', 'index.html');
+const swPath = path.join(__dirname, '..', 'sw.js');
+let html = fs.readFileSync(indexPath, 'utf8').replace(/\r\n/g, '\n');
+html = html.replace("var APP_BUILD = 'pkb-v243';", "var APP_BUILD = 'pkb-v244';");
+fs.writeFileSync(indexPath, html.replace(/\n/g, '\r\n'), 'utf8');
+let sw = fs.readFileSync(swPath, 'utf8');
+sw = sw.replace(/pkb-static-v243/g, 'pkb-static-v244');
+sw = sw.replace(/pkb-api-v243/g, 'pkb-api-v244');
+fs.writeFileSync(swPath, sw, 'utf8');
+console.log('Bumped to pkb-v244');

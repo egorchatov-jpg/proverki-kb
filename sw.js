@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'pkb-static-v252';
-const API_CACHE = 'pkb-api-v252';
+const STATIC_CACHE = 'pkb-static-v262';
+const API_CACHE = 'pkb-api-v262';
 
 const SHELL_PRECACHE = [
   '/',
@@ -45,6 +45,10 @@ function cacheFirst(request, revalidate) {
   });
 }
 
+function networkOnlyApi(request) {
+  return fetch(request, { cache: 'no-store' });
+}
+
 function networkFirstApi(request) {
   return caches.open(API_CACHE).then(function(cache) {
     return fetch(request).then(function(res) {
@@ -79,7 +83,6 @@ function precacheFromManifest(cache) {
 }
 
 self.addEventListener('install', function(e) {
-  self.skipWaiting();
   e.waitUntil(
     caches.open(STATIC_CACHE).then(function(cache) {
       return precacheUrls(cache, SHELL_PRECACHE).then(function() {
@@ -106,6 +109,17 @@ self.addEventListener('message', function(e) {
   if (data.type === 'PRECACHE_PASSPORTS') {
     e.waitUntil(caches.open(STATIC_CACHE).then(precacheFromManifest));
   }
+  if (data.type === 'CLEAR_API_CACHE') {
+    e.waitUntil(caches.delete(API_CACHE));
+  }
+  if (data.type === 'CLEAR_ALL_CACHES') {
+    e.waitUntil(caches.keys().then(function(keys) {
+      return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+    }));
+  }
+  if (data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // ===== PUSH NOTIFICATIONS =====
@@ -122,6 +136,12 @@ self.addEventListener('push', function(e) {
       vibrate: [200, 100, 200, 100, 200],
       requireInteraction: true,
       data: { url: '/' },
+    }).then(function() {
+      return clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
+        list.forEach(function(c) {
+          try { c.postMessage({ type: 'RECORDS_CHANGED' }); } catch (_) {}
+        });
+      }).catch(function() {});
     }).then(function() {
       return self.registration.getNotifications().then(function(ns) {
         if (navigator.setAppBadge) navigator.setAppBadge(ns.length).catch(function() {});
@@ -151,6 +171,11 @@ self.addEventListener('fetch', function(e) {
   if (e.request.method !== 'GET') return;
   var url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
+
+  if (url.pathname === '/api/records' || url.pathname === '/api/checklists') {
+    e.respondWith(networkOnlyApi(e.request));
+    return;
+  }
 
   if (url.pathname.startsWith('/api/')) {
     e.respondWith(networkFirstApi(e.request));

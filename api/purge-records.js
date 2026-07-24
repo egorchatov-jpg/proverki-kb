@@ -1,4 +1,5 @@
 const { deleteRecordsAfter, DEFAULT_CUTOFF } = require('../lib/delete-records-lib');
+const { getDb } = require('../lib/db');
 
 module.exports = async function purgeRecordsHandler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -7,13 +8,13 @@ module.exports = async function purgeRecordsHandler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-  if (!process.env.GITHUB_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN not configured' });
 
   const body = req.body || {};
   const cutoff = body.cutoff || DEFAULT_CUTOFF;
   const dryRun = !!body.dryRun;
 
   try {
+    getDb();
     const result = await deleteRecordsAfter(cutoff, { dryRun });
     return res.status(200).json({ success: true, result });
   } catch (err) {

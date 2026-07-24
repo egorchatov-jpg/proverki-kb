@@ -1,186 +1,9 @@
-const XLSX = require('xlsx');
-const { normalizeDateStr, toDateNum, toDateEntryNum } = require('./excel-utils');
-const GITHUB_OWNER = process.env.GITHUB_OWNER || 'egorchatov-jpg';
-const GITHUB_REPO  = process.env.GITHUB_DATA_REPO || 'proverki-kb-data';
-
-// Must match COLUMNS in save.js
-const COLUMN_DEFS = [
-  { h: '№',                                       k: 'num'             },
-  { h: 'ID проверки',                             k: 'checkId'         },
-  { h: 'Дата проверки',                           k: 'dateCheck'       },
-  { h: 'Дата внесения проверки',                  k: 'dateEntry'       },
-  { h: 'Метод проверки',                          k: 'method'          },
-  { h: 'Проверку выполнил',                       k: 'inspector'       },
-  { h: 'Проверяемая организация',                 k: 'org'             },
-  { h: 'Проверяемый объект',                      k: 'obj'             },
-  { h: 'Куратор от заказчика',                    k: 'curator'         },
-  { h: 'Проверяемый барьер',                      k: 'barrier'         },
-  { h: 'Барьер в ПК',                             k: 'barrierInPK'     },
-  { h: 'Работоспособность барьера',               k: 'works'           },
-  { h: 'Нарушение допустил',                      k: 'violator'        },
-  { h: 'Описание нарушения',                      k: 'desc'            },
-  { h: 'Корректирующие мероприятия',              k: 'corrective'      },
-  { h: 'Оспаривание в СОКБ',                      k: 'contestMeasures' },
-];
-
-function pad(n) { return String(n).padStart(2, '0'); }
-
-function fmtDate(d) {
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
-}
-
-function fmtDateTime(d) {
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-
-function cmpRecords(a, b) {
-  let d = toDateNum(a.dateCheck) - toDateNum(b.dateCheck);
-  if (d) return d;
-  d = toDateEntryNum(b.dateEntry) - toDateEntryNum(a.dateEntry);
-  if (d) return d;
-  d = String(a.org || '').localeCompare(String(b.org || ''), 'ru');
-  if (d) return d;
-  d = String(a.method || '').localeCompare(String(b.method || ''), 'ru');
-  if (d) return d;
-  return String(a.barrier || '').localeCompare(String(b.barrier || ''), 'ru');
-}
-
-function normHeader(h) {
-  return String(h || '').trim().replace(/\s+/g, ' ');
-}
-
-// Map Excel header text → field key (handles typos and legacy columns)
-function headerToKey(h) {
-  const n = normHeader(h);
-  if (!n) return null;
-
-  const exact = COLUMN_DEFS.find(c => c.h === n);
-  if (exact) return exact.k;
-
-  const lower = n.toLowerCase();
-
-  // Typo in some Excel files: "Корректирущие мероприятия"
-  if (lower.includes('корректиру') && lower.includes('мероприят') && !lower.includes('выполнение')) {
-    return 'corrective';
-  }
-  // Legacy removed column — skip
-  if (lower.includes('выполнение') && lower.includes('корректиру')) {
-    return null;
-  }
-  if (lower.includes('оспаривание') && lower.includes('сокб')) return 'contestMeasures';
-  if (lower.includes('обоснование') && lower.includes('сокб')) return 'contestMeasures';
-  if (lower.includes('статус') && lower.includes('сокб')) return null;
-  if (lower.includes('дата') && lower.includes('внесен')) return 'dateEntry';
-  if (lower.includes('дата') && lower.includes('проверк')) return 'dateCheck';
-  if (lower.includes('id') && lower.includes('проверк')) return 'checkId';
-  if (n === '№' || lower === 'no' || lower === 'n') return 'num';
-
-  return null;
-}
-
-function buildColMap(headerRow) {
-  const keyToIdx = {};
-  headerRow.forEach((h, i) => {
-    const k = headerToKey(h);
-    if (k && keyToIdx[k] === undefined) keyToIdx[k] = i;
-  });
-
-  const hasCheckId = keyToIdx.checkId !== undefined;
-  const LEGACY_POS = {
-    num: 0, dateCheck: 1, dateEntry: 2, method: 3, inspector: 4, org: 5, obj: 6,
-    curator: 7, barrier: 8, barrierInPK: 9, works: 10, violator: 11, desc: 12,
-    corrective: 13, contestMeasures: 14,
-  };
-
-  if (headerRow.length <= 17) {
-    if (hasCheckId) {
-      COLUMN_DEFS.forEach((c, i) => {
-        if (keyToIdx[c.k] === undefined) keyToIdx[c.k] = i;
-      });
-    } else {
-      Object.keys(LEGACY_POS).forEach(k => {
-        if (keyToIdx[k] === undefined) keyToIdx[k] = LEGACY_POS[k];
-      });
-    }
-  }
-
-  return keyToIdx;
-}
-
-function cellToStr(val, key) {
-  if (val === null || val === undefined || val === '') return '';
-  if (val instanceof Date) {
-    return key === 'dateEntry' ? fmtDateTime(val) : fmtDate(val);
-  }
-  if (typeof val === 'number' && key === 'dateEntry' && val > 30000) {
-    const epoch = new Date(Date.UTC(1899, 11, 30));
-    const d = new Date(epoch.getTime() + Math.round(val * 86400000));
-    return fmtDateTime(d);
-  }
-  if (typeof val === 'number' && key === 'dateCheck' && val > 30000) {
-    return normalizeDateStr(val);
-  }
-  const s = String(val).trim();
-  if (key === 'dateCheck') return normalizeDateStr(s);
-  return s;
-}
-
-function parseXlsx(base64) {
-  const buf = Buffer.from(base64.replace(/\n/g, ''), 'base64');
-  const wb = XLSX.read(buf, { type: 'buffer', cellDates: true });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
-
-  if (!rows.length) return [];
-
-  const headerRow = rows[0].map(h => normHeader(h));
-  const colMap = buildColMap(headerRow);
-
-  const recs = [];
-  for (let ri = 1; ri < rows.length; ri++) {
-    const row = rows[ri];
-    if (!row || !row.length) continue;
-
-    const rec = {};
-    COLUMN_DEFS.forEach(c => {
-      const idx = colMap[c.k];
-      rec[c.k] = idx !== undefined ? cellToStr(row[idx], c.k) : '';
-    });
-
-    if (rec.dateCheck && rec.dateCheck.trim()) recs.push(rec);
-  }
-
-  const dn = s => toDateNum(s);
-  recs.sort(cmpRecords);
-  recs.forEach((r, i) => { r.num = i + 1; });
-  return recs;
-}
-
-// Fetch with 8-second timeout (Vercel Hobby limit is 10s).
-async function ghGet(fileName, cachedSha) {
-  const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(fileName)}`;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 8000);
-  const headers = {
-    Authorization: `token ${GITHUB_TOKEN}`,
-    Accept: 'application/vnd.github.v3+json',
-    'User-Agent': 'proverki-kb',
-  };
-  if (cachedSha) headers['If-None-Match'] = `"${cachedSha}"`;
-  try {
-    const r = await fetch(url, { headers, signal: ctrl.signal });
-    clearTimeout(timer);
-    if (r.status === 304) return { notModified: true };
-    if (r.status === 404) return null;
-    if (!r.ok) throw new Error(`GitHub GET "${fileName}": HTTP ${r.status}`);
-    return r.json();
-  } catch (e) {
-    clearTimeout(timer);
-    throw e;
-  }
-}
+const { getDb } = require('../lib/db');
+const {
+  listAllRecords,
+  listRecordsByYear,
+  getYearRevision,
+} = require('../lib/records-store');
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -190,42 +13,32 @@ module.exports = async (req, res) => {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-  if (!GITHUB_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN not configured' });
 
   try {
+    getDb();
     const cur = new Date().getFullYear();
     const years = req.query.year
-      ? [req.query.year]
+      ? [String(req.query.year)]
       : Array.from({ length: cur - 2025 }, (_, i) => String(2026 + i));
 
     if (years.length === 1) {
       const year = years[0];
       const shaKey = `sha${year}`;
       const clientSha = (req.query[shaKey] || '').trim();
+      const serverSha = getYearRevision(year);
 
-      const file = await ghGet(`Проверки КБ ${year}.xlsx`, clientSha);
-
-      if (!file) {
-        return res.status(200).json({ records: [], shas: {} });
-      }
-      if (file.notModified) {
+      if (clientSha && clientSha === serverSha) {
         return res.status(200).json({ unchanged: true, shas: { [shaKey]: clientSha } });
       }
 
-      const recs = parseXlsx(file.content);
-      recs.forEach(r => { r.year = year; });
-      return res.status(200).json({ records: recs, shas: { [shaKey]: file.sha } });
+      const recs = listRecordsByYear(year);
+      return res.status(200).json({
+        records: recs,
+        shas: { [shaKey]: serverSha },
+      });
     }
 
-    let allRecords = [];
-    for (const year of years) {
-      const file = await ghGet(`Проверки КБ ${year}.xlsx`);
-      if (!file || !file.content) continue;
-      const recs = parseXlsx(file.content);
-      recs.forEach(r => { r.year = year; });
-      allRecords = allRecords.concat(recs);
-    }
-
+    const allRecords = listAllRecords();
     return res.status(200).json({ records: allRecords });
   } catch (err) {
     console.error('[records] error:', err.message);

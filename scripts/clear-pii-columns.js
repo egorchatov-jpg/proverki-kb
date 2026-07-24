@@ -1,5 +1,5 @@
 /**
- * Clear personal data columns (inspector, curator, violator) in Excel files on GitHub.
+ * Clear personal data columns (curator, violator) in Excel files on GitHub.
  * Columns remain; cell values are emptied.
  *
  * Usage: node scripts/clear-pii-columns.js [--dry-run]
@@ -11,7 +11,7 @@ const { execSync } = require('child_process');
 const XLSX = require('xlsx');
 const { buildColIdx } = require('../api/excel-utils');
 
-const PII_KEYS = ['inspector', 'curator', 'violator'];
+const PII_KEYS = ['curator', 'violator'];
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || (() => {
   try { return execSync('gh auth token', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }

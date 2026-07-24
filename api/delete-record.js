@@ -1,4 +1,5 @@
 const { deleteRecord } = require('../lib/delete-record-lib');
+const { getDb } = require('../lib/db');
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -8,9 +9,9 @@ module.exports = async (req, res) => {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (!process.env.GITHUB_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN not configured' });
 
   try {
+    getDb();
     const record = req.body && req.body.record ? req.body.record : req.body;
     if (!record || (!record.dateEntry && !record.checkId)) {
       return res.status(400).json({ error: 'Missing record dateEntry or checkId' });

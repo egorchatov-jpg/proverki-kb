@@ -1,0 +1,12 @@
+const fs = require('fs');
+const INDEX = 'index.html';
+const SW = 'sw.js';
+let html = fs.readFileSync(INDEX, 'utf8').replace(/\r\n/g, '\n');
+html = html.replace(/var APP_VERSION = '[\d.]+';/, "var APP_VERSION = '1.02';");
+html = html.replace(/var APP_BUILD = 'pkb-v\d+';/, "var APP_BUILD = 'pkb-v262';");
+fs.writeFileSync(INDEX, Buffer.from(html, 'utf8'));
+let sw = fs.readFileSync(SW, 'utf8');
+sw = sw.replace(/pkb-static-v\d+/g, 'pkb-static-v262');
+sw = sw.replace(/pkb-api-v\d+/g, 'pkb-api-v262');
+fs.writeFileSync(SW, sw);
+console.log('Release: APP_VERSION=1.02 APP_BUILD=pkb-v262');

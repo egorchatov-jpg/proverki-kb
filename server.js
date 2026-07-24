@@ -5,9 +5,11 @@
 require('./lib/load-env');
 
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
 const cron = require('node-cron');
 const { createBackupFromLive } = require('./lib/backups-lib');
+const { getDb, getDbPath } = require('./lib/db');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 3000);
@@ -38,6 +40,15 @@ function mountHandler(app, routePath, handler) {
   });
 }
 
+function readAppBuildTag() {
+  try {
+    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    const m = html.match(/var APP_BUILD = '(pkb-v\d+)';/);
+    if (m) return m[1];
+  } catch (_e) { /* ignore */ }
+  return process.env.APP_BUILD || 'unknown';
+}
+
 function setNoCache(res) {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -49,7 +60,21 @@ app.set('trust proxy', 1);
 app.use(express.json({ limit: '4mb' }));
 
 app.get('/health', function(_req, res) {
-  res.status(200).json({ ok: true, build: process.env.APP_BUILD || 'local' });
+  try {
+    getDb();
+    res.status(200).json({
+      ok: true,
+      build: readAppBuildTag(),
+      database: path.basename(getDbPath()),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/version', function(_req, res) {
+  setNoCache(res);
+  res.status(200).json({ build: readAppBuildTag() });
 });
 
 Object.keys(API_ROUTES).forEach(function(routePath) {
@@ -97,7 +122,12 @@ if (process.env.ENABLE_BACKUP_CRON !== '0') {
 }
 
 app.listen(PORT, HOST, function() {
-  const dataRepo = process.env.GITHUB_DATA_REPO || 'proverki-kb-data';
-  console.log('proverki-kb listening on http://' + HOST + ':' + PORT);
-  console.log('[data] GITHUB_DATA_REPO=' + dataRepo);
+  try {
+    getDb();
+    console.log('proverki-kb listening on http://' + HOST + ':' + PORT);
+    console.log('[data] SQLite:', getDbPath());
+  } catch (e) {
+    console.error('[data] SQLite init failed:', e.message);
+    process.exit(1);
+  }
 });

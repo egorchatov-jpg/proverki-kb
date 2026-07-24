@@ -6,8 +6,9 @@
 |-----|-----|
 | **Код приложения** | одна ветка **`master`** (тот же код, что у пользователей) |
 | **Локальные тесты** | `npm start` на компьютере → http://localhost:3000 |
-| **Тестовая Excel локально** | репозиторий `proverki-kb-data-dev` (см. [local-dev.md](./local-dev.md)) |
-| **Боевая Excel** | репозиторий `proverki-kb-data` (только на kbcheck.webtm.ru) |
+| **Локальная база** | SQLite `data/proverki-dev.db` (`npm run sync:dev-from-prod` — импорт из архива GitHub) |
+| **Боевая база** | SQLite на persistent disk Timeweb (`DATABASE_PATH`) |
+| **Архив Excel на GitHub** | `proverki-kb-data` — только для одноразовой миграции, не runtime |
 | **Обновление для пользователей** | push в `master` + **ручной деплой** в Timeweb |
 
 Отдельная ветка `develop`, стенды Timeweb и второе приложение **не нужны**.
@@ -40,7 +41,7 @@ git pull origin master
 # правки в index.html, sw.js, api/ ...
 
 npm start
-# тест на http://localhost:3000 (данные из proverki-kb-data-dev)
+# тест на http://localhost:3000 (SQLite data/proverki-dev.db)
 
 git add ...
 git commit -m "..."
@@ -56,18 +57,19 @@ Push в GitHub **не обновляет** сайт для пользовате�
 ## Деплой для пользователей (когда готовы)
 
 1. Протестировано локально на `localhost:3000`.
-2. При необходимости подняты `APP_VERSION`, `APP_BUILD`, кэш в `sw.js`.
-3. Коммиты запушены в **`master`**.
-4. **Timeweb** → App Platform → «Проверки КБ» → **Деплой** → **Запустить деплой** / Redeploy (ветка `master`, последний коммит).
-5. Проверка: https://kbcheck.webtm.ru/health → `{ "ok": true }`.
-6. В приложении: **Настройки** → нужная **«Версия приложения X.XX»**.
-7. Сообщите пользователям: перезапустить PWA или обновить страницу.
+2. На Timeweb один раз (или после миграции с GitHub): `DATABASE_PATH` и `BACKUPS_DIR` на persistent disk; при первом переходе — `npm run migrate:from-github` или загрузка готового `.db`.
+3. При необходимости подняты `APP_VERSION`, `APP_BUILD`, кэш в `sw.js`.
+4. Коммиты запушены в **`master`**.
+5. **Timeweb** → App Platform → «Проверки КБ» → **Деплой** → **Запустить деплой** / Redeploy (ветка `master`, последний коммит).
+6. Проверка: https://kbcheck.webtm.ru/health → `{ "ok": true, "database": "proverki.db" }`.
+7. В приложении: **Настройки** → нужная **«Версия приложения X.XX»**.
+8. Сообщите пользователям: перезапустить PWA или обновить страницу.
 
 ---
 
 ## Чеклист перед деплоем
 
-- [ ] Локально всё проверено (`npm start`, тестовая Excel)
+- [ ] Локально всё проверено (`npm start`, SQLite dev-база)
 - [ ] `APP_VERSION` / `APP_BUILD` / `sw.js` обновлены (если менялся UI)
 - [ ] `git push origin master`
 - [ ] Ручной деплой в Timeweb выполнен

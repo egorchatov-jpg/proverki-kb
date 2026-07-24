@@ -4,12 +4,18 @@
   "private": true,
   "main": "index.js",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.5.0"
   },
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "setup:dev-data": "node scripts/setup-dev-data-repo.js"
+    "dev:lan": "node scripts/dev-lan-url.js",
+    "setup:dev-data": "node scripts/setup-dev-data-repo.js",
+    "migrate:from-github": "node scripts/migrate-github-to-sqlite.js --repo=proverki-kb-data",
+    "migrate:from-github-dev": "node scripts/migrate-github-to-sqlite.js --repo=proverki-kb-data-dev --db=data/proverki-dev.db",
+    "sync:dev-from-prod": "node scripts/migrate-github-to-sqlite.js --repo=proverki-kb-data --db=data/proverki-dev.db",
+    "copy:prod-today": "node scripts/copy-records-to-dev.js",
+    "copy:prod-all": "node scripts/copy-records-to-dev.js --all"
   },
   "dependencies": {
     "express": "^4.21.2",
