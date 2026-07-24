@@ -658,17 +658,9 @@ html, body {
 #overlay-push-prompt .overlay-btns { justify-content: center; }
 #overlay-push-prompt .overlay-btn { flex: 0 0 auto; width: calc(33.333% - 7px); }
 #overlay-app-update { z-index: 10050; }
-#overlay-app-update .overlay-box {
-  display: flex; flex-direction: column; align-items: center;
-  min-height: 220px; padding-bottom: 28px;
-}
-#overlay-app-update .overlay-title { text-align: center; margin-bottom: auto; padding-top: 8px; }
-.overlay-app-update-footer {
-  width: 100%; display: flex; justify-content: center; padding-top: 32px;
-}
-.overlay-app-update-footer .overlay-btn {
-  flex: 0 0 auto; min-width: 220px; max-width: 320px; width: 72%;
-}
+#overlay-app-update .overlay-title { text-align: center; line-height: 1.4; }
+#overlay-app-update .overlay-btns { justify-content: center; }
+#overlay-app-update .overlay-btn { flex: 0 0 auto; width: calc(50% - 5px); }
 .violator-ctrl-btn {
   width: 53px; height: 53px; border: none; cursor: pointer;
   border-radius: 14px; display: flex; align-items: center; justify-content: center;
@@ -2476,7 +2468,7 @@ html, body {
 <div class="overlay" id="overlay-app-update">
   <div class="overlay-box">
     <div class="overlay-title">Необходимо обновить приложение</div>
-    <div class="overlay-app-update-footer">
+    <div class="overlay-btns">
       <button type="button" class="overlay-btn overlay-btn-apply" onclick="applyAppUpdate()">Обновить</button>
     </div>
   </div>
@@ -5595,7 +5587,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v264';
+var APP_BUILD = 'pkb-v265';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
