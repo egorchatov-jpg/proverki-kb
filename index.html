@@ -1647,6 +1647,7 @@ html, body {
 #overlay-bpk-goals .bpk-goal-input {
   flex: 1 1 0; min-width: 0; text-align: center;
   font-family: inherit; cursor: text;
+  border: 2px solid var(--orange);
 }
 #overlay-bpk-goals .detail-val.bpk-goal-input:focus {
   outline: none; border-color: var(--orange);
@@ -5732,7 +5733,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v284';
+var APP_BUILD = 'pkb-v285';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
