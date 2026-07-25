@@ -827,6 +827,8 @@ html, body {
 }
 .corr-info-line { color: #1a2035; }
 .corr-info-desc { color: #1a2035; }
+.corr-info-desc-label { display: block; }
+.corr-info-desc-body { display: block; }
 .corr-section-hd {
   font-size: 14px; font-weight: 700; color: #1a2035;
   margin: 10px 0 6px; text-align: left;
@@ -5628,7 +5630,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v277';
+var APP_BUILD = 'pkb-v278';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -7732,7 +7734,7 @@ function openSokbEdit(r) {
     '<div class="corr-info-line"><b>' + esc(checkIdBannerLabel(r)) + '</b></div>' +
     '<div class="corr-info-line">Дата: ' + esc(r.dateCheck||'') + ' | Метод: ' + esc(r.method||'') + '</div>' +
     '<div class="corr-info-line">Организация: ' + esc(r.org||'') + ' | Барьер: ' + esc(r.barrier||'') + '</div>' +
-    (formatRecordDescPlain(r) ? '<div class="corr-info-line corr-info-desc">Описание: ' + formatRecordDescHtml(r) + '</div>' : '');
+    (formatRecordDescPlain(r) ? '<div class="corr-info-line corr-info-desc"><span class="corr-info-desc-label">Описание:</span><div class="corr-info-desc-body">' + formatRecordDescHtml(r) + '</div></div>' : '');
   renderSokbAttempts();
   var sc = document.getElementById('sokb-edit-scroll');
   if (sc) sc.scrollTop = 0;
@@ -8299,7 +8301,7 @@ function openCorrectiveEdit(r) {
     '<div class="corr-info-line"><b>' + esc(checkIdBannerLabel(r)) + '</b></div>' +
     '<div class="corr-info-line">Дата: ' + esc(r.dateCheck||'') + ' | Метод: ' + esc(r.method||'') + '</div>' +
     '<div class="corr-info-line">Организация: ' + esc(r.org||'') + ' | Барьер: ' + esc(r.barrier||'') + '</div>' +
-    (formatRecordDescPlain(r) ? '<div class="corr-info-line corr-info-desc">Описание: ' + formatRecordDescHtml(r) + '</div>' : '');
+    (formatRecordDescPlain(r) ? '<div class="corr-info-line corr-info-desc"><span class="corr-info-desc-label">Описание:</span><div class="corr-info-desc-body">' + formatRecordDescHtml(r) + '</div></div>' : '');
   renderCorrMeasures();
   var sc = document.getElementById('corr-edit-scroll');
   if (sc) sc.scrollTop = 0;
