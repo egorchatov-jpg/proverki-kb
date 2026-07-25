@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'pkb-static-v278';
-const API_CACHE = 'pkb-api-v278';
+const STATIC_CACHE = 'pkb-static-v279';
+const API_CACHE = 'pkb-api-v279';
 
 const SHELL_PRECACHE = [
   '/',
@@ -172,7 +172,7 @@ self.addEventListener('fetch', function(e) {
   var url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
 
-  if (url.pathname === '/api/records' || url.pathname === '/api/checklists') {
+  if (url.pathname === '/api/records' || url.pathname === '/api/checklists' || url.pathname === '/api/backups') {
     e.respondWith(networkOnlyApi(e.request));
     return;
   }

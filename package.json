@@ -15,7 +15,9 @@
     "migrate:from-github-dev": "node scripts/migrate-github-to-sqlite.js --repo=proverki-kb-data-dev --db=data/proverki-dev.db",
     "sync:dev-from-prod": "node scripts/migrate-github-to-sqlite.js --repo=proverki-kb-data --db=data/proverki-dev.db",
     "copy:prod-today": "node scripts/copy-records-to-dev.js",
-    "copy:prod-all": "node scripts/copy-records-to-dev.js --all"
+    "copy:prod-all": "node scripts/copy-records-to-dev.js --all",
+    "backup:create": "node scripts/create-backup.js",
+    "backup:purge-github-excel": "node scripts/purge-github-excel-backups.js"
   },
   "dependencies": {
     "express": "^4.21.2",

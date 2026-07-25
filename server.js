@@ -11,6 +11,7 @@ const cron = require('node-cron');
 const { createBackupFromLive } = require('./lib/backups-lib');
 const { getDb, getDbPath, getDbStatus } = require('./lib/db');
 const { migrateFromGithubIfEmpty } = require('./lib/migrate-from-github');
+const { purgeGithubLegacyExcelBackups } = require('./lib/github-legacy-backups');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 3000);
@@ -137,6 +138,16 @@ app.listen(PORT, HOST, function() {
     migrateFromGithubIfEmpty().catch(function(e) {
       console.error('[migrate] auto-import failed:', e.message);
     });
+    purgeGithubLegacyExcelBackups()
+      .then(function(r) {
+        if (r && r.deletedFiles) console.log('[backups] purged legacy GitHub Excel backups:', r.deletedFiles, 'files');
+      })
+      .catch(function(e) { console.warn('[backups] legacy GitHub cleanup:', e.message); });
+    createBackupFromLive(new Date())
+      .then(function(r) {
+        if (!r.skipped) console.log('[backups] startup snapshot:', r.label || r.id);
+      })
+      .catch(function(e) { console.warn('[backups] startup snapshot failed:', e.message); });
   } else {
     console.error('[data] SQLite init failed:', db.error);
     console.error('[data] Static UI is served; API will return errors until DATABASE_PATH is writable and Node >= 22.5');

@@ -30,10 +30,12 @@ module.exports = async (req, res) => {
       const manifest = await getBackupsState();
       return res.status(200).json({
         activeBackupId: manifest.activeBackupId,
+        format: 'sqlite',
         backups: manifest.backups.map(b => ({
           id: b.id,
           label: b.label,
           createdAt: b.createdAt,
+          format: b.format || 'sqlite',
         })),
       });
     }

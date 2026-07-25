@@ -5630,7 +5630,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v278';
+var APP_BUILD = 'pkb-v279';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -7256,7 +7256,7 @@ function backFromOrgsScreen() {
 
 // ===== УПРАВЛЕНИЕ ПАРОЛЯМИ =====
 
-// ===== ТОЧКИ ВОССТАНОВЛЕНИЯ (бэкапы Excel) =====
+// ===== ТОЧКИ ВОССТАНОВЛЕНИЯ (SQLite) =====
 var _restoreBackupsState = { activeBackupId: null, backups: [] };
 var _restorePendingId = null;
 
@@ -7264,8 +7264,13 @@ function openRestorePointsScreen() {
   var list = document.getElementById('restore-points-list');
   if (list) list.innerHTML = '<div class="restore-points-empty">Загрузка…</div>';
   showScreen('screen-restore-points');
-  fetch('/api/backups')
-    .then(function(r) { return r.json(); })
+  fetch('/api/backups', { cache: 'no-store' })
+    .then(function(r) {
+      return r.json().then(function(data) {
+        if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+        return data;
+      });
+    })
     .then(function(data) {
       _restoreBackupsState.activeBackupId = data.activeBackupId || null;
       _restoreBackupsState.backups = data.backups || [];
@@ -7323,8 +7328,13 @@ function applyRestoreBackup() {
     .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, d: d }; }); })
     .then(function(res) {
       if (!res.ok || !res.d.success) throw new Error((res.d && res.d.error) || 'Ошибка восстановления');
-      _restoreBackupsState.activeBackupId = res.d.id;
-      return fetch('/api/backups').then(function(r) { return r.json(); });
+      _restoreBackupsState.activeBackupId = res.d.backupId || res.d.id;
+      return fetch('/api/backups', { cache: 'no-store' }).then(function(r) {
+        return r.json().then(function(data) {
+          if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+          return data;
+        });
+      });
     })
     .then(function(data) {
       _restoreBackupsState.activeBackupId = data.activeBackupId;
