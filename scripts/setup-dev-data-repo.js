@@ -26,6 +26,8 @@ function writeEnvLocal() {
   };
   upsert('DATABASE_PATH', DEV_DB);
   upsert('ENABLE_BACKUP_CRON', '0');
+  upsert('PKB_ENV', 'local');
+  upsert('ENABLE_GITHUB_PERSIST', '0');
   fs.writeFileSync(envLocal, lines.join('\n') + '\n', 'utf8');
   console.log('Wrote .env.local DATABASE_PATH=' + DEV_DB);
 }

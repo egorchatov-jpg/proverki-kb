@@ -4,8 +4,10 @@
 
 | | Код | База данных |
 |---|-----|----------------|
-| **localhost:3000** | `master` на диске | `data/proverki-dev.db` |
+| **localhost:3000** | `master` на диске | `data/proverki-dev.db` (изолирован от production) |
 | **kbcheck.webtm.ru** | деплой из `master` | SQLite в `/tmp` + синхронизация с GitHub |
+
+Локальные настройки **не попадают на production**: при `DATABASE_PATH=data/proverki-dev.db` сервер не пушит базу и настройки в GitHub (`PKB_ENV=local`, `ENABLE_GITHUB_PERSIST=0` в `.env.local`). Проверка: http://localhost:3000/health → `"localDev": true`, `"githubPersist": false`.
 
 Excel пользователи получают **только через «Выгрузить проверки КБ»** — по годам, когда в базе есть записи за этот год.
 

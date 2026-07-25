@@ -12,11 +12,8 @@ const { createBackupFromLive } = require('./lib/backups-lib');
 const { getDb, getDbPath, getDbStatus } = require('./lib/db');
 const { migrateFromGithubIfEmpty } = require('./lib/migrate-from-github');
 const { purgeGithubLegacyExcelBackups } = require('./lib/github-legacy-backups');
-const {
-  bootstrapGithubPersist,
-  pushDbToGithub,
-  isEnabled: isGithubPersistEnabled,
-} = require('./lib/github-persist');
+const { isEnabled: isGithubPersistEnabled } = require('./lib/github-persist');
+const { isLocalDev } = require('./lib/runtime-env');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 3000);
@@ -75,6 +72,7 @@ app.get('/health', function(_req, res) {
     database: db.ok ? path.basename(db.path) : path.basename(getDbPath()),
   };
   if (db.ephemeral) payload.ephemeral = true;
+  if (isLocalDev()) payload.localDev = true;
   if (isGithubPersistEnabled()) payload.githubPersist = true;
   if (!db.ok) payload.error = db.error;
   res.status(db.ok ? 200 : 503).json(payload);

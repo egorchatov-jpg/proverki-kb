@@ -1,6 +1,7 @@
 const { getDb } = require('../lib/db');
 const { loadSettings, saveSettings } = require('../lib/settings-store');
 const { scheduleDbPersist, pushDbToGithub } = require('../lib/github-persist');
+const { isLocalDev } = require('../lib/runtime-env');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -17,11 +18,17 @@ module.exports = async (req, res) => {
 
     if (req.method === 'PUT') {
       const result = saveSettings(req.body || {});
-      scheduleDbPersist();
-      pushDbToGithub().catch(function(e) {
-        console.warn('[settings] immediate GitHub db push failed:', e.message);
+      if (!isLocalDev()) {
+        scheduleDbPersist();
+        pushDbToGithub().catch(function(e) {
+          console.warn('[settings] immediate GitHub db push failed:', e.message);
+        });
+      }
+      return res.status(200).json({
+        success: true,
+        excelSync: result.excelSync,
+        localDev: isLocalDev(),
       });
-      return res.status(200).json({ success: true, excelSync: result.excelSync });
     }
 
     return res.status(405).end();
