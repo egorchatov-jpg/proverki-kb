@@ -5628,7 +5628,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v276';
+var APP_BUILD = 'pkb-v277';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -8370,7 +8370,7 @@ function createCorrMeasureEl(m, idx) {
   respInput.className = 'corr-m-input';
   respInput.style.cssText = 'width:100%;margin-top:6px;box-sizing:border-box;';
   respInput.type = 'text';
-  respInput.placeholder = 'Ответственный департамент, организация';
+  respInput.placeholder = 'Ответственный департамент организация';
   respInput.value = m.responsible || '';
   respInput.addEventListener('input', (function(i){ return function() {
     correctiveMeasures[i].responsible = this.value;
