@@ -4414,6 +4414,12 @@ function mergeMethods(server, local) {
   });
   return out;
 }
+
+function methodsSnapForCompare(list) {
+  return JSON.stringify((list || []).map(function(m) {
+    return { name: m.name, show: m.show !== false, fixed: !!m.fixed };
+  }).sort(function(a, b) { return String(a.name).localeCompare(String(b.name), 'ru'); }));
+}
 function mergeOrgs(server, local) {
   if (!server || !server.length) return local || [];
   local = local || [];
@@ -4528,14 +4534,18 @@ function syncSettingsFromServer(callback) {
       var localBarriersConfig = appState.barriersConfig;
       // Merge server settings — never rewrite Excel records (values used only for NEW entries)
       if (data.methods && data.methods.length) {
-        data.methods = data.methods.map(function(m) {
+        var serverMethods = data.methods.map(function(m) {
           var copy = Object.assign({}, m);
           if (copy.name) copy.name = renameSamoproverkaText(copy.name);
           return copy;
         });
-        appState.methods = preferLocal
-          ? mergeMethods(data.methods, localMethods)
-          : data.methods.map(function(m) { return Object.assign({}, m); });
+        appState.methods = mergeMethods(serverMethods, localMethods);
+        if (methodsSnapForCompare(appState.methods) !== methodsSnapForCompare(serverMethods)) {
+          markSettingsDirty();
+        }
+      } else if (localMethods && localMethods.length) {
+        appState.methods = localMethods.map(function(m) { return Object.assign({}, m); });
+        markSettingsDirty();
       }
       if (data.barriersPK) appState.barriersPK = data.barriersPK;
       if (data.orgs && data.orgs.length) {
@@ -4564,10 +4574,11 @@ function syncSettingsFromServer(callback) {
           markSettingsDirty();
         }
       }
-      if (!preferLocal) {
-        appState.barriersCustomPassports = data.barriersCustomPassports || {};
-      } else if (data.barriersCustomPassports) {
-        appState.barriersCustomPassports = Object.assign({}, data.barriersCustomPassports, appState.barriersCustomPassports || {});
+      var serverCustomPassports = data.barriersCustomPassports || {};
+      var localCustomPassports = appState.barriersCustomPassports || {};
+      appState.barriersCustomPassports = Object.assign({}, serverCustomPassports, localCustomPassports);
+      if (JSON.stringify(appState.barriersCustomPassports) !== JSON.stringify(serverCustomPassports)) {
+        markSettingsDirty();
       }
       if (!preferLocal && data.settingsUpdatedAt) {
         appState.settingsUpdatedAt = data.settingsUpdatedAt;
@@ -5640,7 +5651,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v280';
+var APP_BUILD = 'pkb-v281';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
