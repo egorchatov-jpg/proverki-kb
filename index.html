@@ -4556,18 +4556,13 @@ function syncSettingsFromServer(callback) {
         markSettingsDirty();
       }
       if (data.barriers && data.barriers.length) appState.barriers = data.barriers;
-      if (data.barriersConfig || data.barriersPK) {
-        if (preferLocal) {
-          appState.barriersConfig = mergeBarriersConfig(data.barriersConfig || {}, localBarriersConfig, true);
-        } else if (data.barriersConfig) {
-          appState.barriersConfig = {};
-          Object.keys(data.barriersConfig).forEach(function(y) {
-            appState.barriersConfig[y] = (data.barriersConfig[y] || []).map(function(b) {
-              return Object.assign({}, b);
-            });
-          });
-        }
+      if (data.barriersConfig || data.barriersPK || (localBarriersConfig && Object.keys(localBarriersConfig).length)) {
+        var serverBarriersConfig = data.barriersConfig || {};
+        appState.barriersConfig = mergeBarriersConfig(serverBarriersConfig, localBarriersConfig, true);
         applyBarriersPKToConfig(data.barriersPK, appState.barriersConfig);
+        if (barriersConfigSnapForCompare(appState.barriersConfig) !== barriersConfigSnapForCompare(serverBarriersConfig)) {
+          markSettingsDirty();
+        }
       }
       if (!preferLocal) {
         appState.barriersCustomPassports = data.barriersCustomPassports || {};
@@ -5234,6 +5229,21 @@ function snapBarriersYearList() {
   });
 }
 
+function barriersConfigSnapForCompare(cfg) {
+  var out = {};
+  Object.keys(cfg || {}).sort().forEach(function(y) {
+    out[y] = (cfg[y] || []).map(function(b) {
+      return {
+        name: b.name,
+        passport: b.passport || '',
+        inPK: !!b.inPK,
+        show: b.show !== false
+      };
+    }).sort(function(a, b) { return String(a.name).localeCompare(String(b.name), 'ru'); });
+  });
+  return JSON.stringify(out);
+}
+
 function sortBarriersAlphabeticallyInPassports(year) {
   var list = getBarriersForYear(year);
   var byPassport = {};
@@ -5630,7 +5640,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v279';
+var APP_BUILD = 'pkb-v280';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
