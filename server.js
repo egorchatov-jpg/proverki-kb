@@ -12,6 +12,11 @@ const { createBackupFromLive } = require('./lib/backups-lib');
 const { getDb, getDbPath, getDbStatus } = require('./lib/db');
 const { migrateFromGithubIfEmpty } = require('./lib/migrate-from-github');
 const { purgeGithubLegacyExcelBackups } = require('./lib/github-legacy-backups');
+const {
+  bootstrapGithubPersist,
+  pushDbToGithub,
+  isEnabled: isGithubPersistEnabled,
+} = require('./lib/github-persist');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 3000);
@@ -70,6 +75,7 @@ app.get('/health', function(_req, res) {
     database: db.ok ? path.basename(db.path) : path.basename(getDbPath()),
   };
   if (db.ephemeral) payload.ephemeral = true;
+  if (isGithubPersistEnabled()) payload.githubPersist = true;
   if (!db.ok) payload.error = db.error;
   res.status(db.ok ? 200 : 503).json(payload);
 });
@@ -118,6 +124,27 @@ app.use(function(_req, res) {
   res.status(404).json({ error: 'Not found' });
 });
 
+async function bootstrapData() {
+  await bootstrapGithubPersist();
+  getDb();
+  const migrated = await migrateFromGithubIfEmpty();
+  if (migrated) {
+    await pushDbToGithub().catch(function(e) {
+      console.warn('[persist] push after migrate failed:', e.message);
+    });
+  }
+  purgeGithubLegacyExcelBackups()
+    .then(function(r) {
+      if (r && r.deletedFiles) console.log('[backups] purged legacy GitHub Excel backups:', r.deletedFiles, 'files');
+    })
+    .catch(function(e) { console.warn('[backups] legacy GitHub cleanup:', e.message); });
+  createBackupFromLive(new Date())
+    .then(function(r) {
+      if (!r.skipped) console.log('[backups] startup snapshot:', r.label || r.id);
+    })
+    .catch(function(e) { console.warn('[backups] startup snapshot failed:', e.message); });
+}
+
 if (process.env.ENABLE_BACKUP_CRON !== '0') {
   cron.schedule('0 0 * * *', function() {
     createBackupFromLive(new Date())
@@ -129,27 +156,22 @@ if (process.env.ENABLE_BACKUP_CRON !== '0') {
 
 app.listen(PORT, HOST, function() {
   console.log('proverki-kb listening on http://' + HOST + ':' + PORT + ' (Node ' + process.version + ')');
-  const db = getDbStatus();
-  if (db.ok) {
-    console.log('[data] SQLite:', db.path);
-    if (db.ephemeral) {
-      console.warn('[data] Ephemeral storage — database resets on Timeweb redeploy');
-    }
-    migrateFromGithubIfEmpty().catch(function(e) {
-      console.error('[migrate] auto-import failed:', e.message);
+  bootstrapData()
+    .then(function() {
+      const db = getDbStatus();
+      if (db.ok) {
+        console.log('[data] SQLite:', db.path);
+        if (db.ephemeral && isGithubPersistEnabled()) {
+          console.log('[data] Local path is ephemeral; database persists via GitHub sync');
+        } else if (db.ephemeral) {
+          console.warn('[data] Ephemeral storage — database resets on Timeweb redeploy');
+        }
+      } else {
+        console.error('[data] SQLite init failed:', db.error);
+        console.error('[data] Static UI is served; API will return errors until DATABASE_PATH is writable and Node >= 22.5');
+      }
+    })
+    .catch(function(e) {
+      console.error('[bootstrap] failed:', e.message);
     });
-    purgeGithubLegacyExcelBackups()
-      .then(function(r) {
-        if (r && r.deletedFiles) console.log('[backups] purged legacy GitHub Excel backups:', r.deletedFiles, 'files');
-      })
-      .catch(function(e) { console.warn('[backups] legacy GitHub cleanup:', e.message); });
-    createBackupFromLive(new Date())
-      .then(function(r) {
-        if (!r.skipped) console.log('[backups] startup snapshot:', r.label || r.id);
-      })
-      .catch(function(e) { console.warn('[backups] startup snapshot failed:', e.message); });
-  } else {
-    console.error('[data] SQLite init failed:', db.error);
-    console.error('[data] Static UI is served; API will return errors until DATABASE_PATH is writable and Node >= 22.5');
-  }
 });

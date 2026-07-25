@@ -1,5 +1,6 @@
 const { deleteRecordsAfter, DEFAULT_CUTOFF } = require('../lib/delete-records-lib');
 const { getDb } = require('../lib/db');
+const { scheduleDbPersist } = require('../lib/github-persist');
 
 module.exports = async function purgeRecordsHandler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -16,6 +17,7 @@ module.exports = async function purgeRecordsHandler(req, res) {
   try {
     getDb();
     const result = await deleteRecordsAfter(cutoff, { dryRun });
+    if (!dryRun) scheduleDbPersist();
     return res.status(200).json({ success: true, result });
   } catch (err) {
     console.error('[purge-records]', err.message);

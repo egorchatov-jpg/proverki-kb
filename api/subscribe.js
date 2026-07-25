@@ -1,5 +1,6 @@
 const { upsertSubscription } = require('../lib/subscriptions-store');
 const { getDb } = require('../lib/db');
+const { scheduleDbPersist } = require('../lib/github-persist');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,6 +17,7 @@ module.exports = async (req, res) => {
     }
 
     const data = upsertSubscription(subscription);
+    scheduleDbPersist();
     return res.status(200).json({ success: true, total: data.subscriptions.length });
   } catch (err) {
     console.error('[subscribe] error:', err.message);

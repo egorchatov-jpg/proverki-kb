@@ -69,6 +69,7 @@ const githubToken = ghToken();
 const lines = [
   'DATABASE_PATH=/tmp/proverki-kb/proverki.db',
   'BACKUPS_DIR=/tmp/proverki-kb/backups',
+  'ENABLE_GITHUB_PERSIST=1',
   'GITHUB_TOKEN=' + githubToken,
   'GITHUB_OWNER=egorchatov-jpg',
   'GITHUB_DATA_REPO=proverki-kb-data',

@@ -1,6 +1,7 @@
 const { saveChecklistForRecord } = require('../lib/checklists-lib');
 const { updateRecord } = require('../lib/records-store');
 const { getDb } = require('../lib/db');
+const { scheduleDbPersist } = require('../lib/github-persist');
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -25,6 +26,8 @@ module.exports = async (req, res) => {
         console.warn('[update] checklist save failed:', clErr.message);
       }
     }
+
+    scheduleDbPersist();
 
     return res.status(200).json({ success: true });
   } catch (err) {

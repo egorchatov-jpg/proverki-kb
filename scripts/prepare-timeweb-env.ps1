@@ -9,6 +9,7 @@ $out = Join-Path $root 'timeweb-upload.env'
 $keys = @(
   'DATABASE_PATH',
   'BACKUPS_DIR',
+  'ENABLE_GITHUB_PERSIST',
   'GITHUB_TOKEN',
   'GITHUB_OWNER',
   'GITHUB_DATA_REPO',
@@ -44,6 +45,9 @@ foreach ($k in $keys) {
   if ($found.ContainsKey($k)) { $outLines += "$k=$($found[$k])" }
 }
 $outLines += 'ENABLE_BACKUP_CRON=1'
+if (-not $found.ContainsKey('ENABLE_GITHUB_PERSIST')) {
+  $outLines += 'ENABLE_GITHUB_PERSIST=1'
+}
 if (-not $found.ContainsKey('DATABASE_PATH')) {
   $outLines += 'DATABASE_PATH=/tmp/proverki-kb/proverki.db'
 }

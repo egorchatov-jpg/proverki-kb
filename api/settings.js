@@ -1,5 +1,6 @@
 const { getDb } = require('../lib/db');
 const { loadSettings, saveSettings } = require('../lib/settings-store');
+const { scheduleDbPersist } = require('../lib/github-persist');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,6 +17,7 @@ module.exports = async (req, res) => {
 
     if (req.method === 'PUT') {
       const result = saveSettings(req.body || {});
+      scheduleDbPersist();
       return res.status(200).json({ success: true, excelSync: result.excelSync });
     }
 

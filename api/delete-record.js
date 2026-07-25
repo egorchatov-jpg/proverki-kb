@@ -1,5 +1,6 @@
 const { deleteRecord } = require('../lib/delete-record-lib');
 const { getDb } = require('../lib/db');
+const { scheduleDbPersist } = require('../lib/github-persist');
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -17,6 +18,7 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Missing record dateEntry or checkId' });
     }
     const result = await deleteRecord(record);
+    scheduleDbPersist();
     return res.status(200).json(result);
   } catch (err) {
     console.error('[delete-record] error:', err.message);
