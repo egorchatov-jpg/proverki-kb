@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
     getDb();
 
     if (req.method === 'GET') {
-      return res.status(200).json(loadSettings());
+      return res.status(200).json(Object.assign({}, loadSettings(), { localDev: isLocalDev() }));
     }
 
     if (req.method === 'PUT') {

@@ -522,7 +522,21 @@ html, body {
 .card-checklist-question:last-child { margin-bottom: 0; }
 .card-checklist-question.violation { color: var(--red); }
 .card-checklist-criterion { margin-bottom: 10px; }
-#overlay-checklist-violation .method-new-row { padding: 0; margin-top: 8px; }
+#overlay-checklist-violation .overlay-box {
+  max-height: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+.cl-viol-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.cl-viol-row { width: 100%; }
+.cl-viol-input {
+  width: 100%; height: 44px; border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 0 12px; font-size: 14px; background: #fff;
+  box-sizing: border-box; font-family: inherit; color: #1a2035;
+}
+.cl-viol-input:focus { outline: none; border-color: var(--orange); }
+#overlay-checklist-violation .corr-action-row { margin-top: 6px; padding-bottom: 0; }
+#overlay-checklist-violation .method-sq-btn.cl-viol-plus { background: var(--orange); }
+#overlay-checklist-violation .corr-hint-orange { color: var(--orange); text-align: left; }
 .checklist-violation-question {
   font-size: 13px; line-height: 1.45; color: #1a2035;
   text-align: left; margin: 8px 0 4px;
@@ -1523,13 +1537,13 @@ html, body {
 .methods-table-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; }
 .methods-table { width: 100%; border-collapse: collapse; }
 /* Barriers table ? identical layout to methods table */
-.barriers-table-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; }
-.barriers-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.barriers-col-passport { width: 22%; }
-.barriers-col-select  { width: 9%; }
-.barriers-col-name    { width: 46%; }
-.barriers-col-pk      { width: 11%; }
-.barriers-col-show    { width: 12%; }
+.barriers-table-wrap { flex: 1; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; max-width: 100%; }
+.barriers-table { width: 100%; max-width: 100%; border-collapse: collapse; table-layout: fixed; }
+.barriers-col-passport { width: 30%; }
+.barriers-col-select  { width: 15%; }
+.barriers-col-name    { width: 20%; }
+.barriers-col-pk      { width: 15%; }
+.barriers-col-show    { width: 20%; }
 .barriers-th-passport { text-align: center; padding-left: 8px; white-space: normal; line-height: 1.3; }
 .barriers-td-passport {
   font-size: 12px; color: #1a2035; font-weight: 500;
@@ -1619,10 +1633,10 @@ html, body {
   transform: translate(-50%, -62%) rotate(45deg);
 }
 .bpk-empty-passport-row .methods-td-cb { text-align: center; }
-.bpk-barrier-name-cell { padding: 4px 4px; vertical-align: middle; text-align: center; }
+.bpk-barrier-name-cell { padding: 4px 2px; vertical-align: middle; text-align: center; max-width: 100%; }
 .bpk-barrier-name-btn {
-  display: inline-block; box-sizing: border-box;
-  padding: 9px 12px;
+  display: inline-block; box-sizing: border-box; max-width: 100%;
+  padding: 8px 10px;
   background: var(--navy); color: #fff;
   font-size: 13px; font-weight: 600; line-height: 1.3;
   text-align: center;
@@ -2084,7 +2098,7 @@ html, body {
       </div>
 
       <div class="field-wrap field-block">
-        <div class="field-label dimmed" id="lbl-desc">Описание нарушения</div>
+        <div class="field-label dimmed" id="lbl-desc">Описание нарушений</div>
         <div class="field-cell tall dimmed" id="cell-desc" onclick="openDescOverlay()">
           <span class="placeholder" id="val-desc">—</span>
         </div>
@@ -2236,16 +2250,24 @@ html, body {
 <!-- ===== OVERLAY: НАРУШЕНИЕ В ЧЕК-ЛИСТЕ ===== -->
 <div class="overlay" id="overlay-checklist-violation">
   <div class="overlay-box">
-    <div class="overlay-title">Внесите описание нарушения</div>
+    <div class="overlay-title">Внесите описание нарушений</div>
     <div class="checklist-violation-question" id="checklist-violation-question"></div>
-    <div class="method-new-row">
-      <input class="method-new-input" id="checklist-violation-input" type="text" inputmode="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-      <button type="button" class="method-cancel-btn" onclick="closeChecklistViolationOverlay()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    <div class="cl-viol-list" id="checklist-violation-list"></div>
+    <div class="corr-action-row">
+      <span class="corr-action-hint corr-hint-gray">Удалить
+выбранное</span>
+      <button type="button" class="method-sq-btn minus" id="cl-viol-btn-minus" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
-      <button type="button" class="method-save-btn" onclick="applyChecklistViolationOverlay()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><polyline points="4 12 9 17 20 6"/></svg>
+      <button type="button" class="method-sq-btn plus cl-viol-plus" id="cl-viol-btn-plus">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
+      <span class="corr-action-hint corr-hint-orange">Добавить
+новое</span>
+    </div>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="closeChecklistViolationOverlay()">Отмена</button>
+      <button class="overlay-btn overlay-btn-apply" onclick="applyChecklistViolationOverlay()">Применить</button>
     </div>
   </div>
 </div>
@@ -3467,6 +3489,10 @@ var _isIOSStandalone = _isIOS && (
   window.navigator.standalone === true
 );
 if (_isIOSStandalone) document.documentElement.classList.add('is-ios-standalone');
+var _isLocalDevRuntime = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+function isLocalDevRuntime() {
+  return _isLocalDevRuntime;
+}
 if (window.visualViewport && !_isIOS) {
   function syncOverlayHeight() {
     var h = window.visualViewport.height + 'px';
@@ -3703,6 +3729,9 @@ window.addEventListener('DOMContentLoaded', function() {
   setTodayDate();
   loadPassportManifest();
   initIOSStandaloneFix();
+  initChecklistViolationOverlay();
+  bindIosKbOverlayViewport();
+  initIosKbOverlayInputFixes();
   syncSettingsFromServer(function() {
     refreshSettingsDependentUi();
     loadFromServer(function() {
@@ -4445,6 +4474,7 @@ function scheduleSettingsSync() {
 function markSettingsDirty() {
   try { localStorage.setItem('pkb-settings-dirty', '1'); } catch(e) {}
   appState.settingsUpdatedAt = Date.now();
+  saveState();
   scheduleSettingsSync();
 }
 function clearSettingsDirty() {
@@ -4597,11 +4627,14 @@ function syncSettingsFromServer(callback) {
     })
     .then(function(data) {
       if (errEl) errEl.textContent = '';
+      if (data && data.localDev) _isLocalDevRuntime = true;
       var localDirty = isSettingsDirty();
-      var preferLocal = localDirty && ((appState.settingsUpdatedAt || 0) > (data.settingsUpdatedAt || 0));
+      var preferLocal = localDirty || ((appState.settingsUpdatedAt || 0) > (data.settingsUpdatedAt || 0));
       var localMethods = appState.methods;
       var localOrgs = appState.orgs;
       var localBarriersConfig = appState.barriersConfig;
+      var localCustomPassports = appState.barriersCustomPassports || {};
+      var localBarriersPK = appState.barriersPK || {};
       // Merge server settings — never rewrite Excel records (values used only for NEW entries)
       if (data.methods && data.methods.length) {
         var serverMethods = data.methods.map(function(m) {
@@ -4636,19 +4669,24 @@ function syncSettingsFromServer(callback) {
         markSettingsDirty();
       }
       if (data.barriers && data.barriers.length) appState.barriers = data.barriers;
-      if (data.barriersConfig || data.barriersPK || (localBarriersConfig && Object.keys(localBarriersConfig).length)) {
-        var serverBarriersConfig = data.barriersConfig || {};
-        appState.barriersConfig = mergeBarriersConfig(serverBarriersConfig, localBarriersConfig, true);
-        applyBarriersPKToConfig(data.barriersPK, appState.barriersConfig);
-        if (barriersConfigSnapForCompare(appState.barriersConfig) !== barriersConfigSnapForCompare(serverBarriersConfig)) {
+      if (!isLocalDevRuntime()) {
+        if (data.barriersConfig || data.barriersPK || (localBarriersConfig && Object.keys(localBarriersConfig).length)) {
+          var serverBarriersConfig = data.barriersConfig || {};
+          appState.barriersConfig = mergeBarriersConfig(serverBarriersConfig, localBarriersConfig, true);
+          applyBarriersPKToConfig(data.barriersPK, appState.barriersConfig);
+          if (barriersConfigSnapForCompare(appState.barriersConfig) !== barriersConfigSnapForCompare(serverBarriersConfig)) {
+            markSettingsDirty();
+          }
+        }
+        var serverCustomPassports = data.barriersCustomPassports || {};
+        appState.barriersCustomPassports = Object.assign({}, serverCustomPassports, localCustomPassports);
+        if (JSON.stringify(appState.barriersCustomPassports) !== JSON.stringify(serverCustomPassports)) {
           markSettingsDirty();
         }
-      }
-      var serverCustomPassports = data.barriersCustomPassports || {};
-      var localCustomPassports = appState.barriersCustomPassports || {};
-      appState.barriersCustomPassports = Object.assign({}, serverCustomPassports, localCustomPassports);
-      if (JSON.stringify(appState.barriersCustomPassports) !== JSON.stringify(serverCustomPassports)) {
-        markSettingsDirty();
+      } else {
+        if (localBarriersConfig) appState.barriersConfig = localBarriersConfig;
+        appState.barriersCustomPassports = localCustomPassports;
+        appState.barriersPK = localBarriersPK;
       }
       if (!preferLocal && data.settingsUpdatedAt) {
         appState.settingsUpdatedAt = data.settingsUpdatedAt;
@@ -4688,6 +4726,11 @@ function syncSettingsFromServer(callback) {
  * Called when admin exits settings screen.
  */
 function syncSettingsToServer() {
+  if (isLocalDevRuntime()) {
+    saveState();
+    clearSettingsDirty();
+    return;
+  }
   var gen = ++_settingsSyncGen;
   var updatedAt = appState.settingsUpdatedAt || Date.now();
   appState.settingsUpdatedAt = updatedAt;
@@ -5732,7 +5775,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v287';
+var APP_BUILD = 'pkb-v303';
 var APP_VERSION = '1.02';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -6886,7 +6929,7 @@ function renderBarriersTable(year) {
   });
   updateBarrierMinusBtnState();
   updateBarriersCheckboxCounts();
-  syncBpkBarrierButtonWidths();
+  requestAnimationFrame(function() { syncBpkBarrierButtonWidths(); });
 }
 
 var _bpkBarrierMeasureProbe = null;
@@ -6912,7 +6955,16 @@ function getBpkBarrierMeasureProbe() {
 function syncBpkBarrierButtonWidths() {
   var btns = document.querySelectorAll('#barriers-tbody .bpk-barrier-name-btn');
   if (!btns.length) return;
+  var col = document.querySelector('#screen-barriers-list col.barriers-col-name');
+  if (col) col.style.width = '';
+  btns.forEach(function(btn) {
+    btn.style.width = '';
+    btn.style.minWidth = '';
+    btn.style.maxWidth = '';
+    btn.style.fontSize = '';
+  });
   var probe = getBpkBarrierMeasureProbe();
+  probe.style.fontSize = '';
   var maxW = 0;
   btns.forEach(function(btn) {
     probe.textContent = btn.textContent || '';
@@ -6920,14 +6972,28 @@ function syncBpkBarrierButtonWidths() {
   });
   maxW = Math.ceil(maxW);
   if (!maxW) return;
-  var w = maxW + 'px';
+  var cell = btns[0].closest('td');
+  var available = cell ? Math.max(0, cell.clientWidth - 4) : maxW;
+  var finalW = Math.min(maxW, available);
+  if (!finalW && available) finalW = available;
+  if (maxW > available && available > 0) {
+    probe.style.fontSize = '11px';
+    maxW = 0;
+    btns.forEach(function(btn) {
+      probe.textContent = btn.textContent || '';
+      maxW = Math.max(maxW, probe.offsetWidth, probe.scrollWidth);
+    });
+    maxW = Math.ceil(maxW);
+    finalW = Math.min(maxW, available);
+    if (finalW) btns.forEach(function(btn) { btn.style.fontSize = '11px'; });
+  }
+  if (!finalW) return;
+  var w = finalW + 'px';
   btns.forEach(function(btn) {
     btn.style.width = w;
     btn.style.minWidth = w;
     btn.style.maxWidth = w;
   });
-  var col = document.querySelector('#screen-barriers-list col.barriers-col-name');
-  if (col) col.style.width = Math.ceil(maxW + 12) + 'px';
 }
 
 function updateBarriersCheckboxCounts() {
@@ -7048,11 +7114,17 @@ function openBpkGoalsOverlay(year, idx) {
   var nameEl = document.getElementById('bpk-goals-barrier-name');
   if (nameEl) nameEl.textContent = b.name || '';
   document.getElementById('overlay-bpk-goals').classList.add('active');
+  prepareIosKeyboardOverlay('overlay-bpk-goals');
   requestAnimationFrame(syncBpkGoalsOverlayLabelWidths);
 }
 
 function closeBpkGoalsOverlay() {
-  document.getElementById('overlay-bpk-goals').classList.remove('active');
+  closeIosKeyboardOverlay('overlay-bpk-goals', function() {
+    var t = document.getElementById('bpk-goal-target');
+    var s = document.getElementById('bpk-goal-stretch');
+    if (t) t.blur();
+    if (s) s.blur();
+  });
   _bpkGoalsIdx = null;
 }
 
@@ -7111,19 +7183,7 @@ function applyBpkOverlayHeights(extra) {
 }
 
 function focusBpkInput(input) {
-  if (!input) return;
-  var delay = _isIOS ? 350 : 80;
-  setTimeout(function() {
-    input.removeAttribute('readonly');
-    input.focus({ preventScroll: false });
-    if (_isIOS) {
-      try { input.click(); } catch (e) {}
-      try {
-        var len = input.value.length;
-        input.setSelectionRange(len, len);
-      } catch (e2) {}
-    }
-  }, delay);
+  focusIosOverlayInput(input);
 }
 
 function initBpkInputIOSFix() {
@@ -7135,6 +7195,7 @@ function initBpkInputIOSFix() {
     e.stopPropagation();
     input.removeAttribute('readonly');
     input.focus({ preventScroll: false });
+    placeInputCaretAtEnd(input);
   }, { passive: true });
 }
 
@@ -7178,38 +7239,43 @@ function openBpkNameOverlay(mode, placeholder, passportLabel) {
   _bpkNameMode = mode;
   var input = document.getElementById('bpk-input-field');
   var labelEl = document.getElementById('bpk-selected-passport');
+  var bpkOverlay = document.getElementById('overlay-bpk-input');
   input.value = '';
   input.placeholder = placeholder || '';
-  input.removeAttribute('readonly');
-  var showInput = function() {
-    if (mode === 'barrier' && passportLabel) {
-      labelEl.textContent = passportLabel;
-      labelEl.hidden = false;
-      document.getElementById('overlay-bpk-input').classList.add('active');
-      requestAnimationFrame(function() {
-        var extra = labelEl.offsetHeight + 10;
-        applyBpkOverlayHeights(extra);
-        focusBpkInput(input);
-      });
-    } else {
-      labelEl.hidden = true;
-      labelEl.textContent = '';
-      applyBpkOverlayHeights();
-      document.getElementById('overlay-bpk-input').classList.add('active');
+  if (_isIOS) input.setAttribute('readonly', 'readonly');
+  else input.removeAttribute('readonly');
+  resetOverlayViewportStyles(bpkOverlay);
+  if (mode === 'barrier' && passportLabel) {
+    labelEl.textContent = passportLabel;
+    labelEl.hidden = false;
+    bpkOverlay.classList.add('active');
+    prepareIosKeyboardOverlay('overlay-bpk-input');
+    focusBpkInput(input);
+    requestAnimationFrame(function() {
+      var extra = labelEl.offsetHeight + 10;
+      applyBpkOverlayHeights(extra);
       focusBpkInput(input);
-    }
-  };
-  if (_isIOS) setTimeout(showInput, 50);
-  else showInput();
+    });
+  } else {
+    labelEl.hidden = true;
+    labelEl.textContent = '';
+    applyBpkOverlayHeights();
+    bpkOverlay.classList.add('active');
+    prepareIosKeyboardOverlay('overlay-bpk-input');
+    focusBpkInput(input);
+  }
 }
 
 function closeBpkNameOverlay() {
-  document.getElementById('overlay-bpk-input').classList.remove('active');
   var input = document.getElementById('bpk-input-field');
   var labelEl = document.getElementById('bpk-selected-passport');
   var inputBox = document.querySelector('#overlay-bpk-input .overlay-box');
-  input.value = '';
-  input.blur();
+  closeIosKeyboardOverlay('overlay-bpk-input', function() {
+    if (input) {
+      input.value = '';
+      input.blur();
+    }
+  });
   if (labelEl) { labelEl.hidden = true; labelEl.textContent = ''; }
   if (inputBox) { inputBox.style.height = ''; inputBox.style.minHeight = ''; }
   _bpkNameMode = '';
@@ -7218,9 +7284,7 @@ function closeBpkNameOverlay() {
 
 function openBpkPassportNameOverlay() {
   closeBpkChoiceOverlay();
-  var open = function() { openBpkNameOverlay('passport', 'Название паспорта'); };
-  if (_isIOS) setTimeout(open, 100);
-  else open();
+  openBpkNameOverlay('passport', 'Название паспорта');
 }
 
 function resetBpkDrumOverlay() {
@@ -9000,7 +9064,7 @@ function openDetail(r, source) {
       : '') +
     row('Барьер в ПК', r.barrierInPK, '', editRecord) +
     row('Барьер работоспособен', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', editRecord) +
-    (showViolationDesc ? block('Описание нарушения', formatRecordDescHtml(r), editRecord) : '') +
+    (showViolationDesc ? block('Описание нарушений', formatRecordDescHtml(r), editRecord) : '') +
     corrBlock +
     contestBlock;
   document.getElementById('detail-scroll').scrollTop = 0;
@@ -9600,6 +9664,13 @@ function formatRecordDescHtml(r) {
   return esc(plain).replace(/\n/g, '<br>');
 }
 
+function splitViolationDescChunks(desc) {
+  var s = String(desc || '').trim();
+  if (!s) return [];
+  if (/\n\s*\n/.test(s)) return s.split(/\n\s*\n/).map(function(x) { return x.trim(); }).filter(Boolean);
+  return [s];
+}
+
 function buildChecklistDescPlain(violations, questionTexts) {
   var items = [];
   Object.keys(violations || {}).forEach(function(k) {
@@ -9607,14 +9678,17 @@ function buildChecklistDescPlain(violations, questionTexts) {
     if (!desc) return;
     var qText = (questionTexts && questionTexts[k]) || k;
     var parts = splitQuestionCodeAndText(qText);
-    items.push({
-      key: k,
-      desc: stripLeadingQuestionCode(desc, parts.code),
-      prefix: parts.code
+    splitViolationDescChunks(desc).forEach(function(chunk, i) {
+      items.push({
+        key: k + ':' + i,
+        sortKey: k,
+        desc: stripLeadingQuestionCode(chunk, parts.code),
+        prefix: parts.code
+      });
     });
   });
   if (!items.length) return '';
-  items.sort(function(a, b) { return a.key.localeCompare(b.key, 'ru'); });
+  items.sort(function(a, b) { return a.sortKey.localeCompare(b.sortKey, 'ru'); });
   return items.map(function(item) {
     return (item.prefix ? item.prefix + ' ' : '') + item.desc;
   }).join(';\n\n');
@@ -9627,14 +9701,17 @@ function buildChecklistDescHtml(violations, questionTexts) {
     if (!desc) return;
     var qText = (questionTexts && questionTexts[k]) || k;
     var parts = splitQuestionCodeAndText(qText);
-    items.push({
-      key: k,
-      desc: stripLeadingQuestionCode(desc, parts.code),
-      prefix: parts.code
+    splitViolationDescChunks(desc).forEach(function(chunk, i) {
+      items.push({
+        key: k + ':' + i,
+        sortKey: k,
+        desc: stripLeadingQuestionCode(chunk, parts.code),
+        prefix: parts.code
+      });
     });
   });
   if (!items.length) return '';
-  items.sort(function(a, b) { return a.key.localeCompare(b.key, 'ru'); });
+  items.sort(function(a, b) { return a.sortKey.localeCompare(b.sortKey, 'ru'); });
   return items.map(function(item) {
     var codeHtml = item.prefix
       ? '<span class="checklist-desc-code">' + escapeHtmlText(item.prefix) + '</span> '
@@ -9759,7 +9836,7 @@ function renderCardChecklistScreen(keepScroll) {
       if (!readOnly || !_cardChecklistQuestionTexts[qKey]) _cardChecklistQuestionTexts[qKey] = q;
       var qEl = document.createElement('div');
       qEl.className = 'card-checklist-question';
-      if (violations[qKey]) qEl.classList.add('violation');
+      if (questionHasChecklistViolation(violations, qKey, _cardChecklistQuestionTexts)) qEl.classList.add('violation');
       fillChecklistQuestionText(qEl, _cardChecklistQuestionTexts[qKey] || q, appendixIdSet, 'screen-card-checklist');
       if (!readOnly) {
         bindUiTap(qEl, function(key) {
@@ -9881,33 +9958,325 @@ function applyCardChecklist() {
   showScreen('screen-card');
 }
 
+var _clViolDraftRows = [];
+var _clViolSelectedIdx = -1;
+var MAX_CL_VIOL_ROWS = 20;
+
+function splitViolationTextToRows(text) {
+  return splitViolationDescChunks(text);
+}
+
+function questionHasChecklistViolation(violations, qKey, questionTexts) {
+  if (!violations) return false;
+  if (violations[qKey] && String(violations[qKey]).trim()) return true;
+  var qText = (questionTexts && questionTexts[qKey]) || '';
+  return Object.keys(violations).some(function(k) {
+    if (k.indexOf('import:') !== 0) return false;
+    if (!String(violations[k] || '').trim()) return false;
+    var qt = (questionTexts && questionTexts[k]) || '';
+    return qt === qText || !qt;
+  });
+}
+
+function collectViolationsForQuestion(qKey) {
+  var violations = cardData.checklistViolations || {};
+  var rows = [];
+  if (violations[qKey]) rows = rows.concat(splitViolationTextToRows(violations[qKey]));
+  var qText = _cardChecklistQuestionTexts[qKey] || '';
+  Object.keys(violations).forEach(function(k) {
+    if (k === qKey || k.indexOf('import:') !== 0) return;
+    var qt = _cardChecklistQuestionTexts[k] || '';
+    if (qt && qt !== qText) return;
+    var part = String(violations[k] || '').trim();
+    if (part) rows.push(part);
+  });
+  return rows;
+}
+
+var IOS_KB_OVERLAY_IDS = [
+  'overlay-text', 'overlay-desc', 'overlay-checklist-violation',
+  'overlay-bpk-input', 'overlay-bpk-goals'
+];
+var _iosKbVvBound = false;
+var _clViolOverlayUiBound = false;
+var _clViolVvBound = false;
+
+function resetOverlayViewportStyles(overlay) {
+  if (!overlay) return;
+  overlay.style.top = '';
+  overlay.style.height = '';
+  overlay.style.bottom = '';
+  var box = overlay.querySelector('.overlay-box');
+  if (box) {
+    box.style.maxHeight = '';
+    box.style.height = '';
+    box.style.minHeight = '';
+  }
+}
+
+function resetIosViewportAfterKeyboard() {
+  if (!_isIOS) return;
+  try { window.scrollTo(0, 0); } catch (_e) {}
+  IOS_KB_OVERLAY_IDS.forEach(function(id) {
+    resetOverlayViewportStyles(document.getElementById(id));
+  });
+}
+
+function syncIosKbOverlayViewport(id) {
+  if (!_isIOS) return;
+  var overlay = document.getElementById(id);
+  if (!overlay || !overlay.classList.contains('active')) return;
+  if (!window.visualViewport) return;
+  var vv = window.visualViewport;
+  overlay.style.top = vv.offsetTop + 'px';
+  overlay.style.height = vv.height + 'px';
+}
+
+function syncAllIosKbOverlayViewports() {
+  IOS_KB_OVERLAY_IDS.forEach(syncIosKbOverlayViewport);
+}
+
+function bindIosKbOverlayViewport() {
+  if (!_isIOS || _iosKbVvBound || !window.visualViewport) return;
+  _iosKbVvBound = true;
+  window.visualViewport.addEventListener('resize', syncAllIosKbOverlayViewports);
+  window.visualViewport.addEventListener('scroll', syncAllIosKbOverlayViewports);
+}
+
+function prepareIosKeyboardOverlay(id) {
+  if (!_isIOS) return;
+  resetOverlayViewportStyles(document.getElementById(id));
+  syncIosKbOverlayViewport(id);
+}
+
+function closeIosKeyboardOverlay(id, blurFn) {
+  var overlay = document.getElementById(id);
+  if (overlay) overlay.classList.remove('active');
+  if (blurFn) blurFn();
+  resetOverlayViewportStyles(overlay);
+  if (_isIOS) setTimeout(resetIosViewportAfterKeyboard, 120);
+  else resetIosViewportAfterKeyboard();
+}
+
+function initIosKbOverlayInputFixes() {
+  if (!_isIOS) return;
+  var map = {
+    'text-overlay-input': 'overlay-text',
+    'desc-input': 'overlay-desc',
+    'bpk-input-field': 'overlay-bpk-input',
+    'bpk-goal-target': 'overlay-bpk-goals',
+    'bpk-goal-stretch': 'overlay-bpk-goals'
+  };
+  Object.keys(map).forEach(function(inputId) {
+    var inp = document.getElementById(inputId);
+    if (!inp || inp._iosKbFix) return;
+    inp._iosKbFix = true;
+    var overlayId = map[inputId];
+    inp.addEventListener('focus', function() {
+      syncIosKbOverlayViewport(overlayId);
+      setTimeout(function() { syncIosKbOverlayViewport(overlayId); }, 280);
+    });
+    if (inputId === 'text-overlay-input' || inputId === 'bpk-input-field') {
+      inp.addEventListener('touchend', function(e) {
+        e.stopPropagation();
+        inp.removeAttribute('readonly');
+        inp.focus({ preventScroll: false });
+        placeInputCaretAtEnd(inp);
+      }, { passive: true });
+    }
+  });
+  var clList = document.getElementById('checklist-violation-list');
+  if (clList && !clList._iosKbFix) {
+    clList._iosKbFix = true;
+    clList.addEventListener('focusin', function() {
+      syncIosKbOverlayViewport('overlay-checklist-violation');
+      setTimeout(function() { syncIosKbOverlayViewport('overlay-checklist-violation'); }, 280);
+    });
+  }
+}
+
+function syncClViolOverlayViewport() {
+  if (_isIOS) {
+    syncIosKbOverlayViewport('overlay-checklist-violation');
+    return;
+  }
+  var overlay = document.getElementById('overlay-checklist-violation');
+  if (!overlay || !overlay.classList.contains('active')) return;
+  if (!window.visualViewport) return;
+  var vv = window.visualViewport;
+  overlay.style.top = vv.offsetTop + 'px';
+  overlay.style.height = vv.height + 'px';
+}
+
+function resetClViolOverlayViewport() {
+  resetOverlayViewportStyles(document.getElementById('overlay-checklist-violation'));
+}
+
+function bindClViolOverlayViewport() {
+  if (_clViolVvBound || !window.visualViewport) return;
+  _clViolVvBound = true;
+  window.visualViewport.addEventListener('resize', syncClViolOverlayViewport);
+  window.visualViewport.addEventListener('scroll', syncClViolOverlayViewport);
+}
+
+function initChecklistViolationOverlay() {
+  if (_clViolOverlayUiBound) return;
+  _clViolOverlayUiBound = true;
+  bindClViolOverlayViewport();
+  var minus = document.getElementById('cl-viol-btn-minus');
+  var plus = document.getElementById('cl-viol-btn-plus');
+  if (minus) {
+    minus.addEventListener('mousedown', function(e) { e.preventDefault(); });
+    bindUiTap(minus, function() { deleteChecklistViolationRow(); });
+  }
+  if (plus) {
+    plus.addEventListener('mousedown', function(e) { e.preventDefault(); });
+    bindUiTap(plus, function() { addChecklistViolationRow(); });
+  }
+}
+
+function scrollClViolInputIntoView(inp) {
+  if (!inp) return;
+  syncClViolOverlayViewport();
+  setTimeout(function() {
+    try { inp.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_e) {}
+    syncClViolOverlayViewport();
+  }, 80);
+}
+
+function updateChecklistViolationRowButtons() {
+  var minus = document.getElementById('cl-viol-btn-minus');
+  var plus = document.getElementById('cl-viol-btn-plus');
+  var canDelete = _clViolDraftRows.length > 1 && _clViolSelectedIdx >= 0;
+  if (minus) minus.disabled = !canDelete;
+  if (plus) plus.disabled = _clViolDraftRows.length >= MAX_CL_VIOL_ROWS;
+}
+
+function createChecklistViolationRow(idx, text) {
+  var row = document.createElement('div');
+  row.className = 'cl-viol-row';
+  var inp = document.createElement('input');
+  inp.type = 'text';
+  inp.className = 'cl-viol-input';
+  inp.value = text;
+  inp.dataset.idx = String(idx);
+  inp.setAttribute('inputmode', 'text');
+  inp.setAttribute('enterkeyhint', 'done');
+  inp.setAttribute('autocomplete', 'off');
+  inp.setAttribute('autocapitalize', 'off');
+  inp.setAttribute('autocorrect', 'off');
+  inp.setAttribute('spellcheck', 'false');
+  inp.addEventListener('input', function() {
+    var i = parseInt(this.dataset.idx, 10);
+    if (!isNaN(i)) _clViolDraftRows[i] = this.value;
+  });
+  inp.addEventListener('focus', function() {
+    var i = parseInt(this.dataset.idx, 10);
+    if (!isNaN(i)) {
+      _clViolSelectedIdx = i;
+      updateChecklistViolationRowButtons();
+    }
+    scrollClViolInputIntoView(this);
+  });
+  row.appendChild(inp);
+  return row;
+}
+
+function focusChecklistViolationInput(idx) {
+  var list = document.getElementById('checklist-violation-list');
+  if (!list) return;
+  var inputs = list.querySelectorAll('.cl-viol-input');
+  var inp = inputs[idx];
+  if (!inp) return;
+  _clViolSelectedIdx = idx;
+  try { inp.focus({ preventScroll: false }); } catch (_e) { inp.focus(); }
+  try {
+    var len = inp.value.length;
+    inp.setSelectionRange(len, len);
+  } catch (_e2) {}
+  updateChecklistViolationRowButtons();
+}
+
+function renderChecklistViolationRows(focusIdx) {
+  var list = document.getElementById('checklist-violation-list');
+  if (!list) return;
+  list.innerHTML = '';
+  _clViolDraftRows.forEach(function(text, idx) {
+    list.appendChild(createChecklistViolationRow(idx, text));
+  });
+  updateChecklistViolationRowButtons();
+  if (focusIdx >= 0 && focusIdx < _clViolDraftRows.length) focusChecklistViolationInput(focusIdx);
+}
+
+function addChecklistViolationRow() {
+  if (_clViolDraftRows.length >= MAX_CL_VIOL_ROWS) return;
+  var idx = _clViolDraftRows.length;
+  _clViolDraftRows.push('');
+  var list = document.getElementById('checklist-violation-list');
+  if (list) list.appendChild(createChecklistViolationRow(idx, ''));
+  _clViolSelectedIdx = idx;
+  focusChecklistViolationInput(idx);
+  var box = document.querySelector('#overlay-checklist-violation .overlay-box');
+  if (box) box.scrollTop = box.scrollHeight;
+  syncClViolOverlayViewport();
+}
+
+function deleteChecklistViolationRow() {
+  if (_clViolDraftRows.length <= 1 || _clViolSelectedIdx < 0) return;
+  var removedIdx = _clViolSelectedIdx;
+  _clViolDraftRows.splice(removedIdx, 1);
+  var list = document.getElementById('checklist-violation-list');
+  if (list && list.children[removedIdx]) list.children[removedIdx].remove();
+  if (list) {
+    Array.from(list.querySelectorAll('.cl-viol-input')).forEach(function(inp, i) {
+      inp.dataset.idx = String(i);
+    });
+  }
+  _clViolSelectedIdx = Math.max(0, removedIdx - 1);
+  focusChecklistViolationInput(_clViolSelectedIdx);
+}
+
 function openChecklistViolationOverlay(qKey) {
   _cardChecklistViolationKey = qKey;
   var scrollEl = document.getElementById('card-checklist-scroll');
   if (scrollEl) _cardChecklistScrollTop = scrollEl.scrollTop;
-  var inp = document.getElementById('checklist-violation-input');
   var qEl = document.getElementById('checklist-violation-question');
-  var violations = cardData.checklistViolations || {};
   if (qEl) qEl.textContent = _cardChecklistQuestionTexts[qKey] || '';
-  if (inp) inp.value = violations[qKey] || '';
+  var rows = collectViolationsForQuestion(qKey);
+  _clViolDraftRows = rows.length ? rows.slice() : [''];
+  _clViolSelectedIdx = 0;
+  renderChecklistViolationRows(0);
   document.getElementById('overlay-checklist-violation').classList.add('active');
-  setTimeout(function() { if (inp) inp.focus(); }, 300);
+  prepareIosKeyboardOverlay('overlay-checklist-violation');
+  syncClViolOverlayViewport();
+  setTimeout(syncClViolOverlayViewport, 280);
 }
 
 function closeChecklistViolationOverlay() {
-  var inp = document.getElementById('checklist-violation-input');
-  if (inp) inp.blur();
+  var list = document.getElementById('checklist-violation-list');
   _cardChecklistViolationKey = null;
-  document.getElementById('overlay-checklist-violation').classList.remove('active');
+  _clViolDraftRows = [];
+  _clViolSelectedIdx = -1;
+  closeIosKeyboardOverlay('overlay-checklist-violation', function() {
+    if (!list) return;
+    var active = document.activeElement;
+    if (active && list.contains(active)) active.blur();
+  });
 }
 
 function applyChecklistViolationOverlay() {
   var qKey = _cardChecklistViolationKey;
   if (!qKey) { closeChecklistViolationOverlay(); return; }
-  var val = (document.getElementById('checklist-violation-input').value || '').trim();
   if (!cardData.checklistViolations) cardData.checklistViolations = {};
-  if (val) cardData.checklistViolations[qKey] = val;
+  var parts = _clViolDraftRows.map(function(s) { return String(s || '').trim(); }).filter(Boolean);
+  if (parts.length) cardData.checklistViolations[qKey] = parts.join('\n\n');
   else delete cardData.checklistViolations[qKey];
+  var qText = _cardChecklistQuestionTexts[qKey] || '';
+  Object.keys(cardData.checklistViolations).forEach(function(k) {
+    if (k.indexOf('import:') !== 0) return;
+    var qt = _cardChecklistQuestionTexts[k] || '';
+    if (!qt || qt === qText) delete cardData.checklistViolations[k];
+  });
   var savedTop = _cardChecklistScrollTop;
   closeChecklistViolationOverlay();
   renderCardChecklistScreen(true);
@@ -10019,6 +10388,40 @@ function openDrumWorks() {
 
 // Text overlays
 
+function placeInputCaretAtEnd(inp) {
+  if (!inp) return;
+  try {
+    var len = inp.value.length;
+    inp.setSelectionRange(len, len);
+  } catch (_e) {}
+}
+
+function focusIosOverlayInput(inp) {
+  if (!inp) return;
+  function doFocus() {
+    try { inp.removeAttribute('readonly'); } catch (_e) {}
+    try { inp.focus({ preventScroll: false }); } catch (_e2) { inp.focus(); }
+    if (_isIOS) {
+      try { inp.click(); } catch (_e3) {}
+    }
+    placeInputCaretAtEnd(inp);
+    setTimeout(function() { placeInputCaretAtEnd(inp); }, 0);
+    syncAllIosKbOverlayViewports();
+  }
+  doFocus();
+  requestAnimationFrame(doFocus);
+  if (!_isIOS) {
+    setTimeout(doFocus, 300);
+    return;
+  }
+  setTimeout(doFocus, 280);
+  setTimeout(doFocus, 520);
+}
+
+function focusOverlayTextInput(inp) {
+  focusIosOverlayInput(inp);
+}
+
 function openTextOverlay(key, title, valId, withAutocomplete) {
   currentTextKey = key;
   currentTextAutocompleteKey = withAutocomplete ? key : null;
@@ -10030,10 +10433,20 @@ function openTextOverlay(key, title, valId, withAutocomplete) {
   document.getElementById('text-overlay-title').textContent = title;
   var inp = document.getElementById('text-overlay-input');
   inp.value = cardData[key] || '';
+  inp.setAttribute('inputmode', 'text');
+  inp.setAttribute('enterkeyhint', 'done');
+  inp.setAttribute('autocomplete', 'off');
+  inp.setAttribute('autocapitalize', 'off');
+  inp.setAttribute('autocorrect', 'off');
+  inp.setAttribute('spellcheck', 'false');
   document.getElementById('autocomplete-list').style.display = 'none';
   document.getElementById('autocomplete-list').innerHTML = '';
-  document.getElementById('overlay-text').classList.add('active');
-  setTimeout(function(){ inp.focus(); }, 300);
+  if (_isIOS) inp.setAttribute('readonly', 'readonly');
+  var overlay = document.getElementById('overlay-text');
+  resetOverlayViewportStyles(overlay);
+  overlay.classList.add('active');
+  prepareIosKeyboardOverlay('overlay-text');
+  focusIosOverlayInput(inp);
 }
 
 function textAutocomplete(inp) {
@@ -10054,8 +10467,9 @@ function pickAutocomplete(val) {
 
 function closeTextOverlay() {
   var inp = document.getElementById('text-overlay-input');
-  if (inp) inp.blur();
-  document.getElementById('overlay-text').classList.remove('active');
+  closeIosKeyboardOverlay('overlay-text', function() {
+    if (inp) inp.blur();
+  });
 }
 
 function applyTextOverlay() {
@@ -10068,9 +10482,13 @@ function openDescOverlay() {
   if (cardData.descFromChecklist) return;
   if (cardUsesChecklistFlow() && cardData.works === 'Нет') return;
   if (!cardUsesChecklistFlow() && cardData.works !== 'Нет') return;
-  document.getElementById('desc-input').value = cardData.desc || '';
-  document.getElementById('overlay-desc').classList.add('active');
-  setTimeout(function(){ document.getElementById('desc-input').focus(); }, 300);
+  var descInp = document.getElementById('desc-input');
+  var overlay = document.getElementById('overlay-desc');
+  descInp.value = cardData.desc || '';
+  resetOverlayViewportStyles(overlay);
+  overlay.classList.add('active');
+  prepareIosKeyboardOverlay('overlay-desc');
+  focusIosOverlayInput(descInp);
 }
 
 function applyDesc() {
@@ -10082,7 +10500,21 @@ function applyDesc() {
 
 
 
-function closeOverlay(id) { document.getElementById(id).classList.remove('active'); }
+function closeOverlay(id) {
+  if (IOS_KB_OVERLAY_IDS.indexOf(id) >= 0) {
+    var blurFn = null;
+    if (id === 'overlay-desc') {
+      blurFn = function() {
+        var inp = document.getElementById('desc-input');
+        if (inp) inp.blur();
+      };
+    }
+    closeIosKeyboardOverlay(id, blurFn);
+    return;
+  }
+  var el = document.getElementById(id);
+  if (el) el.classList.remove('active');
+}
 
 // ===== HELPERS =====
 function todayStr() {
