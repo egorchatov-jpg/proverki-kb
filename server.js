@@ -9,11 +9,11 @@ const fs = require('fs');
 const path = require('path');
 const cron = require('node-cron');
 const { createBackupFromLive } = require('./lib/backups-lib');
-const { getDb, getDbPath, getDbStatus } = require('./lib/db');
+const { getDb, getDbPath, getDbStatus, closeDb } = require('./lib/db');
 const { countAllRecords } = require('./lib/records-store');
 const { migrateFromGithubIfEmpty } = require('./lib/migrate-from-github');
 const { purgeGithubLegacyExcelBackups } = require('./lib/github-legacy-backups');
-const { isEnabled: isGithubPersistEnabled } = require('./lib/github-persist');
+const { isEnabled: isGithubPersistEnabled, pullDbFromGithub } = require('./lib/github-persist');
 const { isLocalDev } = require('./lib/runtime-env');
 
 const ROOT = __dirname;
@@ -138,7 +138,19 @@ app.use(function(_req, res) {
 async function bootstrapData() {
   await bootstrapGithubPersist();
   getDb();
-  const migrated = await migrateFromGithubIfEmpty();
+  let recordCount = 0;
+  try { recordCount = countAllRecords(); } catch (_e) { /* ignore */ }
+
+  if (recordCount === 0 && isGithubPersistEnabled()) {
+    console.warn('[bootstrap] database empty after GitHub pull — forcing retry');
+    closeDb();
+    const retry = await pullDbFromGithub();
+    getDb({ reopen: true });
+    try { recordCount = countAllRecords(); } catch (_e) { /* ignore */ }
+    console.log('[bootstrap] retry pull:', JSON.stringify(retry), 'records:', recordCount);
+  }
+
+  const migrated = recordCount === 0 ? await migrateFromGithubIfEmpty() : null;
   if (migrated) {
     await pushDbToGithub().catch(function(e) {
       console.warn('[persist] push after migrate failed:', e.message);
