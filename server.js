@@ -65,6 +65,7 @@ app.set('trust proxy', 1);
 app.use(express.json({ limit: '4mb' }));
 
 let bootstrapReady = false;
+let bootstrapInfo = null;
 
 app.get('/health', function(_req, res) {
   if (!bootstrapReady) {
@@ -87,6 +88,7 @@ app.get('/health', function(_req, res) {
   if (db.ephemeral) payload.ephemeral = true;
   if (isLocalDev()) payload.localDev = true;
   if (isGithubPersistEnabled()) payload.githubPersist = true;
+  if (bootstrapInfo) payload.bootstrap = bootstrapInfo;
   if (!db.ok) payload.error = db.error;
   res.status(db.ok ? 200 : 503).json(payload);
 });
@@ -136,7 +138,11 @@ app.use(function(_req, res) {
 });
 
 async function bootstrapData() {
-  await bootstrapGithubPersist();
+  const persist = await bootstrapGithubPersist();
+  bootstrapInfo = {
+    githubRepo: persist.enabled ? (process.env.GITHUB_DATA_REPO || process.env.PROD_DATA_REPO || 'proverki-kb-data') : null,
+    dbPull: persist.dbPull || null,
+  };
   getDb();
   let recordCount = 0;
   try { recordCount = countAllRecords(); } catch (_e) { /* ignore */ }
