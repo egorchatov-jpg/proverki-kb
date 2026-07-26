@@ -3743,6 +3743,9 @@ window.addEventListener('DOMContentLoaded', function() {
     }
   } catch(e) {}
   loadState();
+  applyChecklistDescPatch(function(descPatched) {
+    if (descPatched) renderLobby();
+  });
   if (migrateSamoproverkaToSamootsenka()) saveState();
   if (needDataMigration) {
     migrateLocalPiiOnce();
@@ -5799,7 +5802,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v311';
+var APP_BUILD = 'pkb-v312';
 var APP_VERSION = '1.03';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -9657,6 +9660,45 @@ function preserveLocalChecklists(serverRecords, localRecords) {
   });
 }
 
+
+var CHECKLIST_DESC_PATCH_VER = 1;
+
+function applyChecklistDescPatch(onDone) {
+  onDone = onDone || function() {};
+  var doneVer = 0;
+  try { doneVer = parseInt(localStorage.getItem('pkb-checklist-desc-patch') || '0', 10); } catch (_e) {}
+  if (doneVer >= CHECKLIST_DESC_PATCH_VER) { onDone(false); return; }
+  fetch('/data/checklist-desc-patch.json?v=' + APP_BUILD, { cache: 'no-store' })
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .catch(function() { return null; })
+    .then(function(patch) {
+      if (!patch || !patch.items) { onDone(false); return; }
+      var byId = {};
+      (appState.db || []).forEach(function(r) { if (r.checkId) byId[r.checkId] = r; });
+      var updated = 0;
+      Object.keys(patch.items).forEach(function(checkId) {
+        var item = patch.items[checkId];
+        var rec = byId[checkId];
+        if (!rec || !item) return;
+        if (item.desc) rec.desc = item.desc;
+        if (item.barrier) rec.barrier = item.barrier;
+        if (item.checklistFilled) {
+          rec.checklistFilled = true;
+          rec.checklistViolations = item.checklistViolations || {};
+          rec.checklistQuestionTexts = item.checklistQuestionTexts || {};
+          rec.checklistPassportId = item.checklistPassportId || null;
+        }
+        updated++;
+      });
+      if (updated) {
+        try { localStorage.setItem('pkb-checklist-desc-patch', String(CHECKLIST_DESC_PATCH_VER)); } catch (_e) {}
+        saveState();
+        console.log('[patch] checklist desc updated:', updated);
+      }
+      onDone(updated > 0);
+    });
+}
+
 function recordHasChecklistViolations(r) {
   if (!r || !r.checklistViolations) return false;
   return Object.keys(r.checklistViolations).some(function(k) {
@@ -9671,20 +9713,29 @@ function normalizeViolationDescText(desc) {
   return s.replace(/;\s+(?=[^\s;]+\.\d)/g, ';\n\n');
 }
 
+function descHasChecklistCode(text) {
+  return /[A-ZА-ЯЁ]{2,}\.\d/.test(String(text || ''));
+}
+
 function formatRecordDescPlain(r) {
   if (!r) return '';
+  var plainDesc = normalizeViolationDescText(r.desc);
+  if (plainDesc && descHasChecklistCode(plainDesc)) return plainDesc;
   if (recordHasChecklistViolations(r)) {
     return buildChecklistDescPlain(r.checklistViolations, r.checklistQuestionTexts || {});
   }
-  return normalizeViolationDescText(r.desc);
+  return plainDesc;
 }
 
 function formatRecordDescHtml(r) {
   if (!r) return '';
+  var plain = normalizeViolationDescText(r.desc);
+  if (plain && descHasChecklistCode(plain)) {
+    return esc(plain).replace(/\n/g, '<br>');
+  }
   if (recordHasChecklistViolations(r)) {
     return buildChecklistDescHtml(r.checklistViolations, r.checklistQuestionTexts || {});
   }
-  var plain = normalizeViolationDescText(r.desc);
   if (!plain) return '';
   return esc(plain).replace(/\n/g, '<br>');
 }
