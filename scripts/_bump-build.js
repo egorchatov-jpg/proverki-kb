@@ -1,0 +1,15 @@
+const fs = require('fs');
+const p = require('path').join(__dirname, '..', 'index.html');
+let t = fs.readFileSync(p, 'utf8');
+const m = t.match(/var APP_BUILD = 'pkb-v(\d+)';/);
+if (!m) throw new Error('APP_BUILD not found');
+const nextNum = parseInt(m[1], 10) + 1;
+const next = 'pkb-v' + nextNum;
+t = t.replace(/var APP_BUILD = 'pkb-v\d+';/, "var APP_BUILD = '" + next + "';");
+fs.writeFileSync(p, Buffer.from(t, 'utf8'));
+const swPath = require('path').join(__dirname, '..', 'sw.js');
+let sw = fs.readFileSync(swPath, 'utf8');
+sw = sw.replace(/const STATIC_CACHE = 'pkb-static-v\d+';/, "const STATIC_CACHE = 'pkb-static-" + next + "';");
+sw = sw.replace(/const API_CACHE = 'pkb-api-v\d+';/, "const API_CACHE = 'pkb-api-" + next + "';");
+fs.writeFileSync(swPath, sw);
+console.log('OK:', next);

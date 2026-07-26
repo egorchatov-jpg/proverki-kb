@@ -13,7 +13,7 @@ const { getDb, getDbPath, getDbStatus, closeDb } = require('./lib/db');
 const { countAllRecords } = require('./lib/records-store');
 const { migrateFromGithubIfEmpty } = require('./lib/migrate-from-github');
 const { purgeGithubLegacyExcelBackups } = require('./lib/github-legacy-backups');
-const { isEnabled: isGithubPersistEnabled, pullDbFromGithub } = require('./lib/github-persist');
+const { isEnabled: isGithubPersistEnabled, forcePullDbFromGithub } = require('./lib/github-persist');
 const { isLocalDev } = require('./lib/runtime-env');
 
 const ROOT = __dirname;
@@ -84,13 +84,38 @@ app.get('/health', function(_req, res) {
   };
   if (db.ok) {
     try { payload.recordCount = countAllRecords(); } catch (_e) { /* ignore */ }
+    try {
+      const p = getDbPath();
+      if (fs.existsSync(p)) payload.dbFileBytes = fs.statSync(p).size;
+      payload.dbPath = p;
+    } catch (_e) { /* ignore */ }
   }
   if (db.ephemeral) payload.ephemeral = true;
   if (isLocalDev()) payload.localDev = true;
   if (isGithubPersistEnabled()) payload.githubPersist = true;
   if (bootstrapInfo) payload.bootstrap = bootstrapInfo;
   if (!db.ok) payload.error = db.error;
-  res.status(db.ok ? 200 : 503).json(payload);
+  res.status(db.ok && (payload.recordCount || 0) > 0 ? 200 : 503).json(payload);
+});
+
+app.post('/api/reload-db', async function(req, res) {
+  const secret = process.env.CRON_SECRET || process.env.RELOAD_DB_SECRET || '';
+  const auth = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+  if (!secret || auth !== secret) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  try {
+    if (!isGithubPersistEnabled()) {
+      return res.status(503).json({ error: 'GitHub persist disabled' });
+    }
+    const pull = await forcePullDbFromGithub();
+    getDb({ reopen: true });
+    const recordCount = countAllRecords();
+    bootstrapInfo = Object.assign({}, bootstrapInfo, { dbPull: pull, recordCount: recordCount, reloadedAt: Date.now() });
+    res.status(recordCount > 0 ? 200 : 503).json({ ok: recordCount > 0, recordCount: recordCount, pull: pull });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.get('/api/version', function(_req, res) {
@@ -148,22 +173,19 @@ async function bootstrapData() {
   try { recordCount = countAllRecords(); } catch (_e) { /* ignore */ }
 
   if (recordCount === 0 && isGithubPersistEnabled()) {
-    console.warn('[bootstrap] database empty after GitHub pull — forcing retry');
-    closeDb();
-    const dbPath = getDbPath();
-    ['', '-wal', '-shm'].forEach(function(suffix) {
-      const p = dbPath + suffix;
-      if (fs.existsSync(p)) {
-        try { fs.unlinkSync(p); } catch (_e) { /* ignore */ }
-      }
-    });
-    const retry = await pullDbFromGithub();
+    console.warn('[bootstrap] database still empty — forced pull retry');
+    const retry = await forcePullDbFromGithub();
     getDb({ reopen: true });
     try { recordCount = countAllRecords(); } catch (_e) { /* ignore */ }
-    console.log('[bootstrap] retry pull:', JSON.stringify(retry), 'records:', recordCount);
+    bootstrapInfo.dbPull = retry;
+    console.log('[bootstrap] forced pull retry:', JSON.stringify(retry), 'records:', recordCount);
   }
 
   if (bootstrapInfo) bootstrapInfo.recordCount = recordCount;
+
+  if (recordCount === 0 && isGithubPersistEnabled()) {
+    console.error('[bootstrap] FATAL: production database is empty after GitHub pull');
+  }
 
   const migrated = recordCount === 0 ? await migrateFromGithubIfEmpty() : null;
   if (migrated) {
@@ -178,6 +200,7 @@ async function bootstrapData() {
     .catch(function(e) { console.warn('[backups] legacy GitHub cleanup:', e.message); });
   createBackupFromLive(new Date())
     .then(function(r) {
+      if (recordCount < 50) return;
       if (!r.skipped) console.log('[backups] startup snapshot:', r.label || r.id);
     })
     .catch(function(e) { console.warn('[backups] startup snapshot failed:', e.message); });
