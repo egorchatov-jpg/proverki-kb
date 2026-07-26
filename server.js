@@ -118,6 +118,26 @@ app.post('/api/reload-db', async function(req, res) {
   }
 });
 
+app.get('/api/self-heal', async function(_req, res) {
+  try {
+    let recordCount = 0;
+    try { recordCount = countAllRecords(); } catch (_e) { /* ignore */ }
+    if (recordCount > 0) {
+      return res.status(200).json({ ok: true, recordCount: recordCount, action: 'none' });
+    }
+    if (!isGithubPersistEnabled()) {
+      return res.status(503).json({ ok: false, error: 'GitHub persist disabled' });
+    }
+    const pull = await forcePullDbFromGithub();
+    getDb({ reopen: true });
+    recordCount = countAllRecords();
+    if (bootstrapInfo) bootstrapInfo.recordCount = recordCount;
+    res.status(recordCount > 0 ? 200 : 503).json({ ok: recordCount > 0, recordCount: recordCount, pull: pull, action: 'force_pull' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.get('/api/version', function(_req, res) {
   setNoCache(res);
   const db = getDbStatus();
