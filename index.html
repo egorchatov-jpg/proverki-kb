@@ -4628,13 +4628,18 @@ function syncSettingsFromServer(callback) {
     .then(function(data) {
       if (errEl) errEl.textContent = '';
       if (data && data.localDev) _isLocalDevRuntime = true;
+      if (isLocalDevRuntime()) {
+        clearSettingsDirty();
+        saveState();
+        if (callback) callback();
+        return;
+      }
       var localDirty = isSettingsDirty();
       var preferLocal = localDirty || ((appState.settingsUpdatedAt || 0) > (data.settingsUpdatedAt || 0));
       var localMethods = appState.methods;
       var localOrgs = appState.orgs;
       var localBarriersConfig = appState.barriersConfig;
       var localCustomPassports = appState.barriersCustomPassports || {};
-      var localBarriersPK = appState.barriersPK || {};
       // Merge server settings — never rewrite Excel records (values used only for NEW entries)
       if (data.methods && data.methods.length) {
         var serverMethods = data.methods.map(function(m) {
@@ -4669,24 +4674,18 @@ function syncSettingsFromServer(callback) {
         markSettingsDirty();
       }
       if (data.barriers && data.barriers.length) appState.barriers = data.barriers;
-      if (!isLocalDevRuntime()) {
-        if (data.barriersConfig || data.barriersPK || (localBarriersConfig && Object.keys(localBarriersConfig).length)) {
-          var serverBarriersConfig = data.barriersConfig || {};
-          appState.barriersConfig = mergeBarriersConfig(serverBarriersConfig, localBarriersConfig, true);
-          applyBarriersPKToConfig(data.barriersPK, appState.barriersConfig);
-          if (barriersConfigSnapForCompare(appState.barriersConfig) !== barriersConfigSnapForCompare(serverBarriersConfig)) {
-            markSettingsDirty();
-          }
-        }
-        var serverCustomPassports = data.barriersCustomPassports || {};
-        appState.barriersCustomPassports = Object.assign({}, serverCustomPassports, localCustomPassports);
-        if (JSON.stringify(appState.barriersCustomPassports) !== JSON.stringify(serverCustomPassports)) {
+      if (data.barriersConfig || data.barriersPK || (localBarriersConfig && Object.keys(localBarriersConfig).length)) {
+        var serverBarriersConfig = data.barriersConfig || {};
+        appState.barriersConfig = mergeBarriersConfig(serverBarriersConfig, localBarriersConfig, true);
+        applyBarriersPKToConfig(data.barriersPK, appState.barriersConfig);
+        if (barriersConfigSnapForCompare(appState.barriersConfig) !== barriersConfigSnapForCompare(serverBarriersConfig)) {
           markSettingsDirty();
         }
-      } else {
-        if (localBarriersConfig) appState.barriersConfig = localBarriersConfig;
-        appState.barriersCustomPassports = localCustomPassports;
-        appState.barriersPK = localBarriersPK;
+      }
+      var serverCustomPassports = data.barriersCustomPassports || {};
+      appState.barriersCustomPassports = Object.assign({}, serverCustomPassports, localCustomPassports);
+      if (JSON.stringify(appState.barriersCustomPassports) !== JSON.stringify(serverCustomPassports)) {
+        markSettingsDirty();
       }
       if (!preferLocal && data.settingsUpdatedAt) {
         appState.settingsUpdatedAt = data.settingsUpdatedAt;
@@ -5775,7 +5774,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v304';
+var APP_BUILD = 'pkb-v305';
 var APP_VERSION = '1.03';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
