@@ -199,7 +199,7 @@ html, body {
   box-shadow: var(--card-shadow);
   overflow: hidden;
   cursor: pointer;
-  border: 1px solid var(--border);
+  border: var(--cell-border-width) solid var(--border);
   transition: opacity 0.15s;
 }
 .violation-card:active { opacity: 0.8; }
@@ -610,13 +610,13 @@ html, body {
 /* autocomplete */
 .autocomplete-list {
   width: 100%; background: #fff;
-  border: 1px solid var(--border); border-radius: 12px;
+  border: var(--cell-border-width) solid var(--border); border-radius: 12px;
   overflow: hidden; max-height: 150px; overflow-y: auto;
   margin-top: 4px; display: none;
 }
 .autocomplete-item {
   padding: 10px 14px; font-size: 14px; cursor: pointer;
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--cell-border-width) solid var(--border);
 }
 .autocomplete-item:last-child { border-bottom: none; }
 .autocomplete-item:active { background: rgba(232,119,34,0.08); }
@@ -751,7 +751,7 @@ html, body {
   text-align: left; line-height: 1.3;
   overflow: hidden;
 }
-.find-table tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; touch-action: manipulation; }
+.find-table tbody tr { border-bottom: var(--cell-border-width) solid var(--border); cursor: pointer; touch-action: manipulation; }
 .find-table tbody tr:active { background: rgba(232,119,34,0.08); }
 .find-table tbody tr.has-violation { background: rgba(192,57,43,0.15); }
 .find-table td { padding: 8px 4px; font-size: 12px; color: #1a2035; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -849,7 +849,7 @@ html, body {
   margin: 10px 0 6px; text-align: left;
 }
 .corr-m {
-  padding: 8px 0 10px; border-bottom: 1px solid var(--border);
+  padding: 8px 0 10px; border-bottom: var(--cell-border-width) solid var(--border);
   transition: background 0.15s;
 }
 .corr-m.corr-m-selected .corr-m-desc,
@@ -1217,11 +1217,18 @@ html, body {
 }
 .passport-appendix-table {
   width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.4;
+  border: 0;
+  border-top: var(--cell-border-width) solid var(--border);
+  border-left: var(--cell-border-width) solid var(--border);
 }
 .passport-appendix-table th,
 .passport-appendix-table td {
-  border: var(--cell-border-width) solid var(--border); padding: 8px 10px;
+  border: 0;
+  border-right: var(--cell-border-width) solid var(--border);
+  border-bottom: var(--cell-border-width) solid var(--border);
+  padding: 8px 10px;
   vertical-align: top; text-align: left;
+  box-sizing: border-box;
 }
 .passport-appendix-table td {
   white-space: pre-wrap; word-break: break-word;
@@ -1520,11 +1527,11 @@ html, body {
 .pw-section-title {
   font-size: 12px; font-weight: 700; color: var(--text2);
   text-transform: uppercase; letter-spacing: 0.5px;
-  padding: 14px 0 4px; border-top: 1px solid var(--border); margin-top: 4px;
+  padding: 14px 0 4px; border-top: var(--cell-border-width) solid var(--border); margin-top: 4px;
 }
 .pw-row {
   display: flex; align-items: center; gap: 10px;
-  padding: 9px 0; border-bottom: 1px solid var(--border);
+  padding: 9px 0; border-bottom: var(--cell-border-width) solid var(--border);
 }
 .pw-label {
   flex: 1; font-size: 14px; font-weight: 600; color: #1a2035;
@@ -1610,7 +1617,7 @@ html, body {
 .is-not-ios .method-square-cb {
   appearance: none; -webkit-appearance: none;
   border-radius: 6px;           /* same for both — no "circle" on Win/Android */
-  border: 2px solid #c8ccd4; background: #fff;
+  border: var(--cell-border-width) solid #c8ccd4; background: #fff;
   position: relative; transition: background 0.12s, border-color 0.12s;
 }
 .is-not-ios .method-circle-cb:checked { background: var(--gray-btn); border-color: var(--gray-btn); }
@@ -1633,7 +1640,7 @@ html, body {
   appearance: none; -webkit-appearance: none;
   width: 22px; height: 22px; margin: 0 auto;
   border-radius: 6px;
-  border: 2px solid #c8ccd4; background: #fff;
+  border: var(--cell-border-width) solid #c8ccd4; background: #fff;
   cursor: pointer; position: relative;
   transition: background 0.12s, border-color 0.12s;
   accent-color: var(--gray-btn); flex-shrink: 0;
@@ -1731,12 +1738,12 @@ html, body {
   display: flex; flex-direction: column;
   width: 100%; max-height: 52vh; overflow-y: auto;
   margin: 8px 0 2px;
-  border-radius: 10px; border: 1px solid var(--border);
+  border-radius: 10px; border: var(--cell-border-width) solid var(--border);
 }
 .barrier-pk-item {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 12px; gap: 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--cell-border-width) solid var(--border);
   background: #fff;
 }
 .barrier-pk-item:last-child { border-bottom: none; }
@@ -5792,7 +5799,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v306';
+var APP_BUILD = 'pkb-v307';
 var APP_VERSION = '1.03';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
