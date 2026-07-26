@@ -3781,11 +3781,18 @@ window.addEventListener('DOMContentLoaded', function() {
     refreshSettingsDependentUi();
     loadFromServer(function() {
       renderLobby();
-    });
+    }, { forceFull: true });
   });
   setInterval(function() {
     if (hasPendingSync()) retryAllQueues();
   }, 30000);
+  setInterval(function() {
+    if (document.hidden || !hasSession()) return;
+    clearApiCacheViaSw();
+    loadFromServer(function() {
+      refreshActiveRecordLists();
+    }, { forceFull: true });
+  }, 300000);
   window.addEventListener('online', syncWhenOnline);
   document.addEventListener('visibilitychange', function() {
     if (document.hidden) {
@@ -5819,7 +5826,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v314';
+var APP_BUILD = 'pkb-v315';
 var APP_VERSION = '1.03';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
