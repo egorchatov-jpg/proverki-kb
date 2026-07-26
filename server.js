@@ -150,11 +150,20 @@ async function bootstrapData() {
   if (recordCount === 0 && isGithubPersistEnabled()) {
     console.warn('[bootstrap] database empty after GitHub pull — forcing retry');
     closeDb();
+    const dbPath = getDbPath();
+    ['', '-wal', '-shm'].forEach(function(suffix) {
+      const p = dbPath + suffix;
+      if (fs.existsSync(p)) {
+        try { fs.unlinkSync(p); } catch (_e) { /* ignore */ }
+      }
+    });
     const retry = await pullDbFromGithub();
     getDb({ reopen: true });
     try { recordCount = countAllRecords(); } catch (_e) { /* ignore */ }
     console.log('[bootstrap] retry pull:', JSON.stringify(retry), 'records:', recordCount);
   }
+
+  if (bootstrapInfo) bootstrapInfo.recordCount = recordCount;
 
   const migrated = recordCount === 0 ? await migrateFromGithubIfEmpty() : null;
   if (migrated) {

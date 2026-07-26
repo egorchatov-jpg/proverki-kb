@@ -3215,8 +3215,25 @@ function loadFromServer(onDone, opts) {
 
     if (d && Array.isArray(d.records)) {
       var localDb = appState.db.slice();
-      seedUpdateQueueFromLocalDb(d.records);
-      appState.db = mergeServerRecords(d.records);
+      var serverRecords = d.records;
+      if (localDb.length >= 50 && serverRecords.length < Math.min(100, Math.floor(localDb.length * 0.5))) {
+        console.warn('[server] неполный ответ сервера (' + serverRecords.length + ' из ' + localDb.length + ') — сохраняем локальные проверки');
+        var jul25FromServer = serverRecords.filter(function(r) {
+          return String(r.dateCheck || '').trim().indexOf('25.07.2026') === 0;
+        });
+        serverRecords = localDb.slice();
+        jul25FromServer.forEach(function(sr) {
+          if (!sr.checkId) return;
+          var idx = -1;
+          for (var i = 0; i < serverRecords.length; i++) {
+            if (serverRecords[i].checkId === sr.checkId) { idx = i; break; }
+          }
+          if (idx >= 0) serverRecords[idx] = sr;
+          else serverRecords.push(sr);
+        });
+      }
+      seedUpdateQueueFromLocalDb(serverRecords);
+      appState.db = mergeServerRecords(serverRecords);
       preserveLocalChecklists(appState.db, localDb);
       appState.db = applyPendingUpdates(appState.db);
       purgeSyncedUpdates(appState.db);
@@ -5802,7 +5819,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v312';
+var APP_BUILD = 'pkb-v313';
 var APP_VERSION = '1.03';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
