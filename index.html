@@ -49,6 +49,7 @@ html, body {
   --overlay-bg: rgba(239,239,239,0.80);
   --surface-yellow: #fffbee;
   --border: rgba(0,0,0,0.08);
+  --cell-border-width: 1px;
   --text2: #4a5570;
   --text3: #8090aa;
 }
@@ -405,7 +406,7 @@ html, body {
 .field-cell {
   background: #fff;
   border-radius: 12px;
-  border: 1px solid var(--border);
+  border: var(--cell-border-width) solid var(--border);
   min-height: 44px;
   padding: 10px 12px;
   font-size: 14px; color: #1a2035;
@@ -435,7 +436,7 @@ html, body {
 }
 #screen-card .field-cell {
   flex: 1 1 0; min-width: 0; min-height: 36px; padding: 6px 10px; font-size: 13px;
-  border: 2px solid var(--orange); border-radius: 10px;
+  border: var(--cell-border-width) solid var(--orange); border-radius: 10px;
   box-shadow: none; font-weight: 500; box-sizing: border-box;
 }
 #screen-card .field-cell.tall {
@@ -513,7 +514,7 @@ html, body {
 }
 .card-checklist-body { padding: 0 16px 12px; position: relative; z-index: 0; }
 .card-checklist-question {
-  border: 2px solid var(--orange); border-radius: 12px;
+  border: var(--cell-border-width) solid var(--orange); border-radius: 12px;
   padding: 10px 12px; margin-bottom: 8px;
   font-size: 13px; line-height: 1.45; color: #1a2035;
   background: #fff; white-space: pre-wrap; word-break: break-word;
@@ -529,7 +530,7 @@ html, body {
 .cl-viol-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .cl-viol-row { width: 100%; }
 .cl-viol-input {
-  width: 100%; height: 44px; border: 1.5px solid var(--border);
+  width: 100%; height: 44px; border: var(--cell-border-width) solid var(--border);
   border-radius: 10px; padding: 0 12px; font-size: 14px; background: #fff;
   box-sizing: border-box; font-family: inherit; color: #1a2035;
 }
@@ -574,7 +575,7 @@ html, body {
   margin-bottom: 20px; color: #1a2035;
 }
 .overlay-textarea {
-  width: 100%; border: 1.5px solid var(--border);
+  width: 100%; border: var(--cell-border-width) solid var(--border);
   border-radius: 12px; padding: 12px;
   font-size: 15px; font-family: inherit; color: #1a2035;
   background: #fff; resize: none;
@@ -584,7 +585,7 @@ html, body {
 }
 .overlay-textarea:focus { outline: none; border-color: var(--orange); }
 .overlay-input {
-  width: 100%; border: 1.5px solid var(--border);
+  width: 100%; border: var(--cell-border-width) solid var(--border);
   border-radius: 10px; padding: 10px 12px;
   font-size: 14px; font-family: inherit; color: #1a2035;
   background: #fff;
@@ -630,7 +631,7 @@ html, body {
   left: -6px; right: -6px; top: 50%; transform: translateY(-50%);
   height: 35px; pointer-events: none; z-index: -1;
   background: rgba(232,119,34,0.10);
-  border: 1.5px solid var(--orange);
+  border: var(--cell-border-width) solid var(--orange);
   border-radius: 22px;
 }
 .drum-sep { font-size: 22px; font-weight: 700; color: var(--text2); line-height: 1; padding: 0 2px; }
@@ -664,7 +665,7 @@ html, body {
 .violator-name-row { display: flex; gap: 6px; }
 .violator-name-row .violator-input { flex: 1; min-width: 0; }
 .violator-input {
-  width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
+  width: 100%; border: var(--cell-border-width) solid var(--border); border-radius: 10px;
   padding: 10px 12px; font-size: 14px; font-family: inherit; color: #1a2035; background: #fff;
 }
 .violator-input:focus { outline: none; border-color: var(--orange); }
@@ -736,7 +737,7 @@ html, body {
 .list-filter-head {
   flex-shrink: 0;
   background: var(--bg);
-  border-bottom: 2px solid var(--border);
+  border-bottom: var(--cell-border-width) solid var(--border);
 }
 .find-list-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; }
 .find-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -820,7 +821,7 @@ html, body {
 
 /* Detail card corrective block — navy highlight (from corrective screen) */
 .detail-block-navy .detail-block-label { color: var(--text2); font-weight: 500; }
-.detail-block-navy .detail-block-val   { border: 2px solid var(--navy); cursor: pointer; background: #fff; }
+.detail-block-navy .detail-block-val   { border: var(--cell-border-width) solid var(--navy); cursor: pointer; background: #fff; }
 
 /* Navy drum overlay theme */
 #overlay-drum.navy-theme .overlay-box { background: #eaf0fb; }
@@ -860,7 +861,7 @@ html, body {
 }
 .corr-m-sel-lbl { font-size: 12px; font-weight: 600; color: var(--text2); }
 .corr-m-desc {
-  width: 100%; min-height: 58px; border: 1.5px solid var(--border);
+  width: 100%; min-height: 58px; border: var(--cell-border-width) solid var(--border);
   border-radius: 10px; padding: 10px 12px; font-size: 13px;
   font-family: inherit; color: #1a2035; background: #fff;
   resize: none; box-sizing: border-box;
@@ -871,7 +872,7 @@ html, body {
 }
 .corr-m-half { flex: 1; min-width: 0; }
 .corr-m-input {
-  width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
+  width: 100%; border: var(--cell-border-width) solid var(--border); border-radius: 10px;
   padding: 10px 12px; font-size: 13px; font-family: inherit;
   color: #1a2035; background: #fff; box-sizing: border-box;
 }
@@ -881,7 +882,7 @@ html, body {
 .corr-m-ph,
 .corr-m-cell.corr-m-ph { color: #aaa; font-size: 13px; font-weight: 400; font-family: inherit; }
 .corr-m-cell {
-  border: 1.5px solid var(--border); border-radius: 10px;
+  border: var(--cell-border-width) solid var(--border); border-radius: 10px;
   padding: 10px 12px; font-size: 13px; color: #1a2035; background: #fff;
   cursor: pointer; display: flex; align-items: center; min-height: 42px;
   box-sizing: border-box;
@@ -931,7 +932,7 @@ html, body {
   flex: 1 1 0; min-width: 0; box-sizing: border-box;
   line-height: 1.3;
   background: #fff; border-radius: 10px; padding: 6px 10px;
-  border: 1px solid var(--border); min-height: 36px;
+  border: var(--cell-border-width) solid var(--border); min-height: 36px;
   display: flex; align-items: center; word-break: break-word;
 }
 .detail-block { padding: 4px 0; }
@@ -939,11 +940,11 @@ html, body {
 .detail-block-val {
   font-size: 13px; color: #1a2035; line-height: 1.4;
   background: #fff; border-radius: 10px; padding: 6px 10px;
-  border: 1px solid var(--border); min-height: 36px;
+  border: var(--cell-border-width) solid var(--border); min-height: 36px;
   white-space: pre-wrap; word-break: break-word;
 }
 .detail-val.detail-val-editable {
-  border: 2px solid var(--orange); cursor: pointer; background: #fff;
+  border: var(--cell-border-width) solid var(--orange); cursor: pointer; background: #fff;
 }
 .detail-checklist-row { align-items: center; }
 #screen-detail .card-checklist-btn {
@@ -961,7 +962,7 @@ html, body {
 }
 #screen-detail .card-checklist-btn:active { opacity: 0.8; }
 .detail-block-val.detail-block-val-editable {
-  border: 2px solid var(--orange); cursor: pointer; background: #fff;
+  border: var(--cell-border-width) solid var(--orange); cursor: pointer; background: #fff;
 }
 .detail-val-red { background: rgba(192,57,43,0.15); }
 .detail-val-works-no { color: var(--red); font-weight: 700; }
@@ -1219,7 +1220,7 @@ html, body {
 }
 .passport-appendix-table th,
 .passport-appendix-table td {
-  border: 1px solid var(--border); padding: 8px 10px;
+  border: var(--cell-border-width) solid var(--border); padding: 8px 10px;
   vertical-align: top; text-align: left;
 }
 .passport-appendix-table td {
@@ -1262,11 +1263,11 @@ html, body {
 }
 .passport-appendix-criteria-item { margin-bottom: 16px; }
 .passport-excel-sheet {
-  border: 1px solid #000; background: #fff;
+  border: var(--cell-border-width) solid #000; background: #fff;
   font-size: 13px; line-height: 1.3; color: #000;
 }
 .passport-excel-row {
-  border-bottom: 1px solid #000; padding: 3px 4px;
+  border-bottom: var(--cell-border-width) solid #000; padding: 3px 4px;
 }
 .passport-excel-row:last-child { border-bottom: none; }
 .passport-excel-row--title {
@@ -1295,14 +1296,31 @@ html, body {
 .passport-excel-images .passport-excel-img { max-width: calc(50% - 1px); }
 .passport-excel-images .passport-excel-img:only-child { max-width: 100%; }
 .passport-excel-grid {
-  width: 100%; border-collapse: collapse; border: 1px solid #000;
+  width: 100%; border-collapse: collapse;
+  border: 0;
+  border-top: var(--cell-border-width) solid #000;
+  border-left: var(--cell-border-width) solid #000;
   font-size: 12px; line-height: 1.35; color: #000; table-layout: fixed;
 }
 .passport-excel-grid col:first-child { width: 24%; }
 .passport-excel-grid col:nth-child(2) { width: 38%; }
 .passport-excel-grid col:nth-child(3) { width: 38%; }
 .passport-excel-grid-cell {
-  border: 1px solid #000; padding: 4px 5px; vertical-align: top;
+  border: 0;
+  border-right: var(--cell-border-width) solid #000;
+  border-bottom: var(--cell-border-width) solid #000;
+  padding: 4px 5px; vertical-align: top;
+  box-sizing: border-box;
+}
+.passport-excel-grid-cell--has-subgrid { padding: 0; }
+.passport-excel-subgrid {
+  width: 100%; border-collapse: collapse; border: 0;
+}
+.passport-excel-subgrid td {
+  border: 0;
+  border-right: var(--cell-border-width) solid #000;
+  border-bottom: var(--cell-border-width) solid #000;
+  padding: 2px; vertical-align: middle; box-sizing: border-box;
 }
 .passport-excel-grid-cell--orange { background: #ffc000; color: #000; }
 .passport-excel-grid-cell--step-light { background: #deeaf6; color: #0070c0; }
@@ -1514,7 +1532,7 @@ html, body {
 }
 .pw-cell {
   width: 74px; flex-shrink: 0;
-  border: 1.5px solid var(--border); border-radius: 8px;
+  border: var(--cell-border-width) solid var(--border); border-radius: 8px;
   padding: 7px 4px; font-size: 16px; font-family: monospace;
   color: #1a2035; background: #f0f0f0; text-align: center; letter-spacing: 3px;
 }
@@ -1548,14 +1566,14 @@ html, body {
 .barriers-td-passport {
   font-size: 12px; color: #1a2035; font-weight: 500;
   padding: 11px 4px 11px 8px; vertical-align: top;
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--cell-border-width) solid var(--border);
   overflow-wrap: break-word;
   word-break: break-word;
 }
 .barriers-table .methods-td-name { font-size: 12px; }
 .methods-th {
   font-size: 11px; font-weight: 700; color: var(--text2); text-align: center;
-  padding: 8px 4px; border-bottom: 2px solid var(--border);
+  padding: 8px 4px; border-bottom: var(--cell-border-width) solid var(--border);
   position: sticky; top: 0; z-index: 2; background: var(--bg); white-space: nowrap;
 }
 .methods-th-name { text-align: left; padding-left: 8px; }
@@ -1572,7 +1590,7 @@ html, body {
 .methods-th-count-col { white-space: normal; line-height: 1.3; }
 .methods-th-name .methods-th-count { text-align: left; }
 .barriers-th-passport .methods-th-count { text-align: center; }
-.methods-td { padding: 11px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.methods-td { padding: 11px 4px; border-bottom: var(--cell-border-width) solid var(--border); vertical-align: middle; }
 .methods-td-name { font-size: 14px; color: #1a2035; font-weight: 500; padding-left: 8px; }
 .methods-td-cb { text-align: center; }
 /* Left checkbox (Выбрать) — fills GREY when checked */
@@ -1660,7 +1678,7 @@ html, body {
 #overlay-bpk-goals .bpk-goal-input {
   flex: 1 1 0; min-width: 0; text-align: center;
   font-family: inherit; cursor: text;
-  border: 2px solid var(--orange);
+  border: var(--cell-border-width) solid var(--orange);
 }
 #overlay-bpk-goals .detail-val.bpk-goal-input:focus {
   outline: none; border-color: var(--orange);
@@ -1692,7 +1710,7 @@ html, body {
   padding: 8px 14px 4px; flex-shrink: 0;
 }
 .method-new-input {
-  flex: 1; height: 44px; border: 1.5px solid var(--border);
+  flex: 1; height: 44px; border: var(--cell-border-width) solid var(--border);
   border-radius: 10px; padding: 0 12px; font-size: 14px; background: #fff;
   outline: none; transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -1742,7 +1760,7 @@ html, body {
 }
 .bpk-input-row { display: flex; gap: 8px; align-items: center; width: 100%; }
 .bpk-input-field {
-  flex: 1; min-width: 0; height: 44px; border: 1.5px solid var(--border);
+  flex: 1; min-width: 0; height: 44px; border: var(--cell-border-width) solid var(--border);
   border-radius: 10px; padding: 0 12px; font-size: 14px; background: #fff; outline: none;
   -webkit-user-select: text; user-select: text; touch-action: manipulation;
 }
@@ -5774,7 +5792,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v305';
+var APP_BUILD = 'pkb-v306';
 var APP_VERSION = '1.03';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -6386,6 +6404,7 @@ function renderPassportAppendixContent(bodyEl, content) {
           td.appendChild(gtx);
         }
         if (cell.subgrid) {
+          td.classList.add('passport-excel-grid-cell--has-subgrid');
           appendPassportExcelSubgrid(td, cell.subgrid);
         } else {
           appendPassportExcelImages(td, cell.images, cell.imagesWrap ? 'wrap' : false);
