@@ -10,6 +10,7 @@ const path = require('path');
 const cron = require('node-cron');
 const { createBackupFromLive } = require('./lib/backups-lib');
 const { getDb, getDbPath, getDbStatus } = require('./lib/db');
+const { countAllRecords } = require('./lib/records-store');
 const { migrateFromGithubIfEmpty } = require('./lib/migrate-from-github');
 const { purgeGithubLegacyExcelBackups } = require('./lib/github-legacy-backups');
 const { isEnabled: isGithubPersistEnabled } = require('./lib/github-persist');
@@ -63,7 +64,16 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '4mb' }));
 
+let bootstrapReady = false;
+
 app.get('/health', function(_req, res) {
+  if (!bootstrapReady) {
+    return res.status(503).json({
+      ok: false,
+      bootstrapping: true,
+      build: readAppBuildTag(),
+    });
+  }
   const db = getDbStatus();
   const payload = {
     ok: db.ok,
@@ -71,6 +81,9 @@ app.get('/health', function(_req, res) {
     node: process.version,
     database: db.ok ? path.basename(db.path) : path.basename(getDbPath()),
   };
+  if (db.ok) {
+    try { payload.recordCount = countAllRecords(); } catch (_e) { /* ignore */ }
+  }
   if (db.ephemeral) payload.ephemeral = true;
   if (isLocalDev()) payload.localDev = true;
   if (isGithubPersistEnabled()) payload.githubPersist = true;
@@ -152,24 +165,32 @@ if (process.env.ENABLE_BACKUP_CRON !== '0') {
   console.log('[cron] daily backup scheduled at 00:00 MSK');
 }
 
-app.listen(PORT, HOST, function() {
-  console.log('proverki-kb listening on http://' + HOST + ':' + PORT + ' (Node ' + process.version + ')');
-  bootstrapData()
-    .then(function() {
-      const db = getDbStatus();
-      if (db.ok) {
-        console.log('[data] SQLite:', db.path);
-        if (db.ephemeral && isGithubPersistEnabled()) {
-          console.log('[data] Local path is ephemeral; database persists via GitHub sync');
-        } else if (db.ephemeral) {
-          console.warn('[data] Ephemeral storage — database resets on Timeweb redeploy');
-        }
-      } else {
-        console.error('[data] SQLite init failed:', db.error);
-        console.error('[data] Static UI is served; API will return errors until DATABASE_PATH is writable and Node >= 22.5');
+async function startServer() {
+  try {
+    await bootstrapData();
+    const db = getDbStatus();
+    if (db.ok) {
+      let recordCount = 0;
+      try { recordCount = countAllRecords(); } catch (_e) { /* ignore */ }
+      console.log('[data] SQLite:', db.path, '(' + recordCount + ' records)');
+      if (db.ephemeral && isGithubPersistEnabled()) {
+        console.log('[data] Local path is ephemeral; database persists via GitHub sync');
+      } else if (db.ephemeral) {
+        console.warn('[data] Ephemeral storage — database resets on Timeweb redeploy');
       }
-    })
-    .catch(function(e) {
-      console.error('[bootstrap] failed:', e.message);
-    });
-});
+    } else {
+      console.error('[data] SQLite init failed:', db.error);
+      console.error('[data] Static UI is served; API will return errors until DATABASE_PATH is writable and Node >= 22.5');
+    }
+  } catch (e) {
+    console.error('[bootstrap] failed:', e.message);
+  } finally {
+    bootstrapReady = true;
+  }
+
+  app.listen(PORT, HOST, function() {
+    console.log('proverki-kb listening on http://' + HOST + ':' + PORT + ' (Node ' + process.version + ')');
+  });
+}
+
+startServer();
