@@ -2842,7 +2842,8 @@ function syncUpdateToServer(item) {
     updateSyncIndicator();
     var ctrl = new AbortController();
     var timer = setTimeout(function() { ctrl.abort(); }, 14000);
-    fetch('/api/update', {
+    getPushSenderEndpoint().then(function(senderEp) {
+    return fetch('/api/update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -2852,17 +2853,48 @@ function syncUpdateToServer(item) {
         dateCheck: item.dateCheck || '',
         method: item.method || '',
         org: item.org || '',
-        barrier: item.barrier || ''
+        barrier: item.barrier || '',
+        updatedAt: item.updatedAt || 0,
+        senderEndpoint: senderEp || null
       }),
       signal: ctrl.signal
+    });
     })
-    .then(function(r) { clearTimeout(timer); return r.json(); })
-    .then(function(d) {
+    .then(function(r) {
+      clearTimeout(timer);
+      return r.json().then(function(d) { return { status: r.status, body: d || {} }; });
+    })
+    .then(function(res) {
+      var d = res.body || {};
+      if (res.status === 409 || d.conflict) {
+        console.warn('[update-sync] конфликт — принимаем серверную версию');
+        removeFromUpdateQueue(item.dateEntry);
+        if (d.record) {
+          var local = (appState.db || []).find(function(r) {
+            return r.dateEntry === item.dateEntry || (d.record.checkId && r.checkId === d.record.checkId);
+          });
+          if (local) {
+            Object.keys(d.record).forEach(function(k) { local[k] = d.record[k]; });
+            saveState();
+            refreshActiveRecordLists();
+          }
+        } else {
+          loadFromServer(function() { refreshActiveRecordLists(); }, { forceFull: true });
+        }
+        updateSyncStatusFromQueues();
+        resolve(false);
+        return;
+      }
       if (d.success) {
         removeFromUpdateQueue(item.dateEntry);
         var shas = getServerShas();
         delete shas['sha' + item.year];
         saveServerShas(shas);
+        if (d.updatedAt) {
+          var loc2 = (appState.db || []).find(function(r) { return r.dateEntry === item.dateEntry; });
+          if (loc2) loc2.updatedAt = d.updatedAt;
+          saveState();
+        }
         updateSyncStatusFromQueues();
         console.log('[update-sync] сохранено на сервере:', item.dateEntry);
         resolve(true);
@@ -2949,7 +2981,7 @@ function seedUpdateQueueFromLocalDb(serverRecords) {
     if (!Object.keys(fields).length) return;
     var year = local.year || (local.dateCheck ? local.dateCheck.split('.')[2] : String(new Date().getFullYear()));
     addToUpdateQueue({
-      dateEntry: local.dateEntry, year: year, fields: fields, updatedAt: Date.now(),
+      dateEntry: local.dateEntry, year: year, fields: fields, updatedAt: local.updatedAt || 0,
       dateCheck: local.dateCheck || '', method: local.method || '',
       org: local.org || '', barrier: local.barrier || ''
     });
@@ -2995,7 +3027,7 @@ function saveRecordFieldUpdate(dateEntry, year, fields) {
   }
   saveState();
   var item = {
-    dateEntry: dateEntry, year: year, fields: fields, updatedAt: Date.now(),
+    dateEntry: dateEntry, year: year, fields: fields, updatedAt: (rec && rec.updatedAt) || 0,
     dateCheck: rec ? rec.dateCheck : '',
     method: rec ? rec.method : '',
     org: rec ? rec.org : '',
@@ -3110,30 +3142,37 @@ function recordStableKey(r) {
   return '';
 }
 
-// Merge server snapshot with offline queue; keep server-confirmed rows missing from a stale response.
+var DELETED_IDS_KEY = 'pkb-deleted-check-ids';
+function getDeletedCheckIds() {
+  try { return JSON.parse(localStorage.getItem(DELETED_IDS_KEY) || '[]'); } catch (e) { return []; }
+}
+function rememberDeletedCheckId(checkId) {
+  if (!checkId) return;
+  try {
+    var ids = getDeletedCheckIds();
+    if (ids.indexOf(checkId) < 0) ids.push(checkId);
+    if (ids.length > 500) ids = ids.slice(-500);
+    localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(ids));
+  } catch (e) {}
+}
+function forgetDeletedCheckIdsPresentOnServer(serverRecords) {
+  try {
+    var onServer = {};
+    (serverRecords || []).forEach(function(r) { if (r && r.checkId) onServer[r.checkId] = true; });
+    var ids = getDeletedCheckIds().filter(function(id) { return !onServer[id]; });
+    localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(ids));
+  } catch (e) {}
+}
+
+// Merge server + offline create queue only. Do NOT resurrect deleted server rows from localStorage.
 function mergeServerRecords(serverRecords) {
-  var merged = mergeWithQueue(serverRecords);
-  var keys = {};
-  merged.forEach(function(r) {
-    var k = recordStableKey(r);
-    if (k) keys[k] = true;
+  forgetDeletedCheckIdsPresentOnServer(serverRecords);
+  var deleted = {};
+  getDeletedCheckIds().forEach(function(id) { deleted[id] = true; });
+  var filtered = (serverRecords || []).filter(function(r) {
+    return !(r && r.checkId && deleted[r.checkId]);
   });
-  var added = false;
-  (appState.db || []).forEach(function(local) {
-    var k = recordStableKey(local);
-    if (!k || keys[k]) return;
-    if (local.checkId) {
-      merged.push(local);
-      keys[k] = true;
-      added = true;
-    }
-  });
-  if (added) {
-    merged = merged.filter(function(r) { return r.dateCheck && r.dateCheck.trim(); });
-    merged.forEach(function(r) { if (r.dateCheck) r.dateCheck = normalizeDateStr(r.dateCheck); });
-    merged.sort(cmpRecords);
-  }
-  return merged;
+  return mergeWithQueue(filtered);
 }
 
 function refreshActiveRecordLists() {
@@ -3156,22 +3195,6 @@ function clearApiCacheViaSw() {
 
 function applyLoadedRecords(serverRecords, finish) {
   var localDb = appState.db.slice();
-  if (localDb.length >= 50 && serverRecords.length < Math.min(100, Math.floor(localDb.length * 0.5))) {
-    console.warn('[server] неполный ответ сервера (' + serverRecords.length + ' из ' + localDb.length + ') — сохраняем локальные проверки');
-    var jul25FromServer = serverRecords.filter(function(r) {
-      return String(r.dateCheck || '').trim().indexOf('25.07.2026') === 0;
-    });
-    serverRecords = localDb.slice();
-    jul25FromServer.forEach(function(sr) {
-      if (!sr.checkId) return;
-      var idx = -1;
-      for (var i = 0; i < serverRecords.length; i++) {
-        if (serverRecords[i].checkId === sr.checkId) { idx = i; break; }
-      }
-      if (idx >= 0) serverRecords[idx] = sr;
-      else serverRecords.push(sr);
-    });
-  }
   seedUpdateQueueFromLocalDb(serverRecords);
   appState.db = mergeServerRecords(serverRecords);
   preserveLocalChecklists(appState.db, localDb);
@@ -3179,6 +3202,7 @@ function applyLoadedRecords(serverRecords, finish) {
   purgeSyncedUpdates(appState.db);
   normalizeDbDates();
   renumberDb();
+  try { appState.lastSyncedAt = Date.now(); } catch (_e) {}
   fetch('/api/checklists?_=' + Date.now(), { cache: 'no-store' })
     .then(function(r) { return r.ok ? r.json() : { items: {} }; })
     .catch(function() { return { items: {} }; })
@@ -3234,6 +3258,7 @@ function recoverRecordsWhenServerEmpty(finish) {
 // are queued and all receive the same result when the single request completes.
 var _loadCallbacks = null; // null = idle; array = request in flight
 var _loadForceFull = false;
+var _loadGen = 0;
 
 function loadFromServer(onDone, opts) {
   opts = opts || {};
@@ -3244,25 +3269,26 @@ function loadFromServer(onDone, opts) {
   }
   _loadCallbacks = onDone ? [onDone] : [];
   _loadForceFull = !!opts.forceFull;
+  var myGen = ++_loadGen;
 
   function finish(ok) {
+    if (myGen !== _loadGen) return;
     clearTimeout(safetyTimer);
     var cbs = _loadCallbacks;
-    var forceFull = _loadForceFull;
     _loadCallbacks = null;
     _loadForceFull = false;
-    cbs.forEach(function(cb) { cb(ok); });
+    if (!cbs) return;
+    cbs.forEach(function(cb) { try { cb(ok); } catch (_e) {} });
   }
 
-  // Safety net: if no response in 14s → continue offline
+  // Safety net: if no response in 14s → continue offline; invalidate late response
   var safetyTimer = setTimeout(function() {
     console.warn('[server] таймаут 14с — продолжаем офлайн');
+    _loadGen++;
     finish(false);
   }, 14000);
 
-  // Build URL with per-year SHA params for conditional GET (ETag optimisation).
-  // Server returns {unchanged:true} when file SHA matches → skips file transfer + parse.
-  // forceFull skips SHA (resume / pull / online) so other users' saves are always fetched.
+  // forceFull skips SHA; background poll can use conditional GET via year revisions.
   var params = ['_=' + Date.now()];
   if (!_loadForceFull) {
     var shas = getServerShas();
@@ -3274,14 +3300,17 @@ function loadFromServer(onDone, opts) {
 
   fetch(url, { cache: 'no-store' })
   .then(function(r) {
+    if (myGen !== _loadGen) return null;
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return r.json();
   })
   .then(function(d) {
+    if (!d || myGen !== _loadGen) return;
     if (d.shas) saveServerShas(d.shas);
 
     if (d.unchanged) {
       console.log('[server] без изменений, данные актуальны');
+      try { appState.lastSyncedAt = Date.now(); } catch (_e) {}
       retryAllQueues();
       refreshActiveRecordLists();
       finish(true);
@@ -3299,6 +3328,7 @@ function loadFromServer(onDone, opts) {
     finish(true);
   })
   .catch(function(e) {
+    if (myGen !== _loadGen) return;
     console.warn('[server] офлайн:', e.message);
     finish(false);
   });
@@ -3834,10 +3864,11 @@ window.addEventListener('DOMContentLoaded', function() {
   setInterval(function() {
     if (document.hidden || !hasSession()) return;
     clearApiCacheViaSw();
+    // Background: conditional GET via year revisions (faster). Pull/resume stay forceFull.
     loadFromServer(function() {
       refreshActiveRecordLists();
-    }, { forceFull: true });
-  }, 300000);
+    }, { forceFull: false });
+  }, 90000);
   window.addEventListener('online', syncWhenOnline);
   document.addEventListener('visibilitychange', function() {
     if (document.hidden) {
@@ -5061,6 +5092,7 @@ function confirmDeleteRecord() {
 function deleteRecordFromApp(r) {
   if (!r) return;
   var year = r.year || (r.dateCheck ? r.dateCheck.split('.')[2] : String(new Date().getFullYear()));
+  if (r.checkId) rememberDeletedCheckId(r.checkId);
   appState.db = appState.db.filter(function(x) {
     if (r.checkId && x.checkId === r.checkId) return false;
     if (r.dateEntry && x.dateEntry === r.dateEntry) return false;
@@ -5281,7 +5313,9 @@ function submitCard() {
   appState.db.push(cardData);
   renumberDb();
   saveState();
-  syncToServer(Object.assign({}, cardData)); // fire-and-forget sync to server Excel
+  var toSync = Object.assign({}, cardData);
+  addToSyncQueue(toSync); // durable before network — survive kill mid-request
+  syncToServer(toSync);
   document.getElementById('success-overlay').classList.add('active');
 }
 
@@ -5869,7 +5903,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v317';
+var APP_BUILD = 'pkb-v318';
 var APP_VERSION = '1.03';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');

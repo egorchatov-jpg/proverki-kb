@@ -1,9 +1,10 @@
-const { sendViolationPush } = require('../lib/push-notify');
+const { sendViolationPush, sendRecordsChangedPush } = require('../lib/push-notify');
 const { saveChecklistForRecord } = require('../lib/checklists-lib');
 const { loadSettings } = require('../lib/settings-store');
 const { insertRecord } = require('../lib/records-store');
 const { getDb } = require('../lib/db');
 const { scheduleDbPersist } = require('../lib/github-persist');
+const { assertWritesAllowed } = require('../lib/write-gate');
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -14,6 +15,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
+    if (!assertWritesAllowed(res)) return;
     getDb();
     const { record, senderEndpoint } = req.body || {};
     if (!record) return res.status(400).json({ error: 'Missing record' });
@@ -39,15 +41,20 @@ module.exports = async (req, res) => {
       }
     }
 
-    if (!saveResult.duplicate) scheduleDbPersist();
+    if (!saveResult.duplicate) {
+      scheduleDbPersist();
+      sendRecordsChangedPush(senderEndpoint || null).catch(function(e) {
+        console.warn('[save] silent sync push failed:', e.message);
+      });
+    }
 
     return res.status(200).json({
       success: true,
       duplicate: !!saveResult.duplicate,
       notified,
-      num: record.num,
+      num: saveResult.num != null ? saveResult.num : record.num,
       year: saveResult.year || record.year,
-      checkId: record.checkId,
+      checkId: saveResult.checkId || record.checkId,
     });
   } catch (err) {
     console.error('[save] error:', err.message);

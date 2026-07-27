@@ -13,8 +13,10 @@ const { getDb, getDbPath, getDbStatus, closeDb } = require('./lib/db');
 const { countAllRecords } = require('./lib/records-store');
 const { migrateFromGithubIfEmpty } = require('./lib/migrate-from-github');
 const { purgeGithubLegacyExcelBackups } = require('./lib/github-legacy-backups');
-const { isEnabled: isGithubPersistEnabled, forcePullDbFromGithub } = require('./lib/github-persist');
+const { isEnabled: isGithubPersistEnabled, forcePullDbFromGithub, bootstrapGithubPersist, pushDbToGithub, installShutdownFlushHooks } = require('./lib/github-persist');
 const { isLocalDev } = require('./lib/runtime-env');
+const { setBootstrapComplete } = require('./lib/write-gate');
+const { requireAdmin } = require('./lib/admin-auth');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 3000);
@@ -99,11 +101,7 @@ app.get('/health', function(_req, res) {
 });
 
 app.post('/api/reload-db', async function(req, res) {
-  const secret = process.env.CRON_SECRET || process.env.RELOAD_DB_SECRET || '';
-  const auth = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
-  if (!secret || auth !== secret) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+  if (!requireAdmin(req, res)) return;
   try {
     if (!isGithubPersistEnabled()) {
       return res.status(503).json({ error: 'GitHub persist disabled' });
@@ -111,6 +109,7 @@ app.post('/api/reload-db', async function(req, res) {
     const pull = await forcePullDbFromGithub();
     getDb({ reopen: true });
     const recordCount = countAllRecords();
+    setBootstrapComplete(recordCount > 0, recordCount);
     bootstrapInfo = Object.assign({}, bootstrapInfo, { dbPull: pull, recordCount: recordCount, reloadedAt: Date.now() });
     res.status(recordCount > 0 ? 200 : 503).json({ ok: recordCount > 0, recordCount: recordCount, pull: pull });
   } catch (e) {
@@ -118,19 +117,23 @@ app.post('/api/reload-db', async function(req, res) {
   }
 });
 
-app.get('/api/self-heal', async function(_req, res) {
+app.get('/api/self-heal', async function(req, res) {
   try {
     let recordCount = 0;
     try { recordCount = countAllRecords(); } catch (_e) { /* ignore */ }
     if (recordCount > 0) {
+      setBootstrapComplete(true, recordCount);
       return res.status(200).json({ ok: true, recordCount: recordCount, action: 'none' });
     }
+    // Empty DB self-heal is allowed without admin secret (recovery path for clients).
+    // Force wipe requires admin when DB already has data (handled above).
     if (!isGithubPersistEnabled()) {
       return res.status(503).json({ ok: false, error: 'GitHub persist disabled' });
     }
     const pull = await forcePullDbFromGithub();
     getDb({ reopen: true });
     recordCount = countAllRecords();
+    setBootstrapComplete(recordCount > 0, recordCount);
     if (bootstrapInfo) bootstrapInfo.recordCount = recordCount;
     res.status(recordCount > 0 ? 200 : 503).json({ ok: recordCount > 0, recordCount: recordCount, pull: pull, action: 'force_pull' });
   } catch (e) {
@@ -212,7 +215,12 @@ async function bootstrapData() {
     await pushDbToGithub().catch(function(e) {
       console.warn('[persist] push after migrate failed:', e.message);
     });
+    try { recordCount = countAllRecords(); } catch (_e) { /* ignore */ }
+    if (bootstrapInfo) bootstrapInfo.recordCount = recordCount;
   }
+
+  setBootstrapComplete(isLocalDev() || recordCount > 0 || !isGithubPersistEnabled(), recordCount);
+
   purgeGithubLegacyExcelBackups()
     .then(function(r) {
       if (r && r.deletedFiles) console.log('[backups] purged legacy GitHub Excel backups:', r.deletedFiles, 'files');
@@ -236,6 +244,7 @@ if (process.env.ENABLE_BACKUP_CRON !== '0') {
 }
 
 async function startServer() {
+  installShutdownFlushHooks();
   try {
     await bootstrapData();
     const db = getDbStatus();
@@ -254,6 +263,7 @@ async function startServer() {
     }
   } catch (e) {
     console.error('[bootstrap] failed:', e.message);
+    setBootstrapComplete(false, 0);
   } finally {
     bootstrapReady = true;
   }

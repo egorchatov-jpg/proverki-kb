@@ -41,6 +41,8 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
+      const { requireAdmin } = require('../lib/admin-auth');
+      if (!requireAdmin(req, res)) return;
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
       const backupId = body.backupId;
       if (!backupId) return res.status(400).json({ error: 'backupId required' });

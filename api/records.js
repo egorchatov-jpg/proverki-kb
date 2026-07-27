@@ -2,6 +2,7 @@ const { getDb } = require('../lib/db');
 const {
   listAllRecords,
   listRecordsByYear,
+  listYearsWithRecords,
   getYearRevision,
 } = require('../lib/records-store');
 
@@ -16,21 +17,15 @@ module.exports = async (req, res) => {
 
   try {
     getDb();
-    const cur = new Date().getFullYear();
-    const years = req.query.year
-      ? [String(req.query.year)]
-      : Array.from({ length: cur - 2025 }, (_, i) => String(2026 + i));
 
-    if (years.length === 1) {
-      const year = years[0];
-      const shaKey = `sha${year}`;
+    if (req.query.year) {
+      const year = String(req.query.year);
+      const shaKey = 'sha' + year;
       const clientSha = (req.query[shaKey] || '').trim();
       const serverSha = getYearRevision(year);
-
       if (clientSha && clientSha === serverSha) {
         return res.status(200).json({ unchanged: true, shas: { [shaKey]: clientSha } });
       }
-
       const recs = listRecordsByYear(year);
       return res.status(200).json({
         records: recs,
@@ -38,8 +33,22 @@ module.exports = async (req, res) => {
       });
     }
 
+    const years = listYearsWithRecords();
+    const shas = {};
+    years.forEach(function(y) {
+      shas['sha' + y] = getYearRevision(y);
+    });
+
+    const clientHasAll = years.length > 0 && years.every(function(y) {
+      const key = 'sha' + y;
+      return !!(req.query[key] && String(req.query[key]) === shas[key]);
+    });
+    if (clientHasAll) {
+      return res.status(200).json({ unchanged: true, shas: shas });
+    }
+
     const allRecords = listAllRecords();
-    return res.status(200).json({ records: allRecords });
+    return res.status(200).json({ records: allRecords, shas: shas });
   } catch (err) {
     console.error('[records] error:', err.message);
     return res.status(500).json({ error: err.message });
