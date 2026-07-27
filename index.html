@@ -3821,6 +3821,7 @@ window.addEventListener('DOMContentLoaded', function() {
   initChecklistViolationOverlay();
   bindIosKbOverlayViewport();
   initIosKbOverlayInputFixes();
+  clearSettingsDirty();
   syncSettingsFromServer(function() {
     refreshSettingsDependentUi();
     loadFromServer(function() {
@@ -4568,16 +4569,20 @@ function scheduleSettingsSync() {
 }
 
 function markSettingsDirty() {
-  try { localStorage.setItem('pkb-settings-dirty', '1'); } catch(e) {}
+  // Session-only: dirty must not survive restarts/updates, otherwise stale
+  // localStorage can overwrite master settings after redeploy.
+  try { sessionStorage.setItem('pkb-settings-dirty', '1'); } catch(e) {}
+  try { localStorage.removeItem('pkb-settings-dirty'); } catch(e) {}
   appState.settingsUpdatedAt = Date.now();
   saveState();
   scheduleSettingsSync();
 }
 function clearSettingsDirty() {
+  try { sessionStorage.removeItem('pkb-settings-dirty'); } catch(e) {}
   try { localStorage.removeItem('pkb-settings-dirty'); } catch(e) {}
 }
 function isSettingsDirty() {
-  try { return localStorage.getItem('pkb-settings-dirty') === '1'; } catch(e) { return false; }
+  try { return sessionStorage.getItem('pkb-settings-dirty') === '1'; } catch(e) { return false; }
 }
 function mergeMethods(server, local) {
   if (!server || !server.length) return local || DEFAULT_METHODS;
@@ -4710,6 +4715,51 @@ function refreshSettingsDependentUi() {
   }
 }
 
+function applyMasterSettingsPayload(data) {
+  if (!data) return;
+  if (data.methods && data.methods.length) {
+    appState.methods = data.methods.map(function(m) {
+      var copy = Object.assign({}, m);
+      if (copy.name) copy.name = renameSamoproverkaText(copy.name);
+      return copy;
+    });
+  }
+  if (data.barriersPK) appState.barriersPK = data.barriersPK;
+  if (data.orgs && data.orgs.length) {
+    var serverOrgs = data.orgs;
+    if (typeof serverOrgs[0] === 'string') {
+      serverOrgs = serverOrgs.map(function(n) { return { name: n, show: true, inspects: false }; });
+    }
+    if (serverOrgs.some(function(o) { return String(o.name || o).indexOf(String.fromCharCode(171)) >= 0; })) {
+      serverOrgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true, inspects: false }; });
+    }
+    appState.orgs = serverOrgs.map(function(o) {
+      return normalizeOrgRoleFlags(Object.assign({}, typeof o === 'string' ? { name: o, show: true, inspects: false } : o));
+    });
+  }
+  if (data.barriers && data.barriers.length) appState.barriers = data.barriers;
+  if (data.barriersConfig) {
+    appState.barriersConfig = data.barriersConfig;
+    applyBarriersPKToConfig(data.barriersPK, appState.barriersConfig);
+  } else if (data.barriersPK) {
+    applyBarriersPKToConfig(data.barriersPK, appState.barriersConfig || {});
+  }
+  if (data.barriersCustomPassports) {
+    appState.barriersCustomPassports = Object.assign({}, data.barriersCustomPassports);
+  }
+  if (data.settingsUpdatedAt) appState.settingsUpdatedAt = data.settingsUpdatedAt;
+  if (data.passwords) {
+    var sp = data.passwords;
+    if (!appState.passwords) appState.passwords = getDefaultPasswords();
+    if (sp.admin) appState.passwords.admin = sp.admin;
+    if (sp.inspector) appState.passwords.inspector = sp.inspector;
+    if (sp.orgs) appState.passwords.orgs = Object.assign({}, sp.orgs);
+  }
+  if (data.usedPasswords && data.usedPasswords.length) {
+    appState.usedPasswords = data.usedPasswords.slice();
+  }
+}
+
 function syncSettingsFromServer(callback) {
   var errEl = document.getElementById('pin-error');
   if (errEl) errEl.textContent = 'Загрузка настроек…';
@@ -4730,81 +4780,13 @@ function syncSettingsFromServer(callback) {
         if (callback) callback();
         return;
       }
-      var localDirty = isSettingsDirty();
-      var preferLocal = localDirty || ((appState.settingsUpdatedAt || 0) > (data.settingsUpdatedAt || 0));
-      var localMethods = appState.methods;
-      var localOrgs = appState.orgs;
-      var localBarriersConfig = appState.barriersConfig;
-      var localCustomPassports = appState.barriersCustomPassports || {};
-      // Merge server settings — never rewrite Excel records (values used only for NEW entries)
-      if (data.methods && data.methods.length) {
-        var serverMethods = data.methods.map(function(m) {
-          var copy = Object.assign({}, m);
-          if (copy.name) copy.name = renameSamoproverkaText(copy.name);
-          return copy;
-        });
-        appState.methods = mergeMethods(serverMethods, localMethods);
-        if (methodsSnapForCompare(appState.methods) !== methodsSnapForCompare(serverMethods)) {
-          markSettingsDirty();
-        }
-      } else if (localMethods && localMethods.length) {
-        appState.methods = localMethods.map(function(m) { return Object.assign({}, m); });
-        markSettingsDirty();
+      // Master absolute priority: server settings always win.
+      // Local edits may push only via explicit admin actions in this session.
+      var editingNow = isSettingsDirty();
+      if (!editingNow) {
+        applyMasterSettingsPayload(data);
+        clearSettingsDirty();
       }
-      if (data.barriersPK) appState.barriersPK = data.barriersPK;
-      if (data.orgs && data.orgs.length) {
-        var serverOrgs = data.orgs;
-        if (typeof serverOrgs[0] === 'string') {
-          serverOrgs = serverOrgs.map(function(n) { return { name: n, show: true, inspects: false }; });
-        }
-        if (serverOrgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; })) {
-          serverOrgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true, inspects: false }; });
-        }
-        var serverOrgsSnap = orgsSnapForCompare(serverOrgs);
-        appState.orgs = mergeOrgs(serverOrgs, localOrgs);
-        if (orgsSnapForCompare(appState.orgs) !== serverOrgsSnap) markSettingsDirty();
-      } else if (localOrgs && localOrgs.length) {
-        appState.orgs = (localOrgs || []).map(function(o) {
-          return normalizeOrgRoleFlags(Object.assign({}, typeof o === 'string' ? { name: o, show: true, inspects: false } : o));
-        });
-        markSettingsDirty();
-      }
-      if (data.barriers && data.barriers.length) appState.barriers = data.barriers;
-      if (data.barriersConfig || data.barriersPK || (localBarriersConfig && Object.keys(localBarriersConfig).length)) {
-        var serverBarriersConfig = data.barriersConfig || {};
-        appState.barriersConfig = mergeBarriersConfig(serverBarriersConfig, localBarriersConfig, true);
-        applyBarriersPKToConfig(data.barriersPK, appState.barriersConfig);
-        if (barriersConfigSnapForCompare(appState.barriersConfig) !== barriersConfigSnapForCompare(serverBarriersConfig)) {
-          markSettingsDirty();
-        }
-      }
-      var serverCustomPassports = data.barriersCustomPassports || {};
-      appState.barriersCustomPassports = Object.assign({}, serverCustomPassports, localCustomPassports);
-      if (JSON.stringify(appState.barriersCustomPassports) !== JSON.stringify(serverCustomPassports)) {
-        markSettingsDirty();
-      }
-      if (!preferLocal && data.settingsUpdatedAt) {
-        appState.settingsUpdatedAt = data.settingsUpdatedAt;
-      }
-      if (data.passwords && !preferLocal) {
-        // Merge server passwords — superuser PIN is hardcoded, never synced
-        var sp = data.passwords;
-        if (!appState.passwords) appState.passwords = getDefaultPasswords();
-        if (sp.admin)      appState.passwords.admin      = sp.admin;
-        if (sp.inspector)  appState.passwords.inspector  = sp.inspector;
-        if (sp.orgs)       appState.passwords.orgs       = Object.assign(appState.passwords.orgs || {}, sp.orgs);
-      }
-      if (data.usedPasswords && data.usedPasswords.length && !preferLocal) {
-        appState.usedPasswords = data.usedPasswords.slice();
-      } else if (data.usedPasswords && data.usedPasswords.length) {
-        // Union of local and server used lists
-        var serverUsed = data.usedPasswords;
-        var localUsed  = appState.usedPasswords || [];
-        var merged = localUsed.slice();
-        serverUsed.forEach(function(p) { if (merged.indexOf(p) < 0) merged.push(p); });
-        appState.usedPasswords = merged;
-      }
-      if (!isSettingsDirty()) clearSettingsDirty();
       saveState();
       if (callback) callback();
     })
@@ -4812,7 +4794,7 @@ function syncSettingsFromServer(callback) {
       clearTimeout(timer);
       console.warn('[settings] sync from server failed:', e.message);
       if (errEl) errEl.textContent = '';
-      if (callback) callback(); // proceed even if offline
+      if (callback) callback();
     });
 }
 
@@ -4824,6 +4806,11 @@ function syncSettingsToServer() {
   if (isLocalDevRuntime()) {
     saveState();
     clearSettingsDirty();
+    return;
+  }
+  // Master: never push unless this session has explicit admin edits.
+  if (!isSettingsDirty()) {
+    saveState();
     return;
   }
   var gen = ++_settingsSyncGen;
@@ -4847,8 +4834,20 @@ function syncSettingsToServer() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(settings)
   })
-  .then(function(r) { return r.json().catch(function() { return {}; }); })
-  .then(function(d) {
+  .then(function(r) {
+    return r.json().catch(function() { return {}; }).then(function(d) {
+      return { status: r.status, body: d || {} };
+    });
+  })
+  .then(function(res) {
+    var d = res.body || {};
+    if (res.status === 409 || d.rejected) {
+      console.warn('[settings] master rejected stale/default overwrite:', d.reason || res.status);
+      if (d.settings) applyMasterSettingsPayload(d.settings);
+      clearSettingsDirty();
+      saveState();
+      return;
+    }
     if (d && d.success && gen === _settingsSyncGen) {
       clearSettingsDirty();
       saveState();
@@ -4857,9 +4856,9 @@ function syncSettingsToServer() {
   .catch(function(e) { console.warn('[settings] sync to server failed:', e.message); });
 }
 
-/** Exit settings screen: sync to server, then go back to lobby. */
+/** Exit settings screen: sync to server only if admin changed something, then lobby. */
 function exitSettings() {
-  syncSettingsToServer();
+  if (isSettingsDirty()) syncSettingsToServer();
   showScreen('screen-lobby');
 }
 
@@ -5870,7 +5869,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v316';
+var APP_BUILD = 'pkb-v317';
 var APP_VERSION = '1.03';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');

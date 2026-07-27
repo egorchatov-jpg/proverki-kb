@@ -18,6 +18,15 @@ module.exports = async (req, res) => {
 
     if (req.method === 'PUT') {
       const result = saveSettings(req.body || {});
+      if (result.rejected) {
+        return res.status(409).json({
+          success: false,
+          rejected: true,
+          reason: result.reason,
+          settings: result.settings,
+          localDev: isLocalDev(),
+        });
+      }
       if (!isLocalDev()) {
         scheduleDbPersist();
         pushDbToGithub().catch(function(e) {
