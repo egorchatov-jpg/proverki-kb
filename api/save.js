@@ -1,4 +1,4 @@
-const { sendViolationPush, sendRecordsChangedPush } = require('../lib/push-notify');
+const { sendViolationPush } = require('../lib/push-notify');
 const { saveChecklistForRecord } = require('../lib/checklists-lib');
 const { loadSettings } = require('../lib/settings-store');
 const { insertRecord } = require('../lib/records-store');
@@ -40,12 +40,6 @@ module.exports = async (req, res) => {
     }
 
     if (!saveResult.duplicate) scheduleDbPersist();
-
-    if (!saveResult.duplicate) {
-      sendRecordsChangedPush(senderEndpoint || null, record.org || '').catch(function(e) {
-        console.warn('[save] records-sync push failed:', e.message);
-      });
-    }
 
     return res.status(200).json({
       success: true,

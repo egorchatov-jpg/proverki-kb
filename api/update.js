@@ -2,7 +2,6 @@ const { saveChecklistForRecord } = require('../lib/checklists-lib');
 const { updateRecord } = require('../lib/records-store');
 const { getDb } = require('../lib/db');
 const { scheduleDbPersist } = require('../lib/github-persist');
-const { sendRecordsChangedPush } = require('../lib/push-notify');
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -29,9 +28,6 @@ module.exports = async (req, res) => {
     }
 
     scheduleDbPersist();
-    sendRecordsChangedPush(req.body && req.body.senderEndpoint, null).catch(function(e) {
-      console.warn('[update] records-sync push failed:', e.message);
-    });
 
     return res.status(200).json({ success: true });
   } catch (err) {
