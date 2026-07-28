@@ -5903,7 +5903,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v319';
+var APP_BUILD = 'pkb-v320';
 var APP_VERSION = '1.03';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -9973,6 +9973,7 @@ function openRecordChecklistView(r) {
       alert('Чек-лист для этой проверки недоступен');
       return;
     }
+    var editing = canEditRecord();
     _recordChecklistView = r;
     _passportActiveBeforeCard = _passportActive;
     _passportActive = { data: match.data, year: null, label: null };
@@ -9987,18 +9988,22 @@ function openRecordChecklistView(r) {
       descFromChecklist: true
     };
     _cardChecklistQuestionTexts = Object.assign({}, r.checklistQuestionTexts || {});
-    _cardChecklistSnapshot = {
-      violations: Object.assign({}, r.checklistViolations || {}),
-      filled: true,
-      works: r.works || '',
-      desc: r.desc || '',
-      worksLocked: true,
-      descFromChecklist: true,
-      questionTexts: Object.assign({}, _cardChecklistQuestionTexts),
-      passportId: r.checklistPassportId || match.passportId
-    };
-    if (!cardData.checklistViolations) cardData.checklistViolations = {};
-    setCardChecklistScreenMode(true);
+    if (editing) {
+      _cardChecklistSnapshot = {
+        violations: Object.assign({}, r.checklistViolations || {}),
+        filled: true,
+        works: r.works || '',
+        desc: r.desc || '',
+        worksLocked: true,
+        descFromChecklist: true,
+        questionTexts: Object.assign({}, _cardChecklistQuestionTexts),
+        passportId: r.checklistPassportId || match.passportId
+      };
+      if (!cardData.checklistViolations) cardData.checklistViolations = {};
+    } else {
+      _cardChecklistSnapshot = null;
+    }
+    setCardChecklistScreenMode(editing);
     renderCardChecklistScreen();
     showScreen('screen-card-checklist');
   });
@@ -10150,6 +10155,16 @@ function applyCardChecklist() {
   var violations = cardData.checklistViolations || {};
   cardData.checklistPassportId = _cardChecklistMatch ? _cardChecklistMatch.passportId : null;
   if (_recordChecklistView) {
+    if (!canEditRecord()) {
+      var recDenied = _recordChecklistView;
+      var srcDenied = detailSource;
+      _recordChecklistView = null;
+      _cardChecklistSnapshot = null;
+      restorePassportActiveAfterCardChecklist();
+      setCardChecklistScreenMode(true);
+      openDetail(recDenied, srcDenied);
+      return;
+    }
     var r = _recordChecklistView;
     var src = detailSource;
     var hasViol = Object.keys(violations || {}).some(function(k) {
