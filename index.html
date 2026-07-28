@@ -5903,7 +5903,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v318';
+var APP_BUILD = 'pkb-v319';
 var APP_VERSION = '1.03';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -7242,9 +7242,14 @@ function openBpkGoalsOverlay(year, idx) {
   if (stretchInp) stretchInp.value = formatBarrierGoalDisplay(b.stretchGoalPct);
   var nameEl = document.getElementById('bpk-goals-barrier-name');
   if (nameEl) nameEl.textContent = b.name || '';
+  if (targetInp) {
+    if (_isIOS) targetInp.setAttribute('readonly', 'readonly');
+    else targetInp.removeAttribute('readonly');
+  }
   document.getElementById('overlay-bpk-goals').classList.add('active');
   prepareIosKeyboardOverlay('overlay-bpk-goals');
   requestAnimationFrame(syncBpkGoalsOverlayLabelWidths);
+  if (targetInp) focusIosOverlayInput(targetInp);
 }
 
 function closeBpkGoalsOverlay() {
@@ -9975,10 +9980,25 @@ function openRecordChecklistView(r) {
     cardData = {
       checklistViolations: Object.assign({}, r.checklistViolations || {}),
       checklistFilled: true,
-      checklistPassportId: r.checklistPassportId || match.passportId
+      checklistPassportId: r.checklistPassportId || match.passportId,
+      works: r.works || '',
+      desc: r.desc || '',
+      worksLockedByChecklist: true,
+      descFromChecklist: true
     };
     _cardChecklistQuestionTexts = Object.assign({}, r.checklistQuestionTexts || {});
-    setCardChecklistScreenMode(false);
+    _cardChecklistSnapshot = {
+      violations: Object.assign({}, r.checklistViolations || {}),
+      filled: true,
+      works: r.works || '',
+      desc: r.desc || '',
+      worksLocked: true,
+      descFromChecklist: true,
+      questionTexts: Object.assign({}, _cardChecklistQuestionTexts),
+      passportId: r.checklistPassportId || match.passportId
+    };
+    if (!cardData.checklistViolations) cardData.checklistViolations = {};
+    setCardChecklistScreenMode(true);
     renderCardChecklistScreen();
     showScreen('screen-card-checklist');
   });
@@ -10069,6 +10089,7 @@ function cancelCardChecklist() {
     var rec = _recordChecklistView;
     var src = detailSource;
     _recordChecklistView = null;
+    _cardChecklistSnapshot = null;
     _cardChecklistReadOnly = false;
     _cardChecklistMatch = null;
     restorePassportActiveAfterCardChecklist();
@@ -10128,6 +10149,36 @@ function cancelCardChecklist() {
 function applyCardChecklist() {
   var violations = cardData.checklistViolations || {};
   cardData.checklistPassportId = _cardChecklistMatch ? _cardChecklistMatch.passportId : null;
+  if (_recordChecklistView) {
+    var r = _recordChecklistView;
+    var src = detailSource;
+    var hasViol = Object.keys(violations || {}).some(function(k) {
+      return String(violations[k] || '').trim();
+    });
+    var plain = hasViol ? buildChecklistDescPlain(violations, _cardChecklistQuestionTexts) : '';
+    r.checklistViolations = Object.assign({}, violations);
+    r.checklistQuestionTexts = Object.assign({}, _cardChecklistQuestionTexts);
+    r.checklistPassportId = cardData.checklistPassportId;
+    r.checklistFilled = true;
+    r.works = hasViol ? 'Нет' : 'Да';
+    r.desc = plain;
+    var year = r.year || (r.dateCheck ? r.dateCheck.split('.')[2] : String(new Date().getFullYear()));
+    saveRecordFieldUpdate(r.dateEntry, year, {
+      works: r.works,
+      desc: r.desc,
+      checklistViolations: r.checklistViolations,
+      checklistQuestionTexts: r.checklistQuestionTexts,
+      checklistPassportId: r.checklistPassportId,
+      checklistFilled: true,
+      checkId: r.checkId || ''
+    });
+    _recordChecklistView = null;
+    _cardChecklistSnapshot = null;
+    restorePassportActiveAfterCardChecklist();
+    setCardChecklistScreenMode(true);
+    openDetail(r, src);
+    return;
+  }
   applyChecklistToCardFields(violations, _cardChecklistQuestionTexts);
   cardData.checklistQuestionTexts = Object.assign({}, _cardChecklistQuestionTexts);
   _cardChecklistSnapshot = null;
@@ -10253,7 +10304,7 @@ function initIosKbOverlayInputFixes() {
       syncIosKbOverlayViewport(overlayId);
       setTimeout(function() { syncIosKbOverlayViewport(overlayId); }, 280);
     });
-    if (inputId === 'text-overlay-input' || inputId === 'bpk-input-field') {
+    if (inputId === 'text-overlay-input' || inputId === 'bpk-input-field' || inputId === 'bpk-goal-target' || inputId === 'bpk-goal-stretch') {
       inp.addEventListener('touchend', function(e) {
         e.stopPropagation();
         inp.removeAttribute('readonly');
