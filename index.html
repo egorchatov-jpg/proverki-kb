@@ -3851,9 +3851,7 @@ window.addEventListener('DOMContentLoaded', function() {
   initChecklistViolationOverlay();
   bindIosKbOverlayViewport();
   initIosKbOverlayInputFixes();
-  clearSettingsDirty();
-  syncSettingsFromServer(function() {
-    refreshSettingsDependentUi();
+  syncSettingsOnAppOpen(function() {
     loadFromServer(function() {
       renderLobby();
     }, { forceFull: true });
@@ -3888,16 +3886,17 @@ window.addEventListener('DOMContentLoaded', function() {
         }
       } catch (_) {}
       clearApiCacheViaSw();
-      loadFromServer(function() {
-        retryAllQueues();
-        if (isSettingsDirty()) syncSettingsToServer();
-        prefetchPassportAssets();
-        loadPassportManifest();
-        var activeScr2 = document.querySelector('.screen.active');
-        if (activeScr2 && LIST_SCROLL_SCREENS.indexOf(activeScr2.id) >= 0) {
-          restoreListScrollPosition(activeScr2.id);
-        }
-      }, { forceFull: true });
+      syncSettingsOnAppOpen(function() {
+        loadFromServer(function() {
+          retryAllQueues();
+          prefetchPassportAssets();
+          loadPassportManifest();
+          var activeScr2 = document.querySelector('.screen.active');
+          if (activeScr2 && LIST_SCROLL_SCREENS.indexOf(activeScr2.id) >= 0) {
+            restoreListScrollPosition(activeScr2.id);
+          }
+        }, { forceFull: true });
+      });
       clearNotificationsAndBadge();
       if (swRegistration) {
         swRegistration.update().then(function() { evaluateAppUpdate(swRegistration); });
@@ -4041,7 +4040,7 @@ function openStat() {
 }
 function openSettings() {
   gateAccess('settings', function() {
-    syncSettingsFromServer(function() { showScreen('screen-settings'); });
+    syncSettingsFromServer(function() { showScreen('screen-settings'); }, { force: !isSettingsDirty() });
   });
 }
 
@@ -4596,7 +4595,7 @@ function scheduleSettingsSync() {
   _settingsSyncTimer = setTimeout(function() {
     _settingsSyncTimer = null;
     syncSettingsToServer();
-  }, 1500);
+  }, 400);
 }
 
 function markSettingsDirty() {
@@ -4607,6 +4606,38 @@ function markSettingsDirty() {
   appState.settingsUpdatedAt = Date.now();
   saveState();
   scheduleSettingsSync();
+}
+
+/**
+ * On every app open / resume: push pending local edits (if any), then force-pull
+ * master settings from server — same idea as loadFromServer({ forceFull: true }).
+ */
+function syncSettingsOnAppOpen(callback) {
+  function pullMaster() {
+    syncSettingsFromServer(function() {
+      refreshSettingsDependentUi();
+      if (callback) callback();
+    }, { force: true });
+  }
+  if (_settingsSyncTimer) {
+    clearTimeout(_settingsSyncTimer);
+    _settingsSyncTimer = null;
+  }
+  if (isLocalDevRuntime() || !isSettingsDirty()) {
+    pullMaster();
+    return;
+  }
+  syncSettingsToServer(function(ok) {
+    if (ok || !isSettingsDirty()) {
+      pullMaster();
+      return;
+    }
+    // Push failed — keep local dirty edits, do not overwrite from server.
+    syncSettingsFromServer(function() {
+      refreshSettingsDependentUi();
+      if (callback) callback();
+    }, { force: false });
+  });
 }
 function clearSettingsDirty() {
   try { sessionStorage.removeItem('pkb-settings-dirty'); } catch(e) {}
@@ -4791,12 +4822,14 @@ function applyMasterSettingsPayload(data) {
   }
 }
 
-function syncSettingsFromServer(callback) {
+function syncSettingsFromServer(callback, opts) {
+  opts = opts || {};
+  var force = !!opts.force;
   var errEl = document.getElementById('pin-error');
   if (errEl) errEl.textContent = 'Загрузка настроек…';
   var ctrl  = new AbortController();
   var timer = setTimeout(function() { ctrl.abort(); }, 8000);
-  fetch('/api/settings', { signal: ctrl.signal })
+  fetch('/api/settings?_=' + Date.now(), { signal: ctrl.signal, cache: 'no-store' })
     .then(function(r) {
       clearTimeout(timer);
       if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -4811,10 +4844,9 @@ function syncSettingsFromServer(callback) {
         if (callback) callback();
         return;
       }
-      // Master absolute priority: server settings always win.
-      // Local edits may push only via explicit admin actions in this session.
+      // Master absolute priority when not mid-edit (or when force on app open).
       var editingNow = isSettingsDirty();
-      if (!editingNow) {
+      if (force || !editingNow) {
         applyMasterSettingsPayload(data);
         clearSettingsDirty();
       }
@@ -4830,18 +4862,25 @@ function syncSettingsFromServer(callback) {
 }
 
 /**
- * Push current settings TO server (fire-and-forget).
- * Called when admin exits settings screen.
+ * Push current settings TO server.
+ * Optional callback(ok) for boot/resume flush.
  */
-function syncSettingsToServer() {
+function syncSettingsToServer(callback) {
+  function done(ok) {
+    if (callback) {
+      try { callback(!!ok); } catch (_e) {}
+    }
+  }
   if (isLocalDevRuntime()) {
     saveState();
     clearSettingsDirty();
+    done(true);
     return;
   }
   // Master: never push unless this session has explicit admin edits.
   if (!isSettingsDirty()) {
     saveState();
+    done(true);
     return;
   }
   var gen = ++_settingsSyncGen;
@@ -4877,14 +4916,21 @@ function syncSettingsToServer() {
       if (d.settings) applyMasterSettingsPayload(d.settings);
       clearSettingsDirty();
       saveState();
+      done(true);
       return;
     }
     if (d && d.success && gen === _settingsSyncGen) {
       clearSettingsDirty();
       saveState();
+      done(true);
+      return;
     }
+    done(false);
   })
-  .catch(function(e) { console.warn('[settings] sync to server failed:', e.message); });
+  .catch(function(e) {
+    console.warn('[settings] sync to server failed:', e.message);
+    done(false);
+  });
 }
 
 /** Exit settings screen: sync to server only if admin changed something, then lobby. */
@@ -5903,7 +5949,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v321';
+var APP_BUILD = 'pkb-v322';
 var APP_VERSION = '1.03';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -5951,12 +5997,13 @@ function prefetchPassportAssets() {
 
 function syncWhenOnline() {
   clearApiCacheViaSw();
-  loadFromServer(function() {
-    retryAllQueues();
-    if (isSettingsDirty()) syncSettingsToServer();
-    prefetchPassportAssets();
-    loadPassportManifest();
-  }, { forceFull: true });
+  syncSettingsOnAppOpen(function() {
+    loadFromServer(function() {
+      retryAllQueues();
+      prefetchPassportAssets();
+      loadPassportManifest();
+    }, { forceFull: true });
+  });
 }
 
 function loadPassportJson(id, force) {

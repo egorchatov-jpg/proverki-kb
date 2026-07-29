@@ -38,7 +38,7 @@ if (Test-Path $envProd) {
 
 Write-Host ""
 Write-Host "3. Домен" -ForegroundColor Yellow
-Write-Host "   - Рабочий домен: https://kbcheck.webtm.ru/"
+Write-Host "   - Рабочий домен: https://proverkikb.tw1.ru/"
 Write-Host "   - Или привязать свой домен (A/CNAME на сервер приложения)"
 Write-Host ""
 

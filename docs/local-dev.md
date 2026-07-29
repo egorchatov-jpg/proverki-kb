@@ -5,7 +5,7 @@
 | | Код | База данных |
 |---|-----|----------------|
 | **localhost:3000** | `master` на диске | `data/proverki-dev.db` (изолирован от production) |
-| **kbcheck.webtm.ru** | деплой из `master` | SQLite в `/tmp` + синхронизация с GitHub |
+| **proverkikb.tw1.ru** | деплой из `master` | SQLite в `/tmp` + синхронизация с GitHub |
 
 Локальные настройки **не попадают на production**: при `DATABASE_PATH=data/proverki-dev.db` сервер не пушит базу и настройки в GitHub (`PKB_ENV=local`, `ENABLE_GITHUB_PERSIST=0` в `.env.local`). Проверка: http://localhost:3000/health → `"localDev": true`, `"githubPersist": false`.
 
@@ -53,7 +53,7 @@ BACKUPS_DIR=/tmp/proverki-kb/backups
 
 Сгенерировать файл для загрузки в панель: `node scripts/create-timeweb-env-file.js`
 
-Проверка после деплоя: https://kbcheck.webtm.ru/health → `"githubPersist": true`.
+Проверка после деплоя: https://proverkikb.tw1.ru/health → `"githubPersist": true`.
 
 ## Кэш PWA
 
