@@ -23,12 +23,23 @@ module.exports = async (req, res) => {
     const settings = loadSettings();
     const saveResult = insertRecord(record, settings.barriersConfig);
 
+    let checklistResult = null;
     if (!saveResult.duplicate && record.checklistFilled) {
       try {
-        await saveChecklistForRecord(record);
+        checklistResult = await saveChecklistForRecord(record);
       } catch (clErr) {
         console.warn('[save] checklist save failed:', clErr.message);
       }
+    }
+    if (checklistResult && checklistResult.rejected) {
+      return res.status(409).json({
+        success: false,
+        conflict: true,
+        error: 'checklist_conflict',
+        reason: checklistResult.reason || 'stale_checklist',
+        checklist: checklistResult.checklist || null,
+        checkId: saveResult.checkId || record.checkId,
+      });
     }
 
     let notified = 0;
@@ -55,6 +66,7 @@ module.exports = async (req, res) => {
       num: saveResult.num != null ? saveResult.num : record.num,
       year: saveResult.year || record.year,
       checkId: saveResult.checkId || record.checkId,
+      checklistUpdatedAt: checklistResult && checklistResult.updatedAt ? checklistResult.updatedAt : undefined,
     });
   } catch (err) {
     console.error('[save] error:', err.message);

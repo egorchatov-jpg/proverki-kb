@@ -1,4 +1,4 @@
-const { saveChecklistForRecord } = require('../lib/checklists-lib');
+const { saveChecklistForRecord, assertChecklistWritable } = require('../lib/checklists-lib');
 const { updateRecord } = require('../lib/records-store');
 const { getDb } = require('../lib/db');
 const { scheduleDbPersist } = require('../lib/github-persist');
@@ -21,14 +21,44 @@ module.exports = async (req, res) => {
     if (!dateEntry || !fields) return res.status(400).json({ error: 'Missing dateEntry or fields' });
 
     const fallback = { dateCheck, method, org, barrier };
+    const checklistProbe = Object.assign({}, fields, {
+      dateEntry: dateEntry,
+      checkId: fields.checkId,
+    });
+    if (fields.checklistFilled) {
+      const pre = assertChecklistWritable(checklistProbe);
+      if (pre && pre.rejected) {
+        return res.status(409).json({
+          success: false,
+          conflict: true,
+          error: 'checklist_conflict',
+          reason: pre.reason || 'stale_checklist',
+          checklist: pre.checklist || null,
+        });
+      }
+    }
+
     const updated = await updateRecord(dateEntry, fields, fallback, { updatedAt: updatedAt });
 
+    let checklistResult = null;
     if (fields.checklistFilled) {
       try {
-        await saveChecklistForRecord(Object.assign({}, fields, { dateEntry }));
+        checklistResult = await saveChecklistForRecord(Object.assign({}, checklistProbe, {
+          checkId: (updated && updated.checkId) || fields.checkId,
+        }));
       } catch (clErr) {
         console.warn('[update] checklist save failed:', clErr.message);
       }
+    }
+    if (checklistResult && checklistResult.rejected) {
+      return res.status(409).json({
+        success: false,
+        conflict: true,
+        error: 'checklist_conflict',
+        reason: checklistResult.reason || 'stale_checklist',
+        checklist: checklistResult.checklist || null,
+        record: updated || null,
+      });
     }
 
     scheduleDbPersist();
@@ -41,6 +71,7 @@ module.exports = async (req, res) => {
       checkId: updated && updated.checkId,
       updatedAt: updated && updated.updatedAt,
       year: year || (updated && updated.year),
+      checklistUpdatedAt: checklistResult && checklistResult.updatedAt ? checklistResult.updatedAt : undefined,
     });
   } catch (err) {
     if (err && err.code === 'CONFLICT') {

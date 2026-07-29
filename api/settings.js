@@ -36,6 +36,8 @@ module.exports = async (req, res) => {
       return res.status(200).json({
         success: true,
         excelSync: result.excelSync,
+        settingsUpdatedAt: result.settings && result.settings.settingsUpdatedAt,
+        settings: result.settings,
         localDev: isLocalDev(),
       });
     }
