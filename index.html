@@ -8,6 +8,22 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#efefef">
 <title>Проверки КБ</title>
+<meta name="description" content="База данных проверок объектов капитального строительства">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Проверки КБ">
+<meta property="og:title" content="Проверки КБ">
+<meta property="og:description" content="База данных проверок объектов капитального строительства">
+<meta property="og:url" content="https://proverkikb.tw1.ru/">
+<meta property="og:image" content="https://proverkikb.tw1.ru/og-image.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Главный экран приложения Проверки КБ">
+<meta property="og:locale" content="ru_RU">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Проверки КБ">
+<meta name="twitter:description" content="База данных проверок объектов капитального строительства">
+<meta name="twitter:image" content="https://proverkikb.tw1.ru/og-image.jpg">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -809,11 +825,8 @@ html, body {
 .corr-row-overdue { background: rgba(27,58,107,0.18); }
 .corr-row-done    { background: rgba(39,174,96,0.10); }
 .corr-row-ok     { background: transparent; }
-.corr-status-none    { color: var(--red);   font-size: 11px; }
-.corr-status-entered { color: var(--navy);  font-size: 11px; }
-.corr-status-overdue { color: var(--red); font-size: 11px; }
-.corr-status-done    { color: var(--green); font-size: 11px; }
-.corr-status-na      { color: var(--text2); font-size: 11px; }
+/* Only overdue label is colored; other corr status cells keep .find-table td defaults */
+.find-table td.corr-status-overdue { color: var(--red); font-size: 11px; font-weight: 600; }
 #screen-sokb-list .th-col-btn.active { color: var(--navy); }
 .sokb-status-process { color: var(--navy);  font-size: 11px; font-weight: 400; }
 .sokb-status-success { color: var(--green); font-size: 11px; font-weight: 400; }
@@ -1875,7 +1888,7 @@ html, body {
 <div class="screen" id="screen-install-ios">
   <div class="passport-appendix-scroll passport-appendix-scroll--image" id="install-ios-scroll">
     <div class="passport-appendix-image-page">
-      <img class="passport-appendix-page-img" id="install-ios-img" src="/install-ios.jpg" alt="">
+      <img class="passport-appendix-page-img" id="install-ios-img" alt="" decoding="async">
     </div>
   </div>
   <div class="settings-footer">
@@ -1887,7 +1900,7 @@ html, body {
 <div class="screen" id="screen-install-android">
   <div class="passport-appendix-scroll passport-appendix-scroll--image" id="install-android-scroll">
     <div class="passport-appendix-image-page">
-      <img class="passport-appendix-page-img" id="install-android-img" src="/install-android.jpg" alt="">
+      <img class="passport-appendix-page-img" id="install-android-img" alt="" decoding="async">
     </div>
   </div>
   <div class="settings-footer">
@@ -3197,6 +3210,9 @@ function mergeServerRecords(serverRecords) {
 }
 
 function refreshActiveRecordLists() {
+  // Capture live scroll BEFORE innerHTML wipe — idle poll / sync refresh used to
+  // restore from a stale/empty cache and jump lists to the top.
+  saveListScrollPositions();
   renderLobby();
   var fs = document.getElementById('screen-find');
   if (fs && fs.classList.contains('active')) applyFindFilters(true);
@@ -3333,7 +3349,8 @@ function loadFromServer(onDone, opts) {
       console.log('[server] без изменений, данные актуальны');
       try { appState.lastSyncedAt = Date.now(); } catch (_e) {}
       retryAllQueues();
-      refreshActiveRecordLists();
+      // Keep open list scroll intact — no DOM rebuild when nothing changed.
+      renderLobby();
       finish(true);
       return;
     }
@@ -3884,9 +3901,9 @@ window.addEventListener('DOMContentLoaded', function() {
     if (document.hidden || !hasSession()) return;
     clearApiCacheViaSw();
     // Background: conditional GET via year revisions (faster). Pull/resume stay forceFull.
-    loadFromServer(function() {
-      refreshActiveRecordLists();
-    }, { forceFull: false });
+    // Do not refresh lists here — loadFromServer already updates on real changes;
+    // a second refresh was wiping scroll after idle.
+    loadFromServer(null, { forceFull: false });
   }, 90000);
   window.addEventListener('online', syncWhenOnline);
   document.addEventListener('visibilitychange', function() {
@@ -4092,10 +4109,18 @@ function saveListScrollPositions() {
 function restoreListScrollPosition(screenId) {
   var top = _listScrollCache[screenId];
   if (top == null) return;
+  // Double rAF: wait until table rows are laid out after innerHTML rebuild.
   requestAnimationFrame(function() {
-    var wrap = getListScrollWrap(screenId);
-    if (wrap) wrap.scrollTop = top;
+    requestAnimationFrame(function() {
+      var wrap = getListScrollWrap(screenId);
+      if (wrap) wrap.scrollTop = top;
+    });
   });
+}
+
+function captureListScrollBeforeRender(screenId) {
+  var wrap = getListScrollWrap(screenId);
+  if (wrap) _listScrollCache[screenId] = wrap.scrollTop;
 }
 
 function finishListScroll(screenId, preserveScroll) {
@@ -5971,7 +5996,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v324';
+var APP_BUILD = 'pkb-v328';
 var APP_VERSION = '1.03';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -8066,6 +8091,7 @@ function sokbStatusClass(key) {
 }
 
 function renderSokbList(preserveScroll) {
+  if (preserveScroll) captureListScrollBeforeRender('screen-sokb-list');
   var violations = (appState.db || []).filter(isSokbListRecord);
   var f = sokbListFilters;
   if (f.dateFrom || f.dateTo) {
@@ -8578,6 +8604,7 @@ function getCorrectiveStatus(r) {
 }
 
 function renderCorrectiveList(preserveScroll) {
+  if (preserveScroll) captureListScrollBeforeRender('screen-corrective-list');
   var violations = (appState.db || []).filter(isCorrectiveListRecord);
   var f = correctiveListFilters;
   if (f.dateFrom || f.dateTo) {
@@ -9147,6 +9174,7 @@ function updateCorrFilterCounts(records) {
 }
 
 function renderFindList(records, preserveScroll) {
+  if (preserveScroll) captureListScrollBeforeRender('screen-find');
   var tbody = document.getElementById('find-tbody');
   tbody.innerHTML = '';
   records = sortByDateCheckAsc(records);
