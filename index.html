@@ -435,7 +435,6 @@ html, body {
 .field-cell:active { border-color: var(--orange); }
 .field-cell.tall { min-height: 80px; align-items: flex-start; }
 .field-cell.dimmed { opacity: 0.35; pointer-events: none; }
-.field-label.dimmed { opacity: 0.35; }
 #screen-card .field-wrap {
   flex-direction: row; align-items: center; gap: 8px; padding: 4px 0;
 }
@@ -835,6 +834,7 @@ html, body {
 /* Detail card corrective block — navy highlight (from corrective screen) */
 .detail-block-navy .detail-block-label { color: var(--text2); font-weight: 500; }
 .detail-block-navy .detail-block-val   { border: var(--cell-border-width) solid var(--navy); cursor: pointer; background: #fff; }
+.overdue-date { color: var(--red); }
 
 /* Navy drum overlay theme */
 #overlay-drum.navy-theme .overlay-box { background: #eaf0fb; }
@@ -2136,7 +2136,7 @@ html, body {
       </div>
 
       <div class="field-wrap field-block">
-        <div class="field-label dimmed" id="lbl-desc">Описание нарушений</div>
+        <div class="field-label" id="lbl-desc">Описание нарушений</div>
         <div class="field-cell tall dimmed" id="cell-desc" onclick="openDescOverlay()">
           <span class="placeholder" id="val-desc">—</span>
         </div>
@@ -5997,8 +5997,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v329';
-var APP_VERSION = '1.04';
+var APP_BUILD = 'pkb-v330';
+var APP_VERSION = '1.05';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
@@ -8811,6 +8811,28 @@ function parseCorrective(text) {
   return measures;
 }
 
+function formatCorrectiveDetail(text) {
+  if (!text) return text;
+  var today = new Date();
+  today.setHours(0,0,0,0);
+  var measures = parseCorrective(text);
+  var overdueDates = {};
+  measures.forEach(function(m) {
+    if (!m.deadline || isMeasureDone(m.status)) return;
+    var parts = m.deadline.split('.');
+    if (parts.length !== 3) return;
+    var d = new Date(+parts[2], +parts[1] - 1, +parts[0]);
+    if (d < today) overdueDates[m.deadline] = true;
+  });
+  if (!Object.keys(overdueDates).length) return text;
+  return text.split('\n').map(function(line) {
+    return line.replace(/((?:Выполнить до|Срок):\s*)(\d{2}\.\d{2}\.\d{4})/i, function(_, prefix, date) {
+      if (overdueDates[date]) return prefix + '<span class="overdue-date">' + date + '</span>';
+      return prefix + date;
+    });
+  }).join('\n');
+}
+
 function newEmptyMeasure(n) {
   return { desc: '', responsible: '', deadline: '', status: '', selected: false };
 }
@@ -9265,12 +9287,13 @@ function openDetail(r, source) {
   var worksVal = r.works === 'Нет' ? '<span style="color:var(--red);font-weight:700">Нет</span>' : (r.works || '—');
   var corrBlock = '';
   if (showViolBlock && source !== 'lobby') {
+    var corrHtml = formatCorrectiveDetail(r.corrective);
     corrBlock = editCorr
       ? '<div class="detail-block detail-block-navy" onclick="openCorrectivePIN()">' +
           '<div class="detail-block-label">Корректирующие мероприятия</div>' +
-          '<div class="detail-block-val">' + esc(r.corrective || 'Внесите') + '</div>' +
+          '<div class="detail-block-val">' + (corrHtml || 'Внесите') + '</div>' +
         '</div>'
-      : block('Корректирующие мероприятия', r.corrective, false);
+      : block('Корректирующие мероприятия', corrHtml, false);
   }
   var contestBlock = '';
   if (showContest) {
