@@ -56,6 +56,18 @@ if (fs.existsSync(pulled)) {
 }
 
 if (!vapidPrivate || vapidPrivate.length < 20) {
+  console.error('\n╔════════════════════════════════════════════════════════════╗');
+  console.error('║  WARNING: VAPID_PRIVATE_KEY not found in timeweb.env      ║');
+  console.error('║  Generating NEW keys will BREAK all existing push subs!   ║');
+  console.error('╚════════════════════════════════════════════════════════════╝\n');
+  const readline = require('readline');
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const answer = rl.questionSync('Type "yes" to generate new VAPID keys: ');
+  rl.close();
+  if (answer.trim().toLowerCase() !== 'yes') {
+    console.log('Aborted. To preserve existing keys, restore timeweb.env or set VAPID_PRIVATE_KEY manually.');
+    process.exit(1);
+  }
   const keys = webpush.generateVAPIDKeys();
   vapidPublic = keys.publicKey;
   vapidPrivate = keys.privateKey;

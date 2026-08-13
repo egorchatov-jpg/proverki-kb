@@ -5131,7 +5131,8 @@ function openCardForEdit(r) {
     _cardChecklistQuestionTexts = r.checklistQuestionTexts ? Object.assign({}, r.checklistQuestionTexts) : {};
     lockWorksCell();
     lockDescCell();
-    setDimmed('desc', true);
+    var lbl = document.getElementById('lbl-desc');
+    if (lbl) lbl.classList.remove('dimmed');
     updateCardDescEditable(false);
     if (r.works === 'Нет' && r.desc) {
       var descEl = document.getElementById('val-desc');
@@ -5996,8 +5997,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v328';
-var APP_VERSION = '1.03';
+var APP_BUILD = 'pkb-v329';
+var APP_VERSION = '1.04';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
@@ -9658,7 +9659,8 @@ function syncWorksCellState() {
     }
     setWorksCellDisplay(cardData.works || 'Да');
     lockDescCell();
-    setDimmed('desc', true);
+    var lbl = document.getElementById('lbl-desc');
+    if (lbl) lbl.classList.remove('dimmed');
     return;
   }
   cardData.worksLockedByChecklist = false;
@@ -9693,22 +9695,18 @@ function lockWorksCell() {
 
 function lockDescCell() {
   var cell = document.getElementById('cell-desc');
-  var lbl = document.getElementById('lbl-desc');
   if (cell) {
     cell.classList.add('dimmed');
     cell.removeAttribute('onclick');
   }
-  if (lbl) lbl.classList.add('dimmed');
 }
 
 function unlockDescCell() {
   var cell = document.getElementById('cell-desc');
-  var lbl = document.getElementById('lbl-desc');
   if (cell) {
     cell.classList.remove('dimmed');
     cell.setAttribute('onclick', 'openDescOverlay()');
   }
-  if (lbl) lbl.classList.remove('dimmed');
 }
 
 function setCardChecklistButtonLabel() {
@@ -10236,7 +10234,8 @@ function cancelCardChecklist() {
     setWorksCellDisplay(cardData.works || '');
     if (cardData.worksLockedByChecklist || cardUsesChecklistFlow()) lockWorksCell(); else unlockWorksCell();
     if (cardData.descFromChecklist) {
-      setDimmed('desc', true);
+      var lbl = document.getElementById('lbl-desc');
+      if (lbl) lbl.classList.remove('dimmed');
       if (cardData.works === 'Нет') {
         var el = document.getElementById('val-desc');
         if (el) {
