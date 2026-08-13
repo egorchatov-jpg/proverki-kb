@@ -5997,7 +5997,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v330';
+var APP_BUILD = 'pkb-v331';
 var APP_VERSION = '1.05';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -8815,22 +8815,33 @@ function formatCorrectiveDetail(text) {
   if (!text) return text;
   var today = new Date();
   today.setHours(0,0,0,0);
-  var measures = parseCorrective(text);
-  var overdueDates = {};
-  measures.forEach(function(m) {
-    if (!m.deadline || isMeasureDone(m.status)) return;
-    var parts = m.deadline.split('.');
-    if (parts.length !== 3) return;
-    var d = new Date(+parts[2], +parts[1] - 1, +parts[0]);
-    if (d < today) overdueDates[m.deadline] = true;
-  });
-  if (!Object.keys(overdueDates).length) return text;
-  return text.split('\n').map(function(line) {
-    return line.replace(/((?:Выполнить до|Срок):\s*)(\d{2}\.\d{2}\.\d{4})/i, function(_, prefix, date) {
-      if (overdueDates[date]) return prefix + '<span class="overdue-date">' + date + '</span>';
-      return prefix + date;
+  return text.split(/(?=^\d+\.\s)/m).map(function(block) {
+    if (!block.trim()) return block;
+    var deadline = '';
+    var status = '';
+    var lines = block.split('\n');
+    lines.forEach(function(line) {
+      var dm = line.match(/(?:Выполнить до|Срок):\s*(\d{2}\.\d{2}\.\d{4})/i);
+      if (dm) deadline = dm[1].trim();
+      var sm = line.match(/Статус:\s*(.+?)\.?$/i);
+      if (sm) status = sm[1].trim().replace(/\.$/, '').toUpperCase();
     });
-  }).join('\n');
+    var isOverdue = false;
+    if (deadline && !isMeasureDone(status)) {
+      var parts = deadline.split('.');
+      if (parts.length === 3) {
+        var d = new Date(+parts[2], +parts[1] - 1, +parts[0]);
+        if (d < today) isOverdue = true;
+      }
+    }
+    if (isOverdue) {
+      block = block.replace(/((?:Выполнить до|Срок):\s*)(\d{2}\.\d{2}\.\d{4})/i, function(_, prefix, date) {
+        if (date === deadline) return prefix + '<span class="overdue-date">' + date + '</span>';
+        return prefix + date;
+      });
+    }
+    return block;
+  }).join('');
 }
 
 function newEmptyMeasure(n) {
