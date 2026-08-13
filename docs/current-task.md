@@ -7,25 +7,23 @@
 
 ## Последнее обновление
 - **Дата:** 2026-08-13
-- **Сессия:** cleanup scripts + check-prod-version.ps1
-- **Версия кода:** pkb-v328
-- **Статус:** незакоммиченные изменения в рабочей директории
+- **Сессия:** desc label bright fix + cleanup scripts + check-prod-version.ps1
+- **Версия кода:** pkb-v329
+- **Статус:** всё закоммичено в master
 
 ## Что сделано
-1. Удалены 4 устаревших одноразовых скрипта:
-   - `scripts/_bump-build.js`
-   - `scripts/_patch-desc-overlay-guard.js`
-   - `scripts/_test-v323-settings-concurrency.js`
-   - `scripts/_test-v324-settings.js`
-2. Доработан `scripts/create-timeweb-env-file.js`:
-   - Добавлено интерактивное подтверждение перед генерацией новых VAPID-ключей (защита от случайного сброса push-подписок на проде).
-3. Создан `scripts/check-prod-version.ps1`:
-   - Сверка локальных версий (package.json, manifest.json, git HEAD) с production (`proverkikb.tw1.ru`).
+1. **Cleanup скриптов:** удалены 4 устаревших одноразовых скрипта (`_bump-build.js`, `_patch-desc-overlay-guard.js`, `_test-v323-settings-concurrency.js`, `_test-v324-settings.js`).
+2. **Новый `scripts/check-prod-version.ps1`:** сверка локальных версий с production.
+3. **Интерактивное подтверждение в `create-timeweb-env-file.js`:** защита от случайной перегенерации VAPID-ключей.
+4. **pkb-v329 — яркая надпись "Описание нарушений":**
+   - В окне изменения проведённой проверки с заполненным чек-листом label "Описание нарушений" больше не тускнеет (opacity 0.35).
+   - Cell (содержимое) остаётся заблокированным (нет onclick, тусклый), так как desc формируется из чек-листа.
+   - Изменены `lockDescCell()` / `unlockDescCell()` — теперь управляют только cell, label управляется отдельно.
+   - `APP_VERSION` поднята до `1.04`.
 
 ## Что НЕ сделано / следующие шаги
-- [ ] Закоммитить текущие изменения (cleanup скриптов + новые файлы).
-- [ ] Обсудить с пользователем следующую фичу или направление доработки.
-- [ ] При необходимости — бамп версии (`APP_BUILD` / `APP_VERSION` / `sw.js`) и деплой.
+- [ ] Деплой на Timeweb (если готовы выкатывать для пользователей).
+- [ ] Обсудить следующую фичу/доработку.
 
 ## Полезные ссылки
 - Production: https://proverkikb.tw1.ru/
