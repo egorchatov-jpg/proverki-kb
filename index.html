@@ -709,8 +709,8 @@ html, body {
 .violator-ctrl-btn.add { background: var(--orange); }
 .violator-ctrl-btn:active:not(:disabled) { opacity: 0.8; }
 .violator-ctrl-btn svg { width: 24px; height: 24px; }
-/* "Нет" в ячейке "Барьер работоспособен" — красный жирный текст */
-.field-val-works-no { color: var(--red); font-weight: 700; }
+/* "Нет" в ячейке "Барьер работоспособен" — красный текст */
+.field-val-works-no { color: var(--red); }
 
 /* success overlay */
 .success-overlay {
@@ -825,7 +825,7 @@ html, body {
 .corr-row-done    { background: rgba(39,174,96,0.10); }
 .corr-row-ok     { background: transparent; }
 /* Only overdue label is colored; other corr status cells keep .find-table td defaults */
-.find-table td.corr-status-overdue { color: var(--red); font-size: 11px; font-weight: 600; }
+.find-table td.corr-status-overdue { color: var(--red); font-size: 11px; }
 #screen-sokb-list .th-col-btn.active { color: var(--navy); }
 .sokb-status-process { color: var(--navy);  font-size: 11px; font-weight: 400; }
 .sokb-status-success { color: var(--green); font-size: 11px; font-weight: 400; }
@@ -978,7 +978,7 @@ html, body {
   border: var(--cell-border-width) solid var(--orange); cursor: pointer; background: #fff;
 }
 .detail-val-red { background: rgba(192,57,43,0.15); }
-.detail-val-works-no { color: var(--red); font-weight: 700; }
+.detail-val-works-no { color: var(--red); }
 .detail-back {
   display: flex; justify-content: center;
   padding: 10px 14px;
@@ -2760,6 +2760,8 @@ function migrateLocalPiiOnce() {
   }
 }
 var VAPID_KEY_STORE = 'pkb-vapid-key';
+var PUSH_SUB_CHECK_KEY = 'pkb-push-check-ts';
+var PUSH_SUB_CHECK_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
 var swRegistration   = null;
 
 function getServerShas() {
@@ -3528,6 +3530,33 @@ function subscribeToPush(reg) {
   });
 }
 
+// Periodic check: verify push subscription once a week and recreate if missing.
+function checkPushSubscriptionWeekly(reg) {
+  if (!('PushManager' in window)) return;
+  if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY === '__VAPID_PUBLIC_KEY__') return;
+  if (Notification.permission !== 'granted') return;
+
+  var lastCheck = 0;
+  try { lastCheck = parseInt(localStorage.getItem(PUSH_SUB_CHECK_KEY), 10) || 0; } catch (_) {}
+  var now = Date.now();
+  if (now - lastCheck < PUSH_SUB_CHECK_INTERVAL_MS) return;
+
+  reg.pushManager.getSubscription().then(function(existing) {
+    if (!existing) {
+      console.log('[push] weekly check: no subscription, recreating');
+      subscribeToPush(reg);
+    } else {
+      // Subscription exists — re-verify with server (endpoint may have rotated)
+      console.log('[push] weekly check: verifying existing subscription');
+      sendSubscriptionToServer(existing);
+    }
+    try { localStorage.setItem(PUSH_SUB_CHECK_KEY, String(now)); } catch (_) {}
+  }).catch(function(e) {
+    console.warn('[push] weekly check failed:', e.message);
+    try { localStorage.setItem(PUSH_SUB_CHECK_KEY, String(now)); } catch (_) {}
+  });
+}
+
 function requestPushPermission() {
   closeOverlay('overlay-push-prompt');
   markPushPromptDone();
@@ -3781,6 +3810,7 @@ function applyAppUpdate() {
   _appUpdateApplying = true;
   _appUpdateOverlayShown = true;
   try { sessionStorage.setItem('pkb-update-in-progress', '1'); } catch (_e) {}
+  try { sessionStorage.setItem('pkb-update-done', '1'); } catch (_e) {}
   try { localStorage.removeItem('pkb-app-build'); } catch (_e) {}
 
   var hasWaitingSw = !!(swRegistration && swRegistration.waiting);
@@ -3815,6 +3845,12 @@ function applyAppUpdate() {
 
 function evaluateAppUpdate(reg) {
   if (_appUpdateOverlayShown || _appUpdateApplying) return;
+  try {
+    if (sessionStorage.getItem('pkb-update-done') === '1') {
+      sessionStorage.removeItem('pkb-update-done');
+      return;
+    }
+  } catch (_) {}
   var now = Date.now();
   if (now - _lastUpdateCheckMs < 5000) return;
   _lastUpdateCheckMs = now;
@@ -3863,6 +3899,19 @@ window.addEventListener('DOMContentLoaded', function() {
   updateLobbyInstallButton();
   initInstallDeviceIcons();
   initPassportImageViewer();
+  
+  var urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('nc')) {
+    try { sessionStorage.removeItem('pkb-active-screen'); } catch (_) {}
+    setTimeout(function() {
+      goLobby();
+      refreshActiveRecordLists();
+      if (window.history.replaceState) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }, 100);
+  }
+  
   var needDataMigration = false;
   try {
     needDataMigration = localStorage.getItem(DATA_VERSION_KEY) !== CURRENT_DATA_VERSION;
@@ -3939,6 +3988,7 @@ window.addEventListener('DOMContentLoaded', function() {
       if (swRegistration) {
         swRegistration.update().then(function() { evaluateAppUpdate(swRegistration); });
         subscribeToPush(swRegistration);
+        checkPushSubscriptionWeekly(swRegistration);
       }
     }
   });
@@ -4023,10 +4073,17 @@ function registerSW() {
         clearApiCacheViaSw();
         loadFromServer(function() { refreshActiveRecordLists(); }, { forceFull: true });
       }
+      if (data.type === 'NOTIFICATION_CLICK') {
+        try { sessionStorage.removeItem('pkb-active-screen'); } catch (_) {}
+        goLobby();
+        clearApiCacheViaSw();
+        loadFromServer(function() { refreshActiveRecordLists(); }, { forceFull: true });
+      }
     });
     navigator.serviceWorker.register('/sw.js').then(function(reg) {
       swRegistration = reg;
       subscribeToPush(reg);
+      checkPushSubscriptionWeekly(reg);
       reg.update().then(function() { evaluateAppUpdate(reg); });
       if (reg.active) prefetchPassportAssets();
       reg.addEventListener('updatefound', function() {
@@ -4510,8 +4567,9 @@ function setPinInputLocked(locked) {
 var SUPERUSER_PIN = '2003';
 
 /* ---- Password helpers ---- */
+/** No built-in admin/inspector login: only superuser (2003) and passwords set via «Управление паролями». */
 function getDefaultPasswords() {
-  return { admin: '3333', inspector: '1111', orgs: {} };
+  return { admin: null, inspector: null, orgs: {} };
 }
 function getPw() {
   if (!appState.passwords) appState.passwords = getDefaultPasswords();
@@ -4530,8 +4588,8 @@ function generateUniquePassword() {
   }
   return null; // extremely unlikely (> 8 900 passwords used)
 }
-function getDefaultUsedPasswords() { return [SUPERUSER_PIN, '3333', '1111', '2222']; }
-/** Ensure every current org has a password entry (default '2222'). */
+function getDefaultUsedPasswords() { return [SUPERUSER_PIN]; }
+/** Ensure every current org has a password entry kept in memory (even inspecting orgs). */
 function orgUsesInspectorPassword(o) {
   return !!(o && o.inspects === true);
 }
@@ -4547,12 +4605,12 @@ function normalizeOrgRoleFlags(org) {
   return org;
 }
 
-/** Ensure every org has a password entry kept in memory (even inspecting orgs). */
+/** Ensure every org without a set password still has a dedicated entry (even inspecting orgs). */
 function ensureOrgPasswords() {
   var pw = getPw();
   if (!pw.orgs) pw.orgs = {};
   (appState.orgs || []).forEach(function(o) {
-    if (!pw.orgs[o.name]) pw.orgs[o.name] = '2222';
+    if (!pw.orgs[o.name]) pw.orgs[o.name] = null;
   });
 }
 
@@ -5997,8 +6055,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v331';
-var APP_VERSION = '1.05';
+var APP_BUILD = 'pkb-v336';
+var APP_VERSION = '1.07';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
@@ -7968,7 +8026,7 @@ function renderPasswordsScreen() {
   });
   orgs.forEach(function(o) {
     if (!pw.orgs) pw.orgs = {};
-    var orgPw = pw.orgs[o.name] || '2222';
+    var orgPw = pw.orgs[o.name] || null;
     body.appendChild(makePwRow(o.name, orgPw, (function(orgName) {
       return function() {
         var newPw = generateUniquePassword();
@@ -9295,7 +9353,7 @@ function openDetail(r, source) {
     return '<div class="detail-block"' + onclick + '><div class="detail-block-label">' + label + '</div>' +
            '<div class="' + vCls + '">' + (val || '—') + '</div></div>';
   }
-  var worksVal = r.works === 'Нет' ? '<span style="color:var(--red);font-weight:700">Нет</span>' : (r.works || '—');
+  var worksVal = r.works === 'Нет' ? '<span style="color:var(--red)">Нет</span>' : (r.works || '—');
   var corrBlock = '';
   if (showViolBlock && source !== 'lobby') {
     var corrHtml = formatCorrectiveDetail(r.corrective);

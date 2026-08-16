@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'pkb-static-v331';
-const API_CACHE = 'pkb-api-v331';
+const STATIC_CACHE = 'pkb-static-v336';
+const API_CACHE = 'pkb-api-v336';
 
 const SHELL_PRECACHE = [
   '/',
@@ -136,22 +136,7 @@ self.addEventListener('push', function(e) {
   }
 
   if (data.type === 'sync' || data.silent) {
-    e.waitUntil(
-      notifyClients().then(function() {
-        if (!data.title && !data.body) return;
-        return self.registration.showNotification(data.title || ' ', {
-          body: data.body || '',
-          tag: data.tag || 'records-sync',
-          silent: true,
-          renotify: false,
-          data: { silent: true, url: '/' },
-        }).then(function() {
-          return self.registration.getNotifications({ tag: data.tag || 'records-sync' }).then(function(ns) {
-            (ns || []).forEach(function(n) { try { n.close(); } catch (_) {} });
-          });
-        }).catch(function() {});
-      })
-    );
+    e.waitUntil(notifyClients());
     return;
   }
 
@@ -160,11 +145,11 @@ self.addEventListener('push', function(e) {
       body: data.body,
       icon: '/icon-192.png',
       badge: '/badge.svg',
+      image: '/og-image.jpg',
       tag: data.tag || 'violation',
       renotify: true,
       vibrate: [200, 100, 200, 100, 200],
-      requireInteraction: true,
-      data: { url: '/' },
+      data: { url: '/?nc=1' },
     }).then(function() {
       return notifyClients();
     }).then(function() {
@@ -177,17 +162,35 @@ self.addEventListener('push', function(e) {
   );
 });
 
+self.addEventListener('pushsubscriptionchange', function(e) {
+  e.waitUntil(
+    self.registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: e.oldSubscription ? e.oldSubscription.options.applicationServerKey : undefined
+    }).then(function(sub) {
+      return fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription: sub.toJSON() })
+      });
+    }).catch(function(err) {
+      console.warn('[push] subscription change re-subscribe failed:', err.message);
+    })
+  );
+});
+
 self.addEventListener('notificationclick', function(e) {
   e.notification.close();
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
       for (var i = 0; i < list.length; i++) {
         var c = list[i];
-        if (c.url === '/' || c.url.indexOf(self.location.origin) === 0) {
+        if (c.url.indexOf(self.location.origin) === 0) {
+          c.postMessage({ type: 'NOTIFICATION_CLICK' });
           return c.focus();
         }
       }
-      return clients.openWindow('/');
+      return clients.openWindow('/?nc=1');
     })
   );
 });

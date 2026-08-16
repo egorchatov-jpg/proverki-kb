@@ -166,10 +166,30 @@ app.get('/sw.js', function(_req, res) {
   res.sendFile(path.join(ROOT, 'sw.js'));
 });
 
-app.get('/manifest.json', function(_req, res) {
+app.use('/manifest.json', function(_req, res) {
   res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
   res.sendFile(path.join(ROOT, 'manifest.json'));
+});
+
+// Block serving of sensitive files/dirs that must never be publicly reachable
+// (env files, SQLite db/wal/shm, backups, deployment/config files).
+function isSensitiveStaticPath(urlPath) {
+  const p = decodeURIComponent(urlPath || '');
+  if (p.indexOf('\0') >= 0) return true;
+  if (/^\/data\/(backups|snapshots)\//i.test(p)) return true;
+  if (/\.(env|env\.local|env\.prod|timeweb\.env)$/i.test(p)) return true;
+  const lower = p.toLowerCase();
+  if (lower.indexOf('/scripts/') === 0 || lower.indexOf('/docs/') === 0 || lower.indexOf('/node_modules/') === 0) return true;
+  if (/\.(db|sqlite|sqlite3|db-wal|db-shm|wal|shm)$/i.test(lower)) return true;
+  return false;
+}
+
+app.use(function(req, res, next) {
+  if (isSensitiveStaticPath(req.path)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  next();
 });
 
 app.use(express.static(ROOT, {
