@@ -34,7 +34,6 @@ const API_ROUTES = {
   '/api/backups': './api/backups',
   '/api/purge-records': './api/purge-records',
   '/api/delete-record': './api/delete-record',
-  '/api/photos': './api/photos',
 };
 
 function mountHandler(app, routePath, handler) {
@@ -154,6 +153,19 @@ app.get('/api/version', function(_req, res) {
 Object.keys(API_ROUTES).forEach(function(routePath) {
   mountHandler(app, routePath, require(API_ROUTES[routePath]));
 });
+
+// Photos API uses sub-routes (upload/list/delete) — mount with app.use
+(function() {
+  var photosHandler = require('./api/photos');
+  app.use('/api/photos', function(req, res) {
+    Promise.resolve(photosHandler(req, res)).catch(function(err) {
+      console.error('[/api/photos]', err.message);
+      if (!res.headersSent) {
+        res.status(500).json({ error: err.message || 'Internal server error' });
+      }
+    });
+  });
+})();
 
 app.get('/', function(_req, res) {
   setNoCache(res);

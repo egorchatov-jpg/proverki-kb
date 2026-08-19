@@ -34,9 +34,9 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const matchUpload = req.url.match(/^\/api\/photos\/upload/);
-  const matchList = req.url.match(/^\/api\/photos\/list\/([^\/]+)$/);
-  const matchDelete = req.url.match(/^\/api\/photos\/delete\/([^\/]+)\/([^\/]+)$/);
+  const matchUpload = req.url.match(/^\/upload/);
+  const matchList = req.url.match(/^\/list\/([^\/]+)$/);
+  const matchDelete = req.url.match(/^\/delete\/([^\/]+)\/([^\/]+)$/);
 
   try {
     if (matchUpload && req.method === 'POST') {
