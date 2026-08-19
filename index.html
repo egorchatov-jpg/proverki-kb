@@ -818,7 +818,7 @@ html, body {
   text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
 }
 .success-title { font-size: 20px; font-weight: 700; margin-bottom: 24px; color: #1a2035; }
-.success-btns { display: flex; gap: 10px; }
+.success-btns { display: flex; gap: 10px; justify-content: center; }
 .success-btn {
   flex: 1; border: none; cursor: pointer; border-radius: var(--btn-radius);
   height: 53px; padding: 0 10px; font-size: 15px; font-weight: 700; color: #fff;
@@ -826,7 +826,7 @@ html, body {
 }
 .success-btn:active { opacity: 0.8; }
 .success-btn-exit { background: var(--gray-btn-dark); width: calc((100% - 20px) / 3); flex: none; }
-.success-btn-next { background: var(--orange); }
+.success-btn-next { background: var(--orange); width: calc((100% - 20px) / 3); flex: none; }
 
 /* ===== WINDOWS: все экраны и оверлеи ~43vw, по центру браузера ===== */
 .is-win .screen,
@@ -6227,7 +6227,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v354';
+var APP_BUILD = 'pkb-v355';
 var APP_VERSION = '1.07';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
