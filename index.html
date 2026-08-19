@@ -459,7 +459,11 @@ html, body {
 }
 #screen-card .field-wrap.field-block .field-cell { width: 100%; flex: none; }
 
-.field-cell .placeholder { color: #1a2035; }
+.field-cell .placeholder { color: #aaa; }
+#screen-card #cell-desc,
+#screen-card #cell-desc.tall {
+  align-items: center;
+}
 
 .card-validation {
   text-align: center; padding: 14px 0 4px;
@@ -513,10 +517,54 @@ html, body {
   transition: opacity 0.15s;
 }
 #screen-card .card-checklist-btn:active { opacity: 0.8; }
+#screen-card .card-checklist-btn.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
 .card-checklist-btn[hidden] { display: none !important; }
 #screen-card-checklist {
   display: flex; flex-direction: column;
   background: var(--bg);
+}
+#screen-card-photo {
+  display: flex; flex-direction: column;
+  background: var(--bg);
+}
+.photo-scroll {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding: 12px 16px 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.photo-body { margin-top: 8px; }
+.photo-violation-item {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: var(--cell-border-width) solid var(--border);
+}
+.photo-violation-item:last-child { border-bottom: none; }
+.photo-violation-text {
+  font-size: 14px; color: #1a2035;
+  margin-bottom: 10px; line-height: 1.4;
+}
+.photo-btn-row {
+  display: flex; gap: 10px;
+}
+.photo-action-btn {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--orange); color: #fff;
+  border: none; border-radius: 10px;
+  padding: 10px 12px; font-size: 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  appearance: none; -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
+}
+.photo-action-btn:active { opacity: 0.8; }
+.photo-action-btn svg { width: 18px; height: 18px; stroke: #fff; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.card-btn-gray {
+  background: var(--gray-btn); color: #fff;
+  border-radius: 999px;
 }
 .is-ios #screen-card-checklist.active::before {
   content: '';
@@ -606,6 +654,10 @@ html, body {
   background: #fff;
 }
 .overlay-input:focus { outline: none; border-color: var(--orange); }
+#overlay-corr-desc .overlay-textarea,
+#overlay-corr-text .overlay-input { border-color: var(--navy); }
+#overlay-corr-desc .overlay-textarea:focus,
+#overlay-corr-text .overlay-input:focus { border-color: var(--navy); }
 .overlay-btns {
   display: flex; gap: 10px; margin-top: 18px;
 }
@@ -817,7 +869,12 @@ html, body {
 }
 .find-bottom-btn:active { opacity: 0.8; }
 .find-btn-cancel { background: var(--gray-btn-dark); }
-
+#screen-find .find-btn-cancel {
+  width: calc((100vw - 48px) / 3);
+  flex: none;
+  background: var(--gray-btn);
+  font-size: 15px;
+}
 /* ===== CORRECTIVE LIST row colours ===== */
 .corr-row-none    { background: rgba(192,57,43,0.10); }
 .corr-row-entered { background: rgba(27,58,107,0.18); }
@@ -849,8 +906,8 @@ html, body {
   padding: 0 14px 12px;
 }
 .corr-viol-info {
-  background: rgba(192,57,43,0.22); border-radius: 12px;
-  padding: 10px 14px; margin-bottom: 12px; font-size: 13px; line-height: 1.5;
+  background: transparent;
+  padding: 0; margin-bottom: 12px;
   border: none;
 }
 .corr-info-line { color: #1a2035; }
@@ -873,11 +930,12 @@ html, body {
   gap: 6px; margin-bottom: 6px;
 }
 .corr-m-sel-lbl { font-size: 12px; font-weight: 600; color: var(--text2); }
-.corr-m-desc {
-  width: 100%; min-height: 58px; border: var(--cell-border-width) solid var(--border);
+ .corr-m-desc {
+  width: 100%; min-height: 58px; border: var(--cell-border-width) solid var(--navy);
   border-radius: 10px; padding: 10px 12px; font-size: 13px;
   font-family: inherit; color: #1a2035; background: #fff;
   resize: none; box-sizing: border-box;
+  -webkit-appearance: none; appearance: none;
 }
 .corr-m-desc:focus { outline: none; border-color: var(--navy); }
 .corr-m-twin {
@@ -885,9 +943,10 @@ html, body {
 }
 .corr-m-half { flex: 1; min-width: 0; }
 .corr-m-input {
-  width: 100%; border: var(--cell-border-width) solid var(--border); border-radius: 10px;
+  width: 100%; border: var(--cell-border-width) solid var(--navy); border-radius: 10px;
   padding: 10px 12px; font-size: 13px; font-family: inherit;
   color: #1a2035; background: #fff; box-sizing: border-box;
+  -webkit-appearance: none; appearance: none;
 }
 .corr-m-input:focus { outline: none; border-color: var(--navy); }
 .corr-m-desc::placeholder,
@@ -895,7 +954,7 @@ html, body {
 .corr-m-ph,
 .corr-m-cell.corr-m-ph { color: #aaa; font-size: 13px; font-weight: 400; font-family: inherit; }
 .corr-m-cell {
-  border: var(--cell-border-width) solid var(--border); border-radius: 10px;
+  border: var(--cell-border-width) solid var(--navy); border-radius: 10px;
   padding: 10px 12px; font-size: 13px; color: #1a2035; background: #fff;
   cursor: pointer; display: flex; align-items: center; min-height: 42px;
   box-sizing: border-box;
@@ -1926,7 +1985,9 @@ html, body {
       <button class="menu-btn menu-btn-gray" onclick="openSokb()">Оспаривание<br>в СОКБ</button>
       <button class="menu-btn menu-btn-navy" onclick="openCorrectiveList()">Корректирующие<br>мероприятия</button>
     </div>
-    <button class="menu-btn-cancel" onclick="goLobby()">Назад</button>
+  </div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="goLobby()">Назад</button>
   </div>
 </div>
 
@@ -2125,13 +2186,14 @@ html, body {
             <span class="placeholder" id="val-barrier">Выбрать</span>
           </div>
           <button type="button" class="card-checklist-btn" id="btn-card-checklist" hidden onclick="openCardChecklistScreen()">Заполнить чек-лист</button>
+          <button type="button" class="card-checklist-btn" id="btn-card-photo" hidden onclick="openCardPhotoScreen()">Добавить фото</button>
         </div>
       </div>
 
       <div class="field-wrap">
         <div class="field-label">Барьер работоспособен</div>
         <div class="field-cell" id="cell-works" onclick="openDrumWorks()">
-          <span class="placeholder" id="val-works">Выбрать</span>
+          <span class="placeholder" id="val-works">—</span>
         </div>
       </div>
 
@@ -2207,6 +2269,17 @@ html, body {
   <div class="card-bottom">
     <button type="button" class="card-btn card-btn-cancel" id="btn-card-checklist-cancel" onclick="cancelCardChecklist()">Отмена</button>
     <button type="button" class="card-btn card-btn-submit" id="btn-card-checklist-submit" onclick="applyCardChecklist()">Готово</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: ФОТОГРАФИИ НАРУШЕНИЙ ===== -->
+<div class="screen" id="screen-card-photo">
+  <div class="photo-scroll" id="card-photo-scroll">
+    <div class="settings-screen-title" id="card-photo-title">Добавьте фотографии нарушений</div>
+    <div class="photo-body" id="card-photo-body"></div>
+  </div>
+  <div class="settings-footer">
+    <button type="button" class="screen-back-btn" id="btn-card-photo-back" onclick="closeCardPhotoScreen()">Назад</button>
   </div>
 </div>
 
@@ -2310,14 +2383,38 @@ html, body {
   </div>
 </div>
 
-<!-- ===== OVERLAY: ОПИСАНИЕ НАРУШЕНИЯ ===== -->
+<!-- ===== OVERLAY: ОПИСАН��Е НАРУШЕНИЯ ===== -->
 <div class="overlay" id="overlay-desc">
   <div class="overlay-box">
     <div class="overlay-title">Опишите нарушение</div>
-    <textarea class="overlay-textarea" id="desc-input" placeholder="Введите описание нарушения..."></textarea>
+    <textarea class="overlay-textarea" id="desc-input" rows="7"></textarea>
     <div class="overlay-btns">
       <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-desc')">Отмена</button>
       <button class="overlay-btn overlay-btn-apply" onclick="applyDesc()">Применить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== OVERLAY: ОПИСАНИЕ МЕРОПРИЯТИЯ / ОБОСНОВАНИЕ (синий) ===== -->
+<div class="overlay" id="overlay-corr-desc">
+  <div class="overlay-box" style="background:#eaf0fb;">
+    <div class="overlay-title" id="corr-desc-title">Опишите мероприятие</div>
+    <textarea class="overlay-textarea" id="corr-desc-input" rows="7" style="background:#fff;"></textarea>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-corr-desc')">Отмена</button>
+      <button class="overlay-btn overlay-btn-apply" style="background:var(--navy);" onclick="applyCorrDescOverlay()">Применить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== OVERLAY: ТЕКСТОВОЕ ПОЛЕ (синий) ===== -->
+<div class="overlay" id="overlay-corr-text">
+  <div class="overlay-box" style="background:#eaf0fb;">
+    <div class="overlay-title" id="corr-text-title">Введите значение</div>
+    <input class="overlay-input" id="corr-text-input" type="text" autocomplete="off" style="background:#fff;">
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-corr-text')">Отмена</button>
+      <button class="overlay-btn overlay-btn-apply" style="background:var(--navy);" onclick="applyCorrTextOverlay()">Применить</button>
     </div>
   </div>
 </div>
@@ -3379,7 +3476,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios', 'screen-install-android'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-card-photo', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios', 'screen-install-android'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -4400,7 +4497,7 @@ function _showLobbyBanners(count) {
 function renderLobby() {
   var today = todayStr();
   var violations = appState.db.filter(function(r) {
-    return r.dateEntry.startsWith(today) && r.works === 'Нет';
+    return r.dateEntry.startsWith(today) && r.works === 'Нет' && r.checkId;
   });
 
   var content = document.getElementById('lobby-content');
@@ -4416,16 +4513,19 @@ function renderLobby() {
       card.style.display = 'block';
       card.innerHTML =
         '<div class="violation-card-header">' +
-          '<div class="violation-card-header-line">Дата проверки: ' + esc(r.dateCheck || '') + '</div>' +
-          '<div class="violation-card-header-line">Организация: ' + esc(r.org || '') + '</div>' +
-          '<div class="violation-card-header-line clip">Объект: ' + esc(r.obj || '') + '</div>' +
           '<div class="violation-card-header-line proverka-row">' +
-            '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Проверка: ' + esc(r.method || '') + '</span>' +
+            '<span>Дата проверки: ' + esc(r.dateCheck || '') + '</span>' +
+            '<span>' + esc(checkIdBannerLabel(r)) + '</span>' +
+          '</div>' +
+          '<div class="violation-card-header-line proverka-row">' +
+            '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Метод: ' + esc(r.method || '') + '</span>' +
             '<span class="barrier-right">' +
               '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
               (r.barrierInPK === 'Да' ? '<span class="pk-tag">в ПК</span>' : '') +
             '</span>' +
           '</div>' +
+          '<div class="violation-card-header-line">Организация: ' + esc(r.org || '') + '</div>' +
+          '<div class="violation-card-header-line clip">Объект: ' + esc(r.obj || '') + '</div>' +
         '</div>' +
         '<div class="violation-card-body">' + formatRecordDescHtml(r) + '</div>';
       card.onclick = function() {
@@ -5128,6 +5228,7 @@ function openCard() {
   setCardScreenMode(false);
   showScreen('screen-card');
   requestAnimationFrame(syncCardFieldLabelWidths);
+  updateCardPhotoButton();
 }
 
 function openRecordEditPIN() {
@@ -5176,7 +5277,7 @@ function openCardForEdit(r) {
   setCardVal('org', r.org || 'Выбрать', !r.org);
   setDimmed('method', false);
   setDimmed('org', false);
-  setCardVal('obj', r.obj || '—', !r.obj);
+  setCardVal('obj', r.obj || 'Ввести', !r.obj);
   setCardVal('barrier', r.barrier || 'Выбрать', !r.barrier);
   setWorksCellDisplay(r.works || '');
   setCardVal('desc', r.desc || '—', !r.desc);
@@ -5205,6 +5306,7 @@ function openCardForEdit(r) {
     syncWorksCellState();
   }
   updateCardChecklistButton();
+  updateCardPhotoButton();
   syncInspectorOrgCellState();
   var titleEl = document.querySelector('#screen-card .card-title');
   if (titleEl) titleEl.textContent = 'Измените проведенную проверку ' + checkIdLabel(r);
@@ -5312,10 +5414,11 @@ function resetCard() {
   if (titleEl) titleEl.textContent = 'Внесите результат проведенной проверки';
   setCardSubtitle('');
   setTodayDate();
-  ['method','inspectorOrg','org','obj','barrier','works','desc'].forEach(function(k) {
+  ['method','inspectorOrg','org','barrier','works','desc'].forEach(function(k) {
     var isPick = k === 'method' || k === 'org' || k === 'barrier' || k === 'works' || k === 'inspectorOrg';
     setCardVal(k, isPick ? 'Выбрать' : '—', isPick);
   });
+  setCardVal('obj', 'Ввести', true);
   setDimmed('method', false);
   setDimmed('inspectorOrg', false);
   setDimmed('org', false);
@@ -6055,7 +6158,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v336';
+var APP_BUILD = 'pkb-v346';
 var APP_VERSION = '1.07';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -8313,10 +8416,24 @@ function openSokbEdit(r) {
   if (!sokbAttempts.length) sokbAttempts = [newEmptySokbAttempt()];
   var infoEl = document.getElementById('sokb-viol-info');
   infoEl.innerHTML =
-    '<div class="corr-info-line"><b>' + esc(checkIdBannerLabel(r)) + '</b></div>' +
-    '<div class="corr-info-line">Дата: ' + esc(r.dateCheck||'') + ' | Метод: ' + esc(r.method||'') + '</div>' +
-    '<div class="corr-info-line">Организация: ' + esc(r.org||'') + ' | Барьер: ' + esc(r.barrier||'') + '</div>' +
-    (formatRecordDescPlain(r) ? '<div class="corr-info-line corr-info-desc"><span class="corr-info-desc-label">Описание:</span><div class="corr-info-desc-body">' + formatRecordDescHtml(r) + '</div></div>' : '');
+    '<div class="violation-card" style="cursor:default;margin-bottom:8px;">' +
+      '<div class="violation-card-header">' +
+        '<div class="violation-card-header-line proverka-row">' +
+          '<span>Дата проверки: ' + esc(r.dateCheck || '') + '</span>' +
+          '<span>' + esc(checkIdBannerLabel(r)) + '</span>' +
+        '</div>' +
+        '<div class="violation-card-header-line proverka-row">' +
+          '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Метод: ' + esc(r.method || '') + '</span>' +
+          '<span class="barrier-right">' +
+            '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
+            (r.barrierInPK === 'Да' ? '<span class="pk-tag">в ПК</span>' : '') +
+          '</span>' +
+        '</div>' +
+        '<div class="violation-card-header-line">Организация: ' + esc(r.org || '') + '</div>' +
+        '<div class="violation-card-header-line clip">Объект: ' + esc(r.obj || '') + '</div>' +
+      '</div>' +
+      (formatRecordDescPlain(r) ? '<div class="violation-card-body">' + formatRecordDescHtml(r) + '</div>' : '') +
+    '</div>';
   renderSokbAttempts();
   var sc = document.getElementById('sokb-edit-scroll');
   if (sc) sc.scrollTop = 0;
@@ -8369,16 +8486,28 @@ function createSokbAttemptEl(m, idx) {
   hdr.appendChild(leftSide); hdr.appendChild(titleSpan);
   div.appendChild(hdr);
 
-  var ta = document.createElement('textarea');
-  ta.className = 'corr-m-desc';
-  ta.placeholder = 'Обоснование оспаривания';
-  ta.rows = 3;
-  ta.value = m.desc || '';
-  ta.addEventListener('input', (function(i){ return function() {
-    sokbAttempts[i].desc = this.value;
-    checkSokbFilled();
+  var descCell = document.createElement('div');
+  descCell.className = 'corr-m-cell';
+  descCell.id = 'sokb-desc-' + idx;
+  descCell.style.cssText = 'width:100%;margin-top:6px;min-height:58px;align-items:flex-start;white-space:pre-wrap;';
+  if (m.desc) {
+    descCell.textContent = m.desc;
+  } else {
+    descCell.textContent = 'Обоснование оспаривания';
+    descCell.classList.add('corr-m-ph');
+  }
+  descCell.addEventListener('click', (function(i){ return function() {
+    openCorrDescOverlay('Введите обоснование для оспаривания', sokbAttempts[i].desc, function(val) {
+      sokbAttempts[i].desc = val;
+      var el = document.getElementById('sokb-desc-' + i);
+      if (el) {
+        el.textContent = val || 'Обоснование оспаривания';
+        el.classList.toggle('corr-m-ph', !val);
+      }
+      checkSokbFilled();
+    });
   }; })(idx));
-  div.appendChild(ta);
+  div.appendChild(descCell);
 
   var twin = document.createElement('div');
   twin.className = 'corr-m-twin';
@@ -8914,10 +9043,24 @@ function openCorrectiveEdit(r) {
   if (!correctiveMeasures.length) correctiveMeasures = [newEmptyMeasure(1)];
   var infoEl = document.getElementById('corr-viol-info');
   infoEl.innerHTML =
-    '<div class="corr-info-line"><b>' + esc(checkIdBannerLabel(r)) + '</b></div>' +
-    '<div class="corr-info-line">Дата: ' + esc(r.dateCheck||'') + ' | Метод: ' + esc(r.method||'') + '</div>' +
-    '<div class="corr-info-line">Организация: ' + esc(r.org||'') + ' | Барьер: ' + esc(r.barrier||'') + '</div>' +
-    (formatRecordDescPlain(r) ? '<div class="corr-info-line corr-info-desc"><span class="corr-info-desc-label">Описание:</span><div class="corr-info-desc-body">' + formatRecordDescHtml(r) + '</div></div>' : '');
+    '<div class="violation-card" style="cursor:default;margin-bottom:8px;">' +
+      '<div class="violation-card-header">' +
+        '<div class="violation-card-header-line proverka-row">' +
+          '<span>Дата проверки: ' + esc(r.dateCheck || '') + '</span>' +
+          '<span>' + esc(checkIdBannerLabel(r)) + '</span>' +
+        '</div>' +
+        '<div class="violation-card-header-line proverka-row">' +
+          '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Метод: ' + esc(r.method || '') + '</span>' +
+          '<span class="barrier-right">' +
+            '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
+            (r.barrierInPK === 'Да' ? '<span class="pk-tag">в ПК</span>' : '') +
+          '</span>' +
+        '</div>' +
+        '<div class="violation-card-header-line">Организация: ' + esc(r.org || '') + '</div>' +
+        '<div class="violation-card-header-line clip">Объект: ' + esc(r.obj || '') + '</div>' +
+      '</div>' +
+      (formatRecordDescPlain(r) ? '<div class="violation-card-body">' + formatRecordDescHtml(r) + '</div>' : '') +
+    '</div>';
   renderCorrMeasures();
   var sc = document.getElementById('corr-edit-scroll');
   if (sc) sc.scrollTop = 0;
@@ -8966,35 +9109,58 @@ function createCorrMeasureEl(m, idx) {
   var titleSpan = document.createElement('span');
   titleSpan.className = 'corr-m-sel-lbl';
   titleSpan.style.fontWeight = '700';
-  titleSpan.textContent = 'Корректирующее мероприятие №' + n;
+  titleSpan.textContent = 'Описание мероприятия №' + n;
 
   hdr.appendChild(leftSide); hdr.appendChild(titleSpan);
   div.appendChild(hdr);
 
-  // Description textarea (100% width)
-  var ta = document.createElement('textarea');
-  ta.className = 'corr-m-desc';
-  ta.placeholder = 'Корректирующее мероприятие №' + n;
-  ta.rows = 3;
-  ta.value = m.desc || '';
-  ta.addEventListener('input', (function(i){ return function() {
-    correctiveMeasures[i].desc = this.value;
-    checkCorrFilled();
+  // Description cell (opens overlay on tap)
+  var descCell = document.createElement('div');
+  descCell.className = 'corr-m-cell';
+  descCell.id = 'corr-desc-' + idx;
+  descCell.style.cssText = 'width:100%;margin-top:6px;min-height:58px;align-items:flex-start;white-space:pre-wrap;';
+  if (m.desc) {
+    descCell.textContent = m.desc;
+  } else {
+    descCell.textContent = 'Описание мероприятия';
+    descCell.classList.add('corr-m-ph');
+  }
+  descCell.addEventListener('click', (function(i){ return function() {
+    openCorrDescOverlay('Опишите мероприятие', correctiveMeasures[i].desc, function(val) {
+      correctiveMeasures[i].desc = val;
+      var el = document.getElementById('corr-desc-' + i);
+      if (el) {
+        el.textContent = val || 'Описание мероприятия';
+        el.classList.toggle('corr-m-ph', !val);
+      }
+      checkCorrFilled();
+    });
   }; })(idx));
-  div.appendChild(ta);
+  div.appendChild(descCell);
 
-  // Ответственный — full width, own row
-  var respInput = document.createElement('input');
-  respInput.className = 'corr-m-input';
-  respInput.style.cssText = 'width:100%;margin-top:6px;box-sizing:border-box;';
-  respInput.type = 'text';
-  respInput.placeholder = 'Ответственный департамент организация';
-  respInput.value = m.responsible || '';
-  respInput.addEventListener('input', (function(i){ return function() {
-    correctiveMeasures[i].responsible = this.value;
-    checkCorrFilled();
+  // Responsible cell (opens overlay on tap)
+  var respCell = document.createElement('div');
+  respCell.className = 'corr-m-cell';
+  respCell.id = 'corr-resp-' + idx;
+  respCell.style.cssText = 'width:100%;margin-top:6px;box-sizing:border-box;';
+  if (m.responsible) {
+    respCell.textContent = m.responsible;
+  } else {
+    respCell.textContent = 'Ответственный департамент организация';
+    respCell.classList.add('corr-m-ph');
+  }
+  respCell.addEventListener('click', (function(i){ return function() {
+    openCorrTextOverlay('Введите ответственный департамент организацию', correctiveMeasures[i].responsible, function(val) {
+      correctiveMeasures[i].responsible = val;
+      var el = document.getElementById('corr-resp-' + i);
+      if (el) {
+        el.textContent = val || 'Ответственный департамент организация';
+        el.classList.toggle('corr-m-ph', !val);
+      }
+      checkCorrFilled();
+    });
   }; })(idx));
-  div.appendChild(respInput);
+  div.appendChild(respCell);
 
   // Срок (50%) + Статус (50%) — same row
   var twin = document.createElement('div');
@@ -9277,11 +9443,17 @@ function renderFindList(records, preserveScroll) {
   records.forEach(function(r) {
     var tr = document.createElement('tr');
     if (r.works === 'Нет') tr.className = 'has-violation';
+    var unsyncedIcon = r.checkId ? '' : '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:18px;height:18px;color:var(--red);flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9.75v6.75m0 0-3-3m3 3 3-3m-8.25 6a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" /></svg>';
     tr.innerHTML =
       '<td>' + esc(r.dateCheck || '') + '</td>' +
       '<td>' + esc(r.method || '') + '</td>' +
       '<td>' + esc(r.org || '') + '</td>' +
-      '<td>' + esc(r.barrier || '') + '</td>';
+      '<td>' +
+        '<span style="display:flex;align-items:center;justify-content:space-between;width:100%;">' +
+          '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.barrier || '') + '</span>' +
+          unsyncedIcon +
+        '</span>' +
+      '</td>';
     tr.onclick = (function(rec){ return function(){ openDetail(rec, 'find'); }; })(r);
     tbody.appendChild(tr);
   });
@@ -9628,7 +9800,9 @@ function openDrumOrg() {
     { id: 'org', items: orgs, value: cardData.org || orgs[0], fullWidth: true, widthFactor: 0.8, leftAlign: true }
   ], function(d) {
     cardData.org = d['org'].getValue();
-    document.getElementById('val-org').textContent = cardData.org;
+    var el = document.getElementById('val-org');
+    el.textContent = cardData.org;
+    el.classList.remove('placeholder');
     updateValidation();
   });
 }
@@ -9758,6 +9932,7 @@ function syncWorksCellState() {
   cardData.worksLockedByChecklist = false;
   cardData.descFromChecklist = false;
   unlockWorksCell();
+  setWorksCellDisplay(cardData.works || 'Выбрать');
   var broken = cardData.works === 'Нет';
   setDimmed('desc', !broken);
   if (broken) {
@@ -9827,17 +10002,40 @@ function updateCardDescEditable(editable) {
   }
 }
 
+function updateCardPhotoButton() {
+  var btn = document.getElementById('btn-card-photo');
+  if (!btn) return;
+  if (!cardBarrierSelected()) {
+    btn.hidden = true;
+    btn.classList.remove('disabled');
+    return;
+  }
+  var hasChecklist = cardBarrierHasChecklist();
+  if (hasChecklist) {
+    // Checklist exists: show photo button, disable if checklist not filled
+    btn.hidden = false;
+    var filled = cardData.checklistFilled && cardChecklistReadyForViolation();
+    btn.classList.toggle('disabled', !filled);
+  } else {
+    // No checklist: show photo button active (replaces checklist button)
+    btn.hidden = false;
+    btn.classList.remove('disabled');
+  }
+}
+
 function updateCardChecklistButton() {
   if (!cardBarrierSelected()) {
     setCardChecklistButtonVisible(false);
     _cardChecklistMatch = null;
     syncWorksCellState();
+    updateCardPhotoButton();
     return;
   }
   if (cardEditRecord && !cardEditRecord.checklistFilled) {
     setCardChecklistButtonVisible(false);
     _cardChecklistMatch = null;
     syncWorksCellState();
+    updateCardPhotoButton();
     return;
   }
   var barrier = String(cardData.barrier || '').trim();
@@ -9852,6 +10050,7 @@ function updateCardChecklistButton() {
     setCardChecklistButtonVisible(ok);
     syncWorksCellState();
     updateValidation();
+    updateCardPhotoButton();
   });
 }
 
@@ -10277,6 +10476,93 @@ function renderCardChecklistScreen(keepScroll) {
   }
 }
 
+function openCardPhotoScreen() {
+  renderCardPhotoScreen();
+  showScreen('screen-card-photo');
+}
+
+function closeCardPhotoScreen() {
+  showScreen('screen-card');
+}
+
+function renderCardPhotoScreen() {
+  var body = document.getElementById('card-photo-body');
+  body.innerHTML = '';
+  var hasChecklist = cardBarrierHasChecklist();
+  if (hasChecklist && cardData.checklistFilled) {
+    // Variant 2: with checklist violations
+    var violations = cardData.checklistViolations || {};
+    var questionTexts = _cardChecklistQuestionTexts || {};
+    var items = [];
+    Object.keys(violations).forEach(function(k) {
+      var desc = String(violations[k] || '').trim();
+      if (!desc) return;
+      var qText = questionTexts[k] || k;
+      var parts = splitQuestionCodeAndText(qText);
+      splitViolationDescChunks(desc).forEach(function(chunk) {
+        items.push((parts.code ? parts.code + ' ' : '') + stripLeadingQuestionCode(chunk, parts.code));
+      });
+    });
+    if (!items.length) {
+      // No violations text — show simple camera/attach buttons
+      renderCardPhotoSimple(body);
+    } else {
+      items.forEach(function(text) {
+        var item = document.createElement('div');
+        item.className = 'photo-violation-item';
+        var txt = document.createElement('div');
+        txt.className = 'photo-violation-text';
+        txt.textContent = text;
+        item.appendChild(txt);
+        var row = document.createElement('div');
+        row.className = 'photo-btn-row';
+        row.innerHTML =
+          '<button type="button" class="photo-action-btn" onclick="cardPhotoCamera(this)">' +
+            'Камера' +
+            '<svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
+          '</button>' +
+          '<button type="button" class="photo-action-btn" onclick="cardPhotoAttach(this)">' +
+            'Прикрепить' +
+            '<svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>' +
+          '</button>';
+        item.appendChild(row);
+        body.appendChild(item);
+      });
+    }
+  } else {
+    // Variant 1: no checklist
+    renderCardPhotoSimple(body);
+  }
+}
+
+function renderCardPhotoSimple(body) {
+  var row = document.createElement('div');
+  row.className = 'photo-btn-row';
+  row.style.marginTop = '20px';
+  row.innerHTML =
+    '<button type="button" class="photo-action-btn" onclick="cardPhotoCamera(this)">' +
+      'Камера' +
+      '<svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
+    '</button>' +
+    '<button type="button" class="photo-action-btn" onclick="cardPhotoAttach(this)">' +
+      'Прикрепить' +
+      '<svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>' +
+    '</button>';
+  body.appendChild(row);
+}
+
+function cardPhotoCamera(btn) {
+  console.log('[photo] camera tapped');
+  // Placeholder for camera integration
+  alert('Камера — в разработке');
+}
+
+function cardPhotoAttach(btn) {
+  console.log('[photo] attach tapped');
+  // Placeholder for file picker integration
+  alert('Прикрепить файл — в разработке');
+}
+
 function openCardChecklistScreen() {
   if (!_cardChecklistMatch) return;
   _recordChecklistView = null;
@@ -10362,6 +10648,7 @@ function cancelCardChecklist() {
   }
   _cardChecklistSnapshot = null;
   restorePassportActiveAfterCardChecklist();
+  updateCardPhotoButton();
   showScreen('screen-card');
 }
 
@@ -10412,6 +10699,7 @@ function applyCardChecklist() {
   cardData.checklistQuestionTexts = Object.assign({}, _cardChecklistQuestionTexts);
   _cardChecklistSnapshot = null;
   restorePassportActiveAfterCardChecklist();
+  updateCardPhotoButton();
   showScreen('screen-card');
 }
 
@@ -10452,7 +10740,8 @@ function collectViolationsForQuestion(qKey) {
 
 var IOS_KB_OVERLAY_IDS = [
   'overlay-text', 'overlay-desc', 'overlay-checklist-violation',
-  'overlay-bpk-input', 'overlay-bpk-goals'
+  'overlay-bpk-input', 'overlay-bpk-goals',
+  'overlay-corr-desc', 'overlay-corr-text'
 ];
 var _iosKbVvBound = false;
 var _clViolOverlayUiBound = false;
@@ -10813,6 +11102,12 @@ function setWorksCellDisplay(value) {
   } else if (value === 'Да') {
     el.textContent = 'Да';
     el.classList.remove('placeholder');
+  } else if (value === 'Выбрать') {
+    el.textContent = 'Выбрать';
+    el.classList.add('placeholder');
+  } else if (!value) {
+    el.textContent = '—';
+    el.classList.add('placeholder');
   } else {
     el.textContent = '—';
     el.classList.add('placeholder');
@@ -10836,6 +11131,9 @@ function openDrumWorks() {
       lockDescCell();
       updateCardDescEditable(false);
     } else {
+      cardData.desc = '';
+      document.getElementById('val-desc').textContent = 'Ввести';
+      document.getElementById('val-desc').classList.add('placeholder');
       unlockDescCell();
       updateCardDescEditable(true);
     }
@@ -10884,7 +11182,10 @@ function openTextOverlay(key, title, valId, withAutocomplete) {
   currentTextAutocompleteKey = withAutocomplete ? key : null;
   currentTextCallback = function(val) {
     cardData[key] = val;
-    document.getElementById(valId).textContent = val || '—';
+    var el = document.getElementById(valId);
+    el.textContent = val || '—';
+    if (val && val.trim()) el.classList.remove('placeholder');
+    else el.classList.add('placeholder');
     updateValidation();
   };
   document.getElementById('text-overlay-title').textContent = title;
@@ -10950,12 +11251,55 @@ function openDescOverlay() {
 
 function applyDesc() {
   cardData.desc = document.getElementById('desc-input').value.trim();
-  document.getElementById('val-desc').textContent = cardData.desc || '—';
+  var el = document.getElementById('val-desc');
+  el.textContent = cardData.desc || '—';
+  if (cardData.desc && cardData.desc.trim()) el.classList.remove('placeholder');
+  else el.classList.add('placeholder');
   closeOverlay('overlay-desc');
   updateValidation();
 }
 
+// ===== CORRECTIVE / SOKB OVERLAYS =====
+var _corrDescCallback = null;
+var _corrTextCallback = null;
 
+function openCorrDescOverlay(title, value, onApply) {
+  var inp = document.getElementById('corr-desc-input');
+  var overlay = document.getElementById('overlay-corr-desc');
+  document.getElementById('corr-desc-title').textContent = title;
+  inp.value = value || '';
+  _corrDescCallback = onApply;
+  resetOverlayViewportStyles(overlay);
+  overlay.classList.add('active');
+  prepareIosKeyboardOverlay('overlay-corr-desc');
+  focusIosOverlayInput(inp);
+}
+
+function applyCorrDescOverlay() {
+  var val = document.getElementById('corr-desc-input').value.trim();
+  closeOverlay('overlay-corr-desc');
+  if (_corrDescCallback) _corrDescCallback(val);
+  _corrDescCallback = null;
+}
+
+function openCorrTextOverlay(title, value, onApply) {
+  var inp = document.getElementById('corr-text-input');
+  var overlay = document.getElementById('overlay-corr-text');
+  document.getElementById('corr-text-title').textContent = title;
+  inp.value = value || '';
+  _corrTextCallback = onApply;
+  resetOverlayViewportStyles(overlay);
+  overlay.classList.add('active');
+  prepareIosKeyboardOverlay('overlay-corr-text');
+  focusIosOverlayInput(inp);
+}
+
+function applyCorrTextOverlay() {
+  var val = document.getElementById('corr-text-input').value.trim();
+  closeOverlay('overlay-corr-text');
+  if (_corrTextCallback) _corrTextCallback(val);
+  _corrTextCallback = null;
+}
 
 function closeOverlay(id) {
   if (IOS_KB_OVERLAY_IDS.indexOf(id) >= 0) {
