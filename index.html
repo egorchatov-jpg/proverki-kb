@@ -473,7 +473,7 @@ html, body {
 .card-validation.ok { color: var(--green); }
 
 .card-bottom {
-  display: flex; gap: 10px;
+  display: flex; gap: 10px; justify-content: center;
   padding: 12px 14px;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   flex-shrink: 0;
@@ -494,7 +494,7 @@ html, body {
 .card-btn-cancel { background: var(--gray-btn-dark); width: calc((100% - 20px) / 3); flex: none; }
 .card-btn-delete { background: var(--red); }
 #screen-card:not(.card-mode-edit) #btn-card-delete { display: none !important; }
-.card-btn-submit { background: var(--orange); }
+.card-btn-submit { background: var(--orange); width: calc((100% - 20px) / 3); flex: none; }
 .card-btn-submit:disabled { opacity: 0.4; pointer-events: none; }
 #field-wrap-barrier { align-items: flex-start; }
 #field-wrap-barrier > .field-label { align-self: flex-start; margin-top: 10px; }
@@ -6208,7 +6208,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v351';
+var APP_BUILD = 'pkb-v352';
 var APP_VERSION = '1.07';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
