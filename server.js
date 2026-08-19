@@ -34,6 +34,7 @@ const API_ROUTES = {
   '/api/backups': './api/backups',
   '/api/purge-records': './api/purge-records',
   '/api/delete-record': './api/delete-record',
+  '/api/photos': './api/photos',
 };
 
 function mountHandler(app, routePath, handler) {
@@ -200,6 +201,18 @@ app.use(express.static(ROOT, {
     }
   },
 }));
+
+// Serve uploaded photos from the same directory as the database
+app.use('/photos', function(req, res, next) {
+  const { getDbPath } = require('./lib/db');
+  const photosDir = require('path').join(require('path').dirname(getDbPath()), 'photos');
+  require('express').static(photosDir, {
+    index: false,
+    setHeaders: function(res) {
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    },
+  })(req, res, next);
+});
 
 app.use(function(_req, res) {
   res.status(404).json({ error: 'Not found' });
