@@ -7,26 +7,25 @@
 
 ## Последнее обновление
 - **Дата:** 2026-08-19
-- **Сессия:** Единая ширина всех нижних серых кнопок (pkb-v348)
-- **Версия кода:** pkb-v348 (последний закоммиченный в master — pkb-v348, b4d9d7f)
-- **Статус:** Закоммичено и запушено в master 2026-08-19
+- **Сессия:** Исправление ширины кнопок без изменения высоты (pkb-v349)
+- **Версия кода:** pkb-v349 (последний закоммиченный в master — pkb-v348, b4d9d7f)
+- **Статус:** НЕ закоммичено (правки в рабочей копии)
 
 ## Что сделано
-1. **pkb-v348 — единая ширина всех нижних серых кнопок:**
+1. **pkb-v349 — единая ширина нижних серых кнопок (без изменения высоты):**
+   - **Исправление v348:**
+     - `.menu-btn-cancel` (install-device, bpk-choice) и `.pin-back-btn` (PIN-экран) — **возвращены как были**: `padding: 13px 40px`, без фиксированной ширины. Высота кнопок ввода паролей восстановлена.
+     - Остальные кнопки получили только ширину `calc((100vw - 48px) / 3)` без изменения высоты:
+       - `.find-bottom-btn` (find, corrective-list, sokb-list) — `flex: 1` → фиксированная ширина, `height: 53px` сохранён.
+       - `.detail-back-btn` (подробное окно) — `padding: 0 40px` → `width: ...; padding: 0`, `height: 53px` сохранён.
+       - `.card-btn-cancel` (card, card-checklist) — добавлена ширина, высота из `.card-btn` = 53px сохранена.
+       - `.corr-btn-cancel` (corrective-edit, sokb-edit) — `flex: 1` → фиксированная ширина, `height: 53px` сохранён.
+       - `.overlay-btn-cancel` (все оверлеи) — добавлена ширина, высота из `.overlay-btn` = 53px сохранена.
+       - `.success-btn-exit` (success-overlay) — добавлена ширина, высота из `.success-btn` = 53px сохранена.
+       - `.screen-back-btn` — базовая ширина `calc((100vw - 48px) / 3)` без изменений, удалены переопределения v347.
    - **Лобби (`screen-proverki-menu`):**
-     - Кнопка "Назад" вынесена из `.proverki-menu-content` в `.settings-footer` внизу экрана.
-     - Класс изменён на `.screen-back-btn` — ширина `calc((100vw - 48px) / 3)`.
-   - **Все нижние серые кнопки "Назад", "Отмена", "Выход" приведены к ширине `calc((100vw - 48px) / 3)`:**
-     - `.screen-back-btn` (settings-footer экраны) — базовая ширина восстановлена, удалены специфичные переопределения v347.
-     - `.detail-back-btn` (подробное окно) — `padding: 0 40px` → `width: calc((100vw - 48px) / 3)`.
-     - `.find-bottom-btn` (find, corrective-list, sokb-list) — `flex: 1` → фиксированная ширина.
-     - `.card-btn-cancel` (card, card-checklist) — добавлен `width: calc((100vw - 48px) / 3); flex: none`.
-     - `.corr-btn-cancel` (corrective-edit, sokb-edit) — `flex: 1` → фиксированная ширина.
-     - `.menu-btn-cancel` (install-device, bpk-choice) — `padding: 13px 40px` → фиксированная ширина.
-     - `.pin-back-btn` (PIN-экран) — `padding: 13px 40px` → фиксированная ширина.
-     - `.overlay-btn-cancel` (все оверлеи) — добавлена фиксированная ширина.
-     - `.success-btn-exit` (success-overlay) — добавлена фиксированная ширина.
-   - `APP_BUILD` → `pkb-v348`, кэш SW → `pkb-static/api-v348`.
+     - Кнопка "Назад" вынесена в `.settings-footer` с классом `.screen-back-btn`.
+   - `APP_BUILD` → `pkb-v349`, кэш SW → `pkb-static/api-v349`.
 2. **pkb-v347 — унификация высоты и ширины кнопок:**
    - **Высота кнопок "Камера" и "Прикрепить" (`screen-card-photo`):**
      - CSS `.photo-action-btn`: добавлен `height: 53px`, вертикальный padding убран (`padding: 0 12px`) — высота совпадает с кнопкой "Назад" в этом же окне.
@@ -147,6 +146,7 @@
 
 ## Что НЕ сделано / следующие шаги
 - [x] Закоммитить pkb-v341–pkb-v348 в master.
+- [ ] Закоммитить pkb-v349 в master.
 - [ ] Деплой на Timeweb.
 - [ ] (Отложено по решению) Серверная авторизация на мутирующие API, перенос суперпользователя на сервер, CORS-`*`, rate-limiting — меняют контракт клиента, риск поломок.
 

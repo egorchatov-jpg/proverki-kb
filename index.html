@@ -326,8 +326,7 @@ html, body {
 .menu-btn-cancel {
   background: var(--gray-btn);
   border-radius: 30px;
-  width: calc((100vw - 48px) / 3);
-  padding: 0;
+  padding: 13px 40px;
   font-size: 15px; font-weight: 700; color: #fff;
   border: none; cursor: pointer;
   box-shadow: var(--btn-shadow);
@@ -374,8 +373,7 @@ html, body {
   background: var(--gray-btn);
   color: #fff; font-size: 15px; font-weight: 700;
   border: none; cursor: pointer; border-radius: 30px;
-  width: calc((100vw - 48px) / 3);
-  padding: 0; box-shadow: var(--btn-shadow);
+  padding: 13px 40px; box-shadow: var(--btn-shadow);
   transition: opacity 0.15s;
 }
 .pin-back-btn:active { opacity: 0.8; }
@@ -873,6 +871,7 @@ html, body {
 }
 .find-bottom-btn:active { opacity: 0.8; }
 .find-btn-cancel { background: var(--gray-btn-dark); }
+
 /* ===== CORRECTIVE LIST row colours ===== */
 .corr-row-none    { background: rgba(192,57,43,0.10); }
 .corr-row-entered { background: rgba(27,58,107,0.18); }
@@ -6160,7 +6159,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v348';
+var APP_BUILD = 'pkb-v349';
 var APP_VERSION = '1.07';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
