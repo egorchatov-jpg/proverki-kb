@@ -491,7 +491,7 @@ html, body {
   transition: opacity 0.15s, transform 0.1s;
 }
 .card-btn:active { opacity: 0.8; transform: scale(0.97); }
-.card-btn-cancel { background: var(--gray-btn-dark); width: calc((100vw - 48px) / 3); flex: none; }
+.card-btn-cancel { background: var(--gray-btn-dark); width: calc((100% - 20px) / 3); flex: none; }
 .card-btn-delete { background: var(--red); }
 #screen-card:not(.card-mode-edit) #btn-card-delete { display: none !important; }
 .card-btn-submit { background: var(--orange); }
@@ -553,7 +553,7 @@ html, body {
   flex: 1;
   display: flex; align-items: center; justify-content: center; gap: 6px;
   background: var(--orange); color: #fff;
-  border: none; border-radius: 10px;
+  border: none; border-radius: var(--btn-radius);
   padding: 0 12px; font-size: 14px; font-weight: 700;
   height: 53px;
   cursor: pointer; font-family: inherit;
@@ -672,7 +672,7 @@ html, body {
   transition: opacity 0.15s;
 }
 .overlay-btn:active { opacity: 0.8; }
-.overlay-btn-cancel { background: var(--gray-btn-dark); width: calc((100vw - 48px) / 3); flex: none; }
+.overlay-btn-cancel { background: var(--gray-btn-dark); width: calc((100% - 20px) / 3); flex: none; }
 .overlay-btn-apply { background: var(--orange); }
 
 /* autocomplete */
@@ -787,7 +787,7 @@ html, body {
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
 }
 .success-btn:active { opacity: 0.8; }
-.success-btn-exit { background: var(--gray-btn-dark); width: calc((100vw - 48px) / 3); flex: none; }
+.success-btn-exit { background: var(--gray-btn-dark); width: calc((100% - 20px) / 3); flex: none; }
 .success-btn-next { background: var(--orange); }
 
 /* ===== WINDOWS: все экраны и оверлеи ~43vw, по центру браузера ===== */
@@ -859,7 +859,7 @@ html, body {
 .find-count { flex: 1; text-align: center; font-size: 14px; font-weight: 700; color: #1a2035; line-height: 1.3; }
 .find-violation-count { flex: 1; text-align: center; font-size: 14px; font-weight: 700; color: var(--red); line-height: 1.3; }
 .find-bottom-btn {
-  width: calc((100vw - 48px) / 3);
+  width: calc((100% - 20px) / 3);
   flex: none;
   border: none; cursor: pointer; border-radius: var(--btn-radius);
   padding: 0 8px;
@@ -973,7 +973,7 @@ html, body {
   background: var(--bg); flex-shrink: 0;
 }
 .corr-btn-cancel {
-  width: calc((100vw - 48px) / 3); flex: none;
+  width: calc((100% - 20px) / 3); flex: none;
   height: 53px; border: none; cursor: pointer;
   border-radius: var(--btn-radius); background: var(--gray-btn-dark);
   color: #fff; font-size: 15px; font-weight: 700;
@@ -1045,7 +1045,7 @@ html, body {
 .detail-back-btn {
   background: var(--gray-btn-dark); color: #fff;
   border: none; cursor: pointer; border-radius: var(--btn-radius);
-  width: calc((100vw - 48px) / 3);
+  width: calc((100% - 20px) / 3);
   padding: 0;
   height: 53px;
   display: flex; align-items: center; justify-content: center;
@@ -1567,7 +1567,7 @@ html, body {
 .year-action-btn:active { opacity: 0.78; }
 /* Bottom Назад / Сохранить button — same width as single nav-btn */
 .screen-back-btn {
-  width: calc((100vw - 48px) / 3);
+  width: calc((100% - 20px) / 3);
   height: 53px;
   background: var(--gray-btn); color: #fff;
   font-size: 15px; font-weight: 700;
@@ -6159,7 +6159,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v349';
+var APP_BUILD = 'pkb-v350';
 var APP_VERSION = '1.07';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
