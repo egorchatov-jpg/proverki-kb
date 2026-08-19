@@ -3245,7 +3245,7 @@ function postViolationNotify(record, senderEp) {
   }).catch(function(e) { console.warn('[notify] failed:', e.message); });
 }
 
-function syncToServer(record) {
+function syncToServer(record, onSuccess) {
   syncStatus = 'syncing';
   updateSyncIndicator();
   var ctrl = new AbortController();
@@ -3277,6 +3277,7 @@ function syncToServer(record) {
         if (record.works === 'Нет' && !d.duplicate && (!d.notified || d.notified === 0)) {
           postViolationNotify(record, senderEp);
         }
+        if (onSuccess) onSuccess(d);
       } else {
         syncStatus = 'error';
         addToSyncQueue(record);
@@ -5319,7 +5320,8 @@ function openCardForEdit(r) {
     obj: r.obj || '',
     barrier: r.barrier || '',
     works: r.works || '',
-    desc: r.desc || ''
+    desc: r.desc || '',
+    _localPhotos: []
   };
   setCardVal('date', r.dateCheck || '—', !r.dateCheck);
   setCardVal('method', r.method || 'Выбрать', !r.method);
@@ -5456,7 +5458,7 @@ function cancelCard() {
 }
 
 function resetCard() {
-  cardData = {};
+  cardData = { _localPhotos: [] };
   _cardChecklistMatch = null;
   _cardChecklistSnapshot = null;
   _cardChecklistQuestionTexts = {};
@@ -5584,6 +5586,12 @@ function submitCardEdit() {
   if (fields.checklistQuestionTexts) r.checklistQuestionTexts = fields.checklistQuestionTexts;
   if (fields.checklistFilled) r.checklistFilled = true;
   saveRecordFieldUpdate(r.dateEntry, year, fields);
+  var localPhotos = (cardData._localPhotos || []).slice();
+  if (localPhotos.length && r.checkId) {
+    uploadLocalPhotos(r.checkId, localPhotos, function() {
+      cardData._localPhotos = [];
+    });
+  }
   cardEditRecord = null;
   var titleEl = document.querySelector('#screen-card .card-title');
   if (titleEl) titleEl.textContent = 'Внесите результат проведенной проверки';
@@ -5619,8 +5627,19 @@ function submitCard() {
   renumberDb();
   saveState();
   var toSync = Object.assign({}, cardData);
+  delete toSync._localPhotos;
   addToSyncQueue(toSync); // durable before network — survive kill mid-request
-  syncToServer(toSync);
+  var localPhotos = (cardData._localPhotos || []).slice();
+  syncToServer(toSync, function(d) {
+    if (d.checkId && localPhotos.length) {
+      uploadLocalPhotos(d.checkId, localPhotos, function() {
+        if (cardData._localPhotos === localPhotos ||
+            (cardData._localPhotos && cardData._localPhotos.length === localPhotos.length)) {
+          cardData._localPhotos = [];
+        }
+      });
+    }
+  });
   document.getElementById('success-overlay').classList.add('active');
 }
 
@@ -6208,7 +6227,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v352';
+var APP_BUILD = 'pkb-v353';
 var APP_VERSION = '1.07';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -10533,7 +10552,10 @@ var _photoSelectedItem = null;
 function openCardPhotoScreen() {
   renderCardPhotoScreen();
   showScreen('screen-card-photo');
-  loadCardPhotoPreviews();
+  if (cardData.checkId) {
+    loadCardPhotoPreviews();
+  }
+  renderLocalPhotoPreviews();
 }
 
 function closeCardPhotoScreen() {
@@ -10612,19 +10634,20 @@ function onCardPhotoFileSelected(input) {
   var file = input.files && input.files[0];
   input.value = '';
   if (!file) return;
-  if (!cardData.checkId) {
-    alert('Сначала сохраните проверку, чтобы прикрепить фото');
-    return;
-  }
   var reader = new FileReader();
   reader.onload = function(e) {
     var base64 = e.target.result.split(',')[1];
-    uploadPhoto(cardData.checkId, _photoAttachViolationIndex, base64);
+    var tempId = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    var photo = { base64: base64, violationIndex: _photoAttachViolationIndex, tempId: tempId };
+    if (!cardData._localPhotos) cardData._localPhotos = [];
+    cardData._localPhotos.push(photo);
+    var num = cardData._localPhotos.filter(function(p) { return p.violationIndex === _photoAttachViolationIndex; }).length;
+    addPhotoPreview(_photoAttachViolationIndex, null, num, base64, tempId);
   };
   reader.readAsDataURL(file);
 }
 
-function uploadPhoto(checkId, violationIndex, imageData) {
+function uploadPhoto(checkId, violationIndex, imageData, onDone) {
   fetch('/api/photos/upload', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -10633,14 +10656,32 @@ function uploadPhoto(checkId, violationIndex, imageData) {
   .then(function(r) { return r.json(); })
   .then(function(data) {
     if (data.success) {
-      addPhotoPreview(violationIndex, data.filename, data.index);
+      if (onDone) onDone(data);
     } else {
       alert('Ошибка загрузки: ' + (data.error || 'неизвестно'));
+      if (onDone) onDone(null);
     }
   })
   .catch(function(err) {
     console.error('[photo] upload failed:', err);
     alert('Ошибка загрузки фото');
+    if (onDone) onDone(null);
+  });
+}
+
+function uploadLocalPhotos(checkId, photos, onDone) {
+  if (!photos || !photos.length) { if (onDone) onDone(); return; }
+  var pending = photos.length;
+  var errors = [];
+  photos.forEach(function(photo) {
+    uploadPhoto(checkId, photo.violationIndex || 0, photo.base64, function(data) {
+      if (!data) errors.push(photo.tempId);
+      pending--;
+      if (pending === 0) {
+        if (errors.length) console.warn('[photo] some uploads failed:', errors);
+        if (onDone) onDone();
+      }
+    });
   });
 }
 
@@ -10658,16 +10699,33 @@ function loadCardPhotoPreviews() {
   .catch(function(err) { console.warn('[photo] load previews failed:', err); });
 }
 
-function addPhotoPreview(violationIndex, filename, num) {
+function renderLocalPhotoPreviews() {
+  if (!cardData._localPhotos || !cardData._localPhotos.length) return;
+  cardData._localPhotos.forEach(function(photo) {
+    var num = cardData._localPhotos.filter(function(p) { return p.violationIndex === photo.violationIndex; }).indexOf(photo) + 1;
+    addPhotoPreview(photo.violationIndex || 0, null, num, photo.base64, photo.tempId);
+  });
+}
+
+function addPhotoPreview(violationIndex, filename, num, base64, tempId) {
   var row = document.getElementById('photo-preview-row-' + violationIndex);
   if (!row) return;
   var item = document.createElement('div');
   item.className = 'photo-preview-item';
-  item.dataset.filename = filename;
-  var existing = row.querySelectorAll('.photo-preview-item').length;
-  var displayNum = num || (existing + 1);
+  var src, displayNum;
+  if (base64) {
+    item.dataset.local = 'true';
+    item.dataset.tempId = tempId;
+    src = 'data:image/jpeg;base64,' + base64;
+    displayNum = num || (cardData._localPhotos ? cardData._localPhotos.filter(function(p) { return p.violationIndex === violationIndex; }).length : 1);
+  } else {
+    item.dataset.filename = filename;
+    var existing = row.querySelectorAll('.photo-preview-item').length;
+    displayNum = num || (existing + 1);
+    src = '/photos/' + encodeURIComponent(filename);
+  }
   item.innerHTML =
-    '<img src="/photos/' + encodeURIComponent(filename) + '" alt="" loading="lazy">' +
+    '<img src="' + src + '" alt="" loading="lazy">' +
     '<div class="photo-preview-num">' + displayNum + '</div>' +
     '<button type="button" class="photo-preview-delete" onclick="deletePhoto(this,event)">&times;</button>';
   bindPhotoPreviewEvents(item);
@@ -10726,6 +10784,14 @@ function deletePhoto(btn, event) {
   if (event) event.stopPropagation();
   var item = btn.closest('.photo-preview-item');
   if (!item) return;
+  if (item.dataset.local === 'true') {
+    var tempId = item.dataset.tempId;
+    if (cardData._localPhotos) {
+      cardData._localPhotos = cardData._localPhotos.filter(function(p) { return p.tempId !== tempId; });
+    }
+    item.remove();
+    return;
+  }
   var filename = item.dataset.filename;
   if (!filename || !cardData.checkId) return;
   if (!confirm('Удалить фото?')) return;
