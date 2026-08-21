@@ -13,6 +13,13 @@ function ensurePhotosDir() {
   return dir;
 }
 
+function removeStoredFallbacks(dir, filename) {
+  const base = path.basename(filename, path.extname(filename));
+  ['.webp', '.jpeg', '.jpg'].forEach(function(ext) {
+    try { fs.rmSync(path.join(dir, base + ext), { force: true }); } catch (_e) {}
+  });
+}
+
 function formatDateDMY(date) {
   const d = date.getDate().toString().padStart(2, '0');
   const m = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -22,8 +29,8 @@ function formatDateDMY(date) {
 
 async function processImage(buffer) {
   return sharp(buffer)
-    .resize({ width: 640, height: 640, fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality: 85, progressive: true })
+    .resize({ width: 1080, height: 1080, fit: 'inside', withoutEnlargement: true })
+    .avif({ quality: 50 })
     .toBuffer();
 }
 
@@ -37,6 +44,7 @@ module.exports = async (req, res) => {
   const matchUpload = req.url.match(/^\/upload/);
   const matchList = req.url.match(/^\/list\/([^\/]+)$/);
   const matchDelete = req.url.match(/^\/delete\/([^\/]+)\/([^\/]+)$/);
+  const matchVariant = req.url.match(/^\/variant\/(webp|jpeg)\/([^\/]+)$/i);
 
   try {
     if (matchUpload && req.method === 'POST') {
@@ -49,14 +57,15 @@ module.exports = async (req, res) => {
       const countRow = db.prepare("SELECT COUNT(*) as cnt FROM photos WHERE check_id = ?").get(checkId);
       const nextIndex = (countRow.cnt || 0) + 1;
       const dateStr = formatDateDMY(new Date());
-      const filename = checkId + '_' + nextIndex + '_' + dateStr + '.jpeg';
+       const filename = checkId + '_' + nextIndex + '_' + dateStr + '.avif';
 
       const buffer = Buffer.from(imageData, 'base64');
-      const processed = await processImage(buffer);
+       const processed = await processImage(buffer);
 
       const photosDir = ensurePhotosDir();
-      const filePath = path.join(photosDir, filename);
-      fs.writeFileSync(filePath, processed);
+       const filePath = path.join(photosDir, filename);
+       fs.writeFileSync(filePath, processed);
+       removeStoredFallbacks(photosDir, filename);
 
       db.prepare(
         "INSERT INTO photos (check_id, filename, violation_index, uploaded_at) VALUES (?, ?, ?, unixepoch())"
@@ -74,6 +83,18 @@ module.exports = async (req, res) => {
       return res.status(200).json({ photos: rows });
     }
 
+    if (matchVariant && req.method === 'GET') {
+      const format = matchVariant[1].toLowerCase();
+      const filename = decodeURIComponent(matchVariant[2]);
+      if (!/^[^\\/]+\.avif$/i.test(filename)) return res.status(400).end();
+      const sourcePath = path.join(getPhotosDir(), filename);
+      if (!fs.existsSync(sourcePath)) return res.status(404).end();
+      const output = await sharp(sourcePath)[format]().toBuffer();
+      res.setHeader('Content-Type', format === 'webp' ? 'image/webp' : 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.status(200).send(output);
+    }
+
     if (matchDelete && req.method === 'DELETE') {
       const checkId = decodeURIComponent(matchDelete[1]);
       const filename = decodeURIComponent(matchDelete[2]);
@@ -81,11 +102,15 @@ module.exports = async (req, res) => {
       const db = getDb();
       db.prepare("DELETE FROM photos WHERE check_id = ? AND filename = ?").run(checkId, filename);
 
-      const photosDir = getPhotosDir();
+       const photosDir = getPhotosDir();
+       removeStoredFallbacks(photosDir, filename);
       const filePath = path.join(photosDir, filename);
-      if (fs.existsSync(filePath)) {
-        try { fs.unlinkSync(filePath); } catch (_e) {}
-      }
+       ['.avif', '.webp', '.jpeg'].forEach(function(ext) {
+         const variantPath = path.join(photosDir, path.basename(filename, path.extname(filename)) + ext);
+         if (fs.existsSync(variantPath)) {
+           try { fs.unlinkSync(variantPath); } catch (_e) {}
+         }
+       });
 
       return res.status(200).json({ success: true });
     }

@@ -30,6 +30,7 @@ const API_ROUTES = {
   '/api/records': './api/records',
   '/api/checklists': './api/checklists',
   '/api/export': './api/export',
+  '/api/photos/export': './api/photos-export',
   '/api/settings': './api/settings',
   '/api/backups': './api/backups',
   '/api/purge-records': './api/purge-records',
@@ -208,7 +209,7 @@ app.use(function(req, res, next) {
 app.use(express.static(ROOT, {
   index: false,
   setHeaders: function(res, filePath) {
-    if (/\.(png|jpg|jpeg|svg|webp)$/i.test(filePath)) {
+    if (/\.(avif|png|jpg|jpeg|svg|webp)$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
     }
   },

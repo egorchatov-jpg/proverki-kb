@@ -35,7 +35,7 @@ module.exports = async (req, res) => {
           id: b.id,
           label: b.label,
           createdAt: b.createdAt,
-          format: b.format || 'sqlite',
+          format: b.format || 'sqlite+photos',
         })),
       });
     }

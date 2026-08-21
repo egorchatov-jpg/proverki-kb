@@ -276,6 +276,18 @@ html, body {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 16px; padding: 24px;
 }
+#screen-install-device .install-device-content {
+  justify-content: flex-start;
+  padding: 24px 14px 0;
+}
+#screen-install-device .install-device-row {
+  margin-top: auto;
+}
+#screen-install-device .install-device-content > .screen-back-btn {
+  flex-shrink: 0;
+  margin-top: auto;
+  margin-bottom: max(12px, env(safe-area-inset-bottom));
+}
 .install-device-title {
   font-size: 16px; font-weight: 700; color: #1a2035; text-align: center;
   line-height: 1.4; width: 100%;
@@ -530,6 +542,24 @@ html, body {
   display: flex; flex-direction: column;
   background: var(--bg);
 }
+.camera-screen, .camera-preview-screen {
+  display: flex; flex-direction: column; background: #000;
+}
+.camera-stage, .camera-preview-stage {
+  flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.camera-stage video, .camera-preview-stage img {
+  display: block; width: 100%; height: 100%; object-fit: contain;
+}
+.camera-footer {
+  display: flex; justify-content: center; gap: 10px; padding: 10px 14px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom)); flex-shrink: 0; background: #000;
+}
+.camera-footer .screen-back-btn { background: var(--gray-btn); }
+.camera-capture-btn { background: var(--orange); }
+.camera-preview-cancel { background: var(--gray-btn-dark); }
+.camera-preview-apply { background: var(--orange); }
 .photo-scroll {
   flex: 1; overflow-y: auto; overflow-x: hidden;
   padding: 12px 16px 12px;
@@ -698,10 +728,11 @@ html, body {
 #overlay-corr-desc .overlay-textarea:focus,
 #overlay-corr-text .overlay-input:focus { border-color: var(--navy); }
 .overlay-btns {
-  display: flex; gap: 10px; margin-top: 18px;
+  display: flex; gap: 10px; margin-top: 18px; justify-content: center;
 }
 .overlay-btn {
-  flex: 1; border: none; cursor: pointer; border-radius: var(--btn-radius);
+  width: calc((100% - 20px) / 3); flex: none;
+  border: none; cursor: pointer; border-radius: var(--btn-radius);
   padding: 0 10px;
   height: 53px;
   display: flex; align-items: center; justify-content: center;
@@ -710,7 +741,7 @@ html, body {
   transition: opacity 0.15s;
 }
 .overlay-btn:active { opacity: 0.8; }
-.overlay-btn-cancel { background: var(--gray-btn-dark); width: calc((100% - 20px) / 3); flex: none; }
+.overlay-btn-cancel { background: var(--gray-btn-dark); }
 .overlay-btn-apply { background: var(--orange); }
 
 /* autocomplete */
@@ -783,12 +814,8 @@ html, body {
   line-height: 1.55; margin: 0 0 6px;
 }
 #overlay-push-prompt .overlay-box { background: #fff; }
-#overlay-push-prompt .overlay-btns { justify-content: center; }
-#overlay-push-prompt .overlay-btn { flex: 0 0 auto; width: calc(33.333% - 7px); }
 #overlay-app-update { z-index: 10050; }
 #overlay-app-update .overlay-title { text-align: center; line-height: 1.4; }
-#overlay-app-update .overlay-btns { justify-content: center; }
-#overlay-app-update .overlay-btn { flex: 0 0 auto; width: calc(50% - 5px); }
 .violator-ctrl-btn {
   width: 53px; height: 53px; border: none; cursor: pointer;
   border-radius: 14px; display: flex; align-items: center; justify-content: center;
@@ -814,11 +841,16 @@ html, body {
 .success-overlay.active { opacity: 1; pointer-events: all; }
 .success-box {
   background: #fffbee; border-radius: 22px;
+  width: calc(100% - 40px); box-sizing: border-box;
   padding: 32px 28px; margin: 20px;
   text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
 }
 .success-title { font-size: 20px; font-weight: 700; margin-bottom: 24px; color: #1a2035; }
-.success-btns { display: flex; gap: 10px; justify-content: center; }
+.success-btns {
+  display: flex; gap: 10px; justify-content: center;
+  width: calc(100% + 68px); margin-left: -34px;
+}
+.success-btns.syncing { display: none; }
 .success-btn {
   flex: 1; border: none; cursor: pointer; border-radius: var(--btn-radius);
   height: 53px; padding: 0 10px; font-size: 15px; font-weight: 700; color: #fff;
@@ -857,10 +889,10 @@ html, body {
   text-align: left; line-height: 1.3;
   overflow: hidden;
 }
-.find-table tbody tr { border-bottom: var(--cell-border-width) solid var(--border); cursor: pointer; touch-action: manipulation; }
+.find-table tbody tr { height: 31px; border-bottom: var(--cell-border-width) solid var(--border); cursor: pointer; touch-action: manipulation; }
 .find-table tbody tr:active { background: rgba(232,119,34,0.08); }
 .find-table tbody tr.has-violation { background: rgba(192,57,43,0.15); }
-.find-table td { padding: 8px 4px; font-size: 12px; color: #1a2035; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.find-table td { height: 30px; box-sizing: border-box; padding: 8px 4px; font-size: 12px; line-height: 14px; color: #1a2035; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .th-col-btn {
   background: none; border: none; cursor: pointer; padding: 0;
   color: var(--text2); text-align: left; line-height: 1.3;
@@ -1006,7 +1038,7 @@ html, body {
 .method-sq-btn.corr-plus { background: var(--navy); }
 .corr-valid-msg { text-align: center; font-size: 13px; font-weight: 700; min-height: 18px; padding: 16px 0 8px; }
 .corr-footer {
-  display: flex; gap: 12px; padding: 10px 14px;
+  display: flex; justify-content: center; gap: 12px; padding: 10px 14px;
   padding-bottom: max(10px, env(safe-area-inset-bottom));
   background: var(--bg); flex-shrink: 0;
 }
@@ -1018,7 +1050,8 @@ html, body {
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
 }
 .corr-btn-save {
-  flex: 1; height: 53px; border: none; cursor: pointer;
+  width: calc((100% - 20px) / 3); flex: none;
+  height: 53px; border: none; cursor: pointer;
   border-radius: var(--btn-radius); background: var(--navy);
   color: #fff; font-size: 15px; font-weight: 700;
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
@@ -1055,6 +1088,7 @@ html, body {
   border: var(--cell-border-width) solid var(--orange); cursor: pointer; background: #fff;
 }
 .detail-checklist-row { align-items: center; }
+.detail-photo-row { align-items: center; }
 #screen-detail .card-checklist-btn {
   flex: 1 1 0; min-width: 0; box-sizing: border-box;
   min-height: 36px; padding: 6px 10px;
@@ -1155,6 +1189,20 @@ html, body {
   align-items: center; padding: 8px 16px 4px; gap: 12px;
   overflow-y: auto; -webkit-overflow-scrolling: touch;
 }
+.detail-placeholder { color: #aaa; }
+.detail-photo-btn-disabled { opacity: 0.45; pointer-events: none; }
+.export-format-body { justify-content: flex-start; }
+.export-format-row { display: flex; gap: 10px; width: 100%; }
+.export-format-btn {
+  flex: 1; min-width: 0; box-sizing: border-box;
+  width: auto; height: 53px; padding: 0 12px;
+  background: var(--navy); color: #fff; border: none;
+  border-radius: var(--btn-radius); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; font-family: inherit;
+  box-shadow: var(--btn-shadow);
+}
+.export-format-btn:active { opacity: 0.8; }
 /* Shared footer with bottom-aligned buttons */
 .settings-footer {
   display: flex; justify-content: center; align-items: center; gap: 10px;
@@ -1171,23 +1219,23 @@ html, body {
 }
 /* Wide navy buttons in settings main screen */
 .settings-wide-btn {
-  width: 100%; padding: 16px 20px;
+  width: 100%; flex: 0 1 auto; min-width: 0; box-sizing: border-box;
+  padding: 16px 20px;
   background: var(--navy); color: #fff;
   font-size: 16px; font-weight: 600;
   border: none; border-radius: 14px; cursor: pointer; text-align: center;
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
 }
 .settings-wide-btn:active { opacity: 0.75; }
-.is-win .settings-wide-btn { width: calc((100vw - 48px) / 3); }
 .settings-navy-btn {
-  width: 100%; padding: 16px 20px;
+  width: 100%; flex: 0 1 auto; min-width: 0; box-sizing: border-box;
+  padding: 16px 20px;
   background: var(--navy); color: #fff;
   font-size: 16px; font-weight: 600;
   border: none; border-radius: 14px; cursor: pointer; text-align: center;
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
 }
 .settings-navy-btn:active { opacity: 0.75; }
-.is-win .settings-navy-btn { width: calc((100vw - 48px) / 3); }
 .passport-detail-scroll {
   flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
@@ -1253,13 +1301,17 @@ html, body {
 }
 .passport-mub-btn:active { opacity: 0.78; }
 .passport-appendix-btn {
-  width: 100%; padding: 16px 20px;
+  width: 100%; flex: 0 1 auto; min-width: 0; box-sizing: border-box;
+  padding: 16px 20px;
   background: var(--gray-btn); color: #fff;
   font-size: 16px; font-weight: 600;
   border: none; border-radius: 14px; cursor: pointer; text-align: center;
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
 }
 .passport-appendix-btn:active { opacity: 0.75; }
+.passport-appendix-btn,
+.passport-barrier-btn,
+.passport-mub-btn { box-sizing: border-box; }
 .passport-mub-scroll {
   flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
   padding: 12px 16px 16px;
@@ -1575,7 +1627,8 @@ html, body {
   font-weight: 600;
 }
 .restore-point-btn {
-  width: 100%; padding: 16px 20px;
+  width: 100%; flex: 0 1 auto; min-width: 0; box-sizing: border-box;
+  padding: 16px 20px;
   background: var(--gray-btn); color: #fff;
   font-size: 16px; font-weight: 600;
   border: none; border-radius: 14px; cursor: pointer; text-align: center;
@@ -1586,7 +1639,6 @@ html, body {
 .restore-point-btn.active {
   background: var(--orange); cursor: default; pointer-events: none;
 }
-.is-win .restore-point-btn { width: calc((100vw - 48px) / 3); }
 #screen-restore-points .restore-points-empty {
   text-align: center; color: var(--text2); font-size: 14px; padding: 24px 0;
 }
@@ -1594,7 +1646,7 @@ html, body {
 #overlay-delete-record .overlay-title { text-align: center; line-height: 1.4; }
 /* Navy year action button — same width as a single nav-btn */
 .year-action-btn {
-  width: calc((100vw - 48px) / 3);
+  width: 100%; flex: 0 1 auto; min-width: 0; box-sizing: border-box;
   height: 53px;
   background: var(--navy); color: #fff;
   font-size: 16px; font-weight: 700;
@@ -1976,7 +2028,7 @@ html, body {
         <span class="install-device-icon" id="install-device-icon-android"></span>
       </button>
     </div>
-    <button type="button" class="menu-btn-cancel" onclick="backFromInstallDevice()">Назад</button>
+    <button type="button" class="screen-back-btn" onclick="backFromInstallDevice()">Назад</button>
   </div>
 </div>
 
@@ -2225,7 +2277,7 @@ html, body {
             <span class="placeholder" id="val-barrier">Выбрать</span>
           </div>
           <button type="button" class="card-checklist-btn" id="btn-card-checklist" hidden onclick="openCardChecklistScreen()">Заполнить чек-лист</button>
-          <button type="button" class="card-checklist-btn" id="btn-card-photo" hidden onclick="openCardPhotoScreen()">Добавить фото</button>
+          <button type="button" class="card-checklist-btn" id="btn-card-photo" hidden onclick="photoButtonClick()">Добавить фото</button>
         </div>
       </div>
 
@@ -2483,6 +2535,38 @@ html, body {
   <div class="settings-screen-body" id="export-year-list"></div>
   <div class="settings-footer">
     <button class="screen-back-btn" onclick="showScreen('screen-settings')">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: КАМЕРА ===== -->
+<div class="screen camera-screen" id="screen-card-camera">
+  <div class="camera-stage"><video id="card-camera-video" autoplay playsinline muted></video></div>
+  <div class="camera-footer">
+    <button type="button" class="screen-back-btn" onclick="closeCardCamera()">Назад</button>
+    <button type="button" class="screen-back-btn camera-capture-btn" onclick="captureCardPhoto()">Сфотографировать</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: ПРЕДПРОСМОТР ФОТО ===== -->
+<div class="screen camera-preview-screen" id="screen-card-camera-preview">
+  <div class="camera-preview-stage"><img id="card-camera-preview" alt="Предпросмотр фото"></div>
+  <div class="camera-footer">
+    <button type="button" class="screen-back-btn camera-preview-cancel" onclick="cancelCardCameraPreview()">Отмена</button>
+    <button type="button" class="screen-back-btn camera-preview-apply" onclick="applyCardCameraPreview()">Применить</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: ФОРМАТ ВЫГРУЗКИ ===== -->
+<div class="screen" id="screen-export-format">
+  <div class="settings-screen-title">Выберите формат выгрузки</div>
+  <div class="settings-screen-body export-format-body">
+    <div class="export-format-row">
+      <button class="export-format-btn" id="export-photos-btn">Фото zip</button>
+      <button class="export-format-btn" id="export-excel-btn">Список excel</button>
+    </div>
+  </div>
+  <div class="settings-footer">
+    <button class="screen-back-btn" onclick="showScreen('screen-export')">Назад</button>
   </div>
 </div>
 
@@ -2774,7 +2858,7 @@ html, body {
 <div class="success-overlay" id="success-overlay">
   <div class="success-box">
     <div id="sync-indicator" style="margin-bottom:24px;text-align:center;"></div>
-    <div class="success-btns">
+    <div class="success-btns syncing" id="success-btns">
       <button class="success-btn success-btn-exit" onclick="successExit()">Выйти</button>
       <button class="success-btn success-btn-next" onclick="successNext()">Следующая проверка</button>
     </div>
@@ -3245,7 +3329,7 @@ function postViolationNotify(record, senderEp) {
   }).catch(function(e) { console.warn('[notify] failed:', e.message); });
 }
 
-function syncToServer(record, onSuccess) {
+function syncToServer(record, onSuccess, onComplete) {
   syncStatus = 'syncing';
   updateSyncIndicator();
   var ctrl = new AbortController();
@@ -3284,6 +3368,7 @@ function syncToServer(record, onSuccess) {
         console.warn('[sync] ошибка сервера:', d.error);
       }
       updateSyncIndicator();
+      if (onComplete) onComplete();
     })
     .catch(function(e) {
       clearTimeout(timer);
@@ -3291,6 +3376,7 @@ function syncToServer(record, onSuccess) {
       addToSyncQueue(record);
       console.warn('[sync] нет соединения или таймаут, запись в очередь');
       updateSyncIndicator();
+      if (onComplete) onComplete();
     });
   });
 }
@@ -3527,7 +3613,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-card-photo', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios', 'screen-install-android'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-export-format', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-card-photo', 'screen-card-camera', 'screen-card-camera-preview', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios', 'screen-install-android'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -4622,6 +4708,19 @@ function canEditRecord() {
   return _sessionAccess.superuser || _sessionAccess.admin;
 }
 
+function canUsePhotos() {
+  return !!_sessionAccess.superuser;
+}
+
+function photoButtonClick(record) {
+  if (!canUsePhotos()) {
+    alert('Раздел в разработке');
+    return;
+  }
+  if (record) openRecordPhotoScreen(record);
+  else openCardPhotoScreen();
+}
+
 function canEditSokb() {
   return _sessionAccess.superuser || _sessionAccess.admin;
 }
@@ -5313,6 +5412,7 @@ function openCardForEdit(r) {
   if (!r) return;
   cardEditRecord = r;
   cardData = {
+    checkId: r.checkId || '',
     dateCheck: r.dateCheck || '',
     method: r.method || '',
     inspectorOrg: r.inspector || '',
@@ -5321,7 +5421,7 @@ function openCardForEdit(r) {
     barrier: r.barrier || '',
     works: r.works || '',
     desc: r.desc || '',
-    _localPhotos: []
+    _localPhotos: r._localPhotos ? r._localPhotos.slice() : []
   };
   setCardVal('date', r.dateCheck || '—', !r.dateCheck);
   setCardVal('method', r.method || 'Выбрать', !r.method);
@@ -5413,10 +5513,11 @@ function deleteRecordFromApp(r) {
   saveServerShas(shas);
   cardEditRecord = null;
   setCardScreenMode(false);
-  applyFindFilters();
-  renderCorrectiveList();
-  renderLobby();
-  goLobby();
+   applyFindFilters();
+   renderCorrectiveList();
+   renderLobby();
+   applyFindFilters();
+   showScreen('screen-find');
   fetch('/api/delete-record', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -5630,6 +5731,8 @@ function submitCard() {
   delete toSync._localPhotos;
   addToSyncQueue(toSync); // durable before network — survive kill mid-request
   var localPhotos = (cardData._localPhotos || []).slice();
+  var successBtns = document.getElementById('success-btns');
+  successBtns.classList.add('syncing');
   syncToServer(toSync, function(d) {
     if (d.checkId && localPhotos.length) {
       uploadLocalPhotos(d.checkId, localPhotos, function() {
@@ -5639,6 +5742,8 @@ function submitCard() {
         }
       });
     }
+  }, function() {
+    document.getElementById('success-btns').classList.remove('syncing');
   });
   document.getElementById('success-overlay').classList.add('active');
 }
@@ -5678,10 +5783,46 @@ function openExportScreen() {
     var btn = document.createElement('button');
     btn.className = 'year-action-btn';
     btn.textContent = year;
-    btn.onclick = function() { downloadExcel(year, btn); };
+    btn.onclick = function() { openExportFormatScreen(year); };
     list.appendChild(btn);
   });
   showScreen('screen-export');
+}
+var _exportYear = null;
+function openExportFormatScreen(year) {
+  _exportYear = String(year);
+  var photosBtn = document.getElementById('export-photos-btn');
+  var excelBtn = document.getElementById('export-excel-btn');
+  if (photosBtn) {
+    photosBtn.textContent = 'Фото zip'; photosBtn.disabled = false;
+    photosBtn.onclick = function() { downloadPhotosZip(_exportYear, photosBtn); };
+  }
+  if (excelBtn) {
+    excelBtn.textContent = 'Список excel'; excelBtn.disabled = false;
+    excelBtn.onclick = function() { downloadExcel(_exportYear, excelBtn); };
+  }
+  showScreen('screen-export-format');
+}
+
+function downloadPhotosZip(year, btn) {
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  fetch('/api/photos/export?year=' + encodeURIComponent(year))
+    .then(function(r) {
+      if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || ('HTTP ' + r.status)); });
+      return r.blob();
+    })
+    .then(function(blob) {
+      var a = document.createElement('a');
+      var url = URL.createObjectURL(blob);
+      a.href = url; a.download = 'Фото КБ ' + year + '.zip';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      if (btn) { btn.textContent = 'Фото zip'; btn.disabled = false; }
+    })
+    .catch(function(e) {
+      if (btn) { btn.textContent = 'Фото zip'; btn.disabled = false; }
+      alert('Ошибка выгрузки: ' + e.message);
+    });
 }
 
 function downloadExcel(year, btn) {
@@ -6227,8 +6368,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v356';
-var APP_VERSION = '1.07';
+var APP_BUILD = 'pkb-v381';
+var APP_VERSION = '1.08';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
@@ -9505,6 +9646,11 @@ function renderFindList(records, preserveScroll) {
   var tbody = document.getElementById('find-tbody');
   tbody.innerHTML = '';
   records = sortByDateCheckAsc(records);
+  if (new URLSearchParams(window.location.search).has('demo-unsynced') && records.length) {
+    records = records.slice();
+    var demoUnsyncedIndex = records.length - 1;
+    records[demoUnsyncedIndex] = Object.assign({}, records[demoUnsyncedIndex], { checkId: '' });
+  }
   var viol = records.filter(function(r) { return r.works === 'Нет'; }).length;
   document.getElementById('find-count').innerHTML = pluralProverka(records.length);
   document.getElementById('find-violation-count').innerHTML = viol + '<br>' + pluralNarushenie(viol);
@@ -9512,13 +9658,13 @@ function renderFindList(records, preserveScroll) {
   records.forEach(function(r) {
     var tr = document.createElement('tr');
     if (r.works === 'Нет') tr.className = 'has-violation';
-    var unsyncedIcon = r.checkId ? '' : '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:18px;height:18px;color:var(--red);flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9.75v6.75m0 0-3-3m3 3 3-3m-8.25 6a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" /></svg>';
+    var unsyncedIcon = r.checkId ? '' : '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;min-width:18px;max-width:18px;min-height:18px;max-height:18px;flex:0 0 18px;line-height:0;overflow:hidden;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" width="18" height="18" stroke="#c0392b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;width:18px;height:18px;"><path stroke="none" d="M0 0h24v24H0z"/><path stroke="#c0392b" d="M3 9l4-4l4 4m-4 -4v14"/><path stroke="#c0392b" d="M21 15l-4 4l-4-4m4 4v-14"/></svg></span>';
     tr.innerHTML =
       '<td>' + esc(r.dateCheck || '') + '</td>' +
       '<td>' + esc(r.method || '') + '</td>' +
       '<td>' + esc(r.org || '') + '</td>' +
       '<td>' +
-        '<span style="display:flex;align-items:center;justify-content:space-between;width:100%;">' +
+        '<span style="display:flex;align-items:center;justify-content:space-between;width:100%;height:14px;max-height:14px;line-height:14px;overflow:visible;">' +
           '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.barrier || '') + '</span>' +
           unsyncedIcon +
         '</span>' +
@@ -9598,19 +9744,21 @@ function openDetail(r, source) {
   var corrBlock = '';
   if (showViolBlock && source !== 'lobby') {
     var corrHtml = formatCorrectiveDetail(r.corrective);
+    var corrValue = corrHtml || '<span class="detail-placeholder">Ввести</span>';
     corrBlock = editCorr
       ? '<div class="detail-block detail-block-navy" onclick="openCorrectivePIN()">' +
           '<div class="detail-block-label">Корректирующие мероприятия</div>' +
-          '<div class="detail-block-val">' + (corrHtml || 'Внесите') + '</div>' +
+          '<div class="detail-block-val">' + corrValue + '</div>' +
         '</div>'
       : block('Корректирующие мероприятия', corrHtml, false);
   }
   var contestBlock = '';
   if (showContest) {
+    var contestValue = r.contestMeasures ? esc(r.contestMeasures) : '<span class="detail-placeholder">Ввести</span>';
     contestBlock = editSokb
       ? '<div class="detail-block detail-block-navy" onclick="openSokbPIN()">' +
           '<div class="detail-block-label">Оспаривание в СОКБ</div>' +
-          '<div class="detail-block-val">' + esc(r.contestMeasures || 'Внесите') + '</div>' +
+          '<div class="detail-block-val">' + contestValue + '</div>' +
         '</div>'
       : block('Оспаривание в СОКБ', r.contestMeasures, false);
   }
@@ -9628,6 +9776,10 @@ function openDetail(r, source) {
           '<button type="button" class="card-checklist-btn" onclick="openRecordChecklistView(detailRecordForEdit)">Чек-лист</button>' +
         '</div>'
       : '') +
+    '<div class="detail-row detail-photo-row">' +
+      '<div class="detail-label field-label-spacer">Фотографии нарушений</div>' +
+      '<button type="button" class="card-checklist-btn' + (isNonWorking ? '' : ' detail-photo-btn-disabled') + '"' + (isNonWorking ? ' onclick="photoButtonClick(detailRecordForEdit)"' : ' disabled') + '>Фото</button>' +
+    '</div>' +
     row('Барьер в ПК', r.barrierInPK, '', editRecord) +
     row('Барьер работоспособен', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', editRecord) +
     (showViolationDesc ? block('Описание нарушений', formatRecordDescHtml(r), editRecord) : '') +
@@ -10074,9 +10226,15 @@ function updateCardDescEditable(editable) {
 function updateCardPhotoButton() {
   var btn = document.getElementById('btn-card-photo');
   if (!btn) return;
+  btn.textContent = cardEditRecord ? 'Фото' : 'Добавить фото';
   if (!cardBarrierSelected()) {
     btn.hidden = true;
     btn.classList.remove('disabled');
+    return;
+  }
+  if (cardData.works !== 'Нет') {
+    btn.hidden = false;
+    btn.classList.add('disabled');
     return;
   }
   var hasChecklist = cardBarrierHasChecklist();
@@ -10548,8 +10706,12 @@ function renderCardChecklistScreen(keepScroll) {
 var _photoAttachViolationIndex = 0;
 var _photoLongTapTimer = null;
 var _photoSelectedItem = null;
+var _photoReturnScreen = 'screen-card';
+var _photoRecord = null;
 
 function openCardPhotoScreen() {
+  _photoRecord = null;
+  _photoReturnScreen = 'screen-card';
   renderCardPhotoScreen();
   showScreen('screen-card-photo');
   if (cardData.checkId) {
@@ -10557,15 +10719,34 @@ function openCardPhotoScreen() {
   }
   renderLocalPhotoPreviews();
 }
+function openRecordPhotoScreen(r) {
+  if (!r) return;
+  cardData = {
+    checkId: r.checkId || '',
+    barrier: r.barrier || '',
+    checklistFilled: !!r.checklistFilled,
+    checklistViolations: r.checklistViolations ? Object.assign({}, r.checklistViolations) : {},
+    desc: r.desc || '',
+    _localPhotos: r._localPhotos ? r._localPhotos.slice() : []
+  };
+  _cardChecklistQuestionTexts = r.checklistQuestionTexts ? Object.assign({}, r.checklistQuestionTexts) : {};
+  _cardChecklistMatch = r.checklistFilled ? { barrier: {} } : null;
+  _photoRecord = r;
+  _photoReturnScreen = 'screen-detail';
+  renderCardPhotoScreen();
+  showScreen('screen-card-photo');
+  if (cardData.checkId) loadCardPhotoPreviews();
+  renderLocalPhotoPreviews();
+}
 
 function closeCardPhotoScreen() {
-  showScreen('screen-card');
+  showScreen(_photoReturnScreen || 'screen-card');
 }
 
 function renderCardPhotoScreen() {
   var body = document.getElementById('card-photo-body');
   body.innerHTML = '';
-  var hasChecklist = cardBarrierHasChecklist();
+  var hasChecklist = !!cardData.checklistFilled && (cardBarrierHasChecklist() || !!cardData.checklistViolations);
   if (hasChecklist && cardData.checklistFilled) {
     var violations = cardData.checklistViolations || {};
     var questionTexts = _cardChecklistQuestionTexts || {};
@@ -10621,8 +10802,89 @@ function renderCardPhotoSection(body, violationIndex, text) {
 }
 
 function cardPhotoCamera(btn) {
-  console.log('[photo] camera tapped');
-  alert('Камера — в разработке');
+  _photoAttachViolationIndex = Number(btn.closest('.photo-violation-item').dataset.violationIndex) || 0;
+  openCardCamera();
+}
+
+var _cardCameraStream = null;
+var _cardCameraPhotoData = null;
+
+function openCardCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Камера не найдена');
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: 'environment' } }, audio: false })
+    .catch(function() { return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }); })
+    .then(function(stream) {
+      _cardCameraStream = stream;
+      document.getElementById('card-camera-video').srcObject = stream;
+      showScreen('screen-card-camera');
+    })
+    .catch(function() { alert('Камера не найдена'); });
+}
+
+function stopCardCamera() {
+  if (_cardCameraStream) {
+    _cardCameraStream.getTracks().forEach(function(track) { track.stop(); });
+    _cardCameraStream = null;
+  }
+  var video = document.getElementById('card-camera-video');
+  if (video) video.srcObject = null;
+}
+
+function closeCardCamera() {
+  stopCardCamera();
+  showScreen('screen-card-photo');
+}
+
+function captureCardPhoto() {
+  var video = document.getElementById('card-camera-video');
+  if (!video || !video.videoWidth) return;
+  var canvas = document.createElement('canvas');
+  var scale = Math.min(1, 1080 / Math.max(video.videoWidth, video.videoHeight));
+  canvas.width = Math.round(video.videoWidth * scale);
+  canvas.height = Math.round(video.videoHeight * scale);
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  _cardCameraPhotoData = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+  document.getElementById('card-camera-preview').src = 'data:image/jpeg;base64,' + _cardCameraPhotoData;
+  stopCardCamera();
+  showScreen('screen-card-camera-preview');
+}
+
+function cancelCardCameraPreview() {
+  _cardCameraPhotoData = null;
+  openCardCamera();
+}
+
+function applyCardCameraPreview() {
+  if (!_cardCameraPhotoData) return;
+  addCapturedCardPhoto(_cardCameraPhotoData);
+  _cardCameraPhotoData = null;
+  showScreen('screen-card-photo');
+}
+
+function addCapturedCardPhoto(base64) {
+  var tempId = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  var photo = { base64: base64, violationIndex: _photoAttachViolationIndex, tempId: tempId };
+  if (!cardData._localPhotos) cardData._localPhotos = [];
+  cardData._localPhotos.push(photo);
+  if (_photoRecord) {
+    if (!_photoRecord._localPhotos) _photoRecord._localPhotos = [];
+    _photoRecord._localPhotos.push(photo);
+  }
+  saveState();
+  if (_photoRecord && _photoRecord.checkId) {
+    uploadPhoto(_photoRecord.checkId, photo.violationIndex || 0, photo.base64, function(data) {
+      if (!data) return;
+      promoteLocalPhotoPreview(photo.tempId, data.filename, data.index);
+      _photoRecord._localPhotos = (_photoRecord._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
+      cardData._localPhotos = (cardData._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
+      saveState();
+    });
+  }
+  var num = document.querySelectorAll('#card-photo-body .photo-preview-item').length + 1;
+  addPhotoPreview(_photoAttachViolationIndex, null, num, base64, tempId);
 }
 
 function cardPhotoAttach(btn, violationIndex) {
@@ -10641,7 +10903,21 @@ function onCardPhotoFileSelected(input) {
     var photo = { base64: base64, violationIndex: _photoAttachViolationIndex, tempId: tempId };
     if (!cardData._localPhotos) cardData._localPhotos = [];
     cardData._localPhotos.push(photo);
-    var num = cardData._localPhotos.filter(function(p) { return p.violationIndex === _photoAttachViolationIndex; }).length;
+    saveState();
+    if (_photoRecord) {
+      if (!_photoRecord._localPhotos) _photoRecord._localPhotos = [];
+      _photoRecord._localPhotos.push(photo);
+      saveState();
+      if (_photoRecord.checkId) {
+        uploadPhoto(_photoRecord.checkId, photo.violationIndex || 0, photo.base64, function(data) {
+          if (!data) return;
+          _photoRecord._localPhotos = (_photoRecord._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
+          cardData._localPhotos = (cardData._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
+          saveState();
+        });
+      }
+    }
+    var num = document.querySelectorAll('#card-photo-body .photo-preview-item').length + 1;
     addPhotoPreview(_photoAttachViolationIndex, null, num, base64, tempId);
   };
   reader.readAsDataURL(file);
@@ -10691,8 +10967,8 @@ function loadCardPhotoPreviews() {
   .then(function(r) { return r.json(); })
   .then(function(data) {
     if (data.photos) {
-      data.photos.forEach(function(p) {
-        addPhotoPreview(p.violation_index || 0, p.filename, 0);
+      data.photos.forEach(function(p, index) {
+        addPhotoPreview(p.violation_index || 0, p.filename, index + 1);
       });
     }
   })
@@ -10701,8 +10977,8 @@ function loadCardPhotoPreviews() {
 
 function renderLocalPhotoPreviews() {
   if (!cardData._localPhotos || !cardData._localPhotos.length) return;
-  cardData._localPhotos.forEach(function(photo) {
-    var num = cardData._localPhotos.filter(function(p) { return p.violationIndex === photo.violationIndex; }).indexOf(photo) + 1;
+  cardData._localPhotos.forEach(function(photo, index) {
+    var num = index + 1;
     addPhotoPreview(photo.violationIndex || 0, null, num, photo.base64, photo.tempId);
   });
 }
@@ -10721,11 +10997,17 @@ function addPhotoPreview(violationIndex, filename, num, base64, tempId) {
   } else {
     item.dataset.filename = filename;
     var existing = row.querySelectorAll('.photo-preview-item').length;
-    displayNum = num || (existing + 1);
+    var fileNumber = String(filename || '').match(/_(\d+)_\d{2}\.\d{2}\.\d{4}\.[^.]+$/);
+    displayNum = fileNumber ? Number(fileNumber[1]) : (num || (existing + 1));
     src = '/photos/' + encodeURIComponent(filename);
   }
+  var imageHtml = base64
+    ? '<img src="' + src + '" alt="" loading="lazy">'
+    : (/\.avif$/i.test(filename)
+      ? '<picture><source type="image/avif" srcset="' + src + '"><source type="image/webp" srcset="/api/photos/variant/webp/' + encodeURIComponent(filename) + '"><img src="/api/photos/variant/jpeg/' + encodeURIComponent(filename) + '" alt="" loading="lazy"></picture>'
+      : '<img src="' + src + '" alt="" loading="lazy">');
   item.innerHTML =
-    '<img src="' + src + '" alt="" loading="lazy">' +
+    imageHtml +
     '<div class="photo-preview-num">' + displayNum + '</div>' +
     '<button type="button" class="photo-preview-delete" onclick="deletePhoto(this,event)">&times;</button>';
   bindPhotoPreviewEvents(item);
@@ -10734,16 +11016,23 @@ function addPhotoPreview(violationIndex, filename, num, base64, tempId) {
 
 function bindPhotoPreviewEvents(item) {
   var startX, startY;
+  var longTapTriggered = false;
   item.addEventListener('touchstart', function(e) {
     if (e.touches.length > 1) return;
+    longTapTriggered = false;
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
     _photoLongTapTimer = setTimeout(function() {
+      longTapTriggered = true;
       togglePhotoSelection(item);
     }, 500);
   }, { passive: true });
   item.addEventListener('touchend', function(e) {
     clearTimeout(_photoLongTapTimer);
+    if (longTapTriggered) {
+      longTapTriggered = false;
+      return;
+    }
     var dx = Math.abs((e.changedTouches[0].clientX - startX) || 0);
     var dy = Math.abs((e.changedTouches[0].clientY - startY) || 0);
     if (dx < 10 && dy < 10 && !item.classList.contains('selected')) {
@@ -10752,14 +11041,20 @@ function bindPhotoPreviewEvents(item) {
   });
   item.addEventListener('touchmove', function() { clearTimeout(_photoLongTapTimer); });
   item.addEventListener('mousedown', function(e) {
+    longTapTriggered = false;
     startX = e.clientX;
     startY = e.clientY;
     _photoLongTapTimer = setTimeout(function() {
+      longTapTriggered = true;
       togglePhotoSelection(item);
     }, 500);
   });
   item.addEventListener('mouseup', function(e) {
     clearTimeout(_photoLongTapTimer);
+    if (longTapTriggered) {
+      longTapTriggered = false;
+      return;
+    }
     var dx = Math.abs((e.clientX - startX) || 0);
     var dy = Math.abs((e.clientY - startY) || 0);
     if (dx < 10 && dy < 10 && !item.classList.contains('selected')) {
@@ -10788,6 +11083,10 @@ function deletePhoto(btn, event) {
     var tempId = item.dataset.tempId;
     if (cardData._localPhotos) {
       cardData._localPhotos = cardData._localPhotos.filter(function(p) { return p.tempId !== tempId; });
+    }
+    if (_photoRecord && _photoRecord._localPhotos) {
+      _photoRecord._localPhotos = _photoRecord._localPhotos.filter(function(p) { return p.tempId !== tempId; });
+      saveState();
     }
     item.remove();
     return;
@@ -11398,7 +11697,30 @@ function openDrumWorks() {
       updateCardDescEditable(true);
     }
     updateValidation();
+    updateCardPhotoButton();
   });
+}
+
+function promoteLocalPhotoPreview(tempId, filename, number) {
+  var item = document.querySelector('.photo-preview-item[data-temp-id="' + tempId + '"]');
+  if (!item) return;
+  item.dataset.local = 'false';
+  item.dataset.filename = filename;
+  item.removeAttribute('data-temp-id');
+  var numEl = item.querySelector('.photo-preview-num');
+  var fileNumber = String(filename || '').match(/_(\d+)_/);
+  if (numEl) numEl.textContent = number || (fileNumber ? fileNumber[1] : '');
+  var image = item.querySelector('img');
+  if (image) {
+    var picture = document.createElement('picture');
+    var avif = document.createElement('source');
+    avif.type = 'image/avif'; avif.srcset = '/photos/' + encodeURIComponent(filename);
+    var webp = document.createElement('source');
+    webp.type = 'image/webp'; webp.srcset = '/api/photos/variant/webp/' + encodeURIComponent(filename);
+    image.src = '/api/photos/variant/jpeg/' + encodeURIComponent(filename);
+    picture.appendChild(avif); picture.appendChild(webp); picture.appendChild(image);
+    item.insertBefore(picture, item.firstChild);
+  }
 }
 
 // Text overlays
