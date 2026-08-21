@@ -446,7 +446,8 @@ html, body {
 }
 .field-cell:active { border-color: var(--orange); }
 .field-cell.tall { min-height: 80px; align-items: flex-start; }
-.field-cell.dimmed { opacity: 0.35; pointer-events: none; }
+.field-cell.dimmed { pointer-events: none; }
+.field-cell.dimmed > * { opacity: 0.35; }
 #screen-card .field-wrap {
   flex-direction: row; align-items: center; gap: 8px; padding: 4px 0;
 }
@@ -472,6 +473,12 @@ html, body {
 #screen-card .field-wrap.field-block .field-cell { width: 100%; flex: none; }
 
 .field-cell .placeholder { color: #aaa; }
+#val-works.placeholder, #val-desc.placeholder,
+.field-cell.dimmed > #val-works.placeholder,
+.field-cell.dimmed > #val-desc.placeholder {
+  color: #aaa !important;
+  opacity: 1 !important;
+}
 #screen-card #cell-desc,
 #screen-card #cell-desc.tall {
   align-items: center;
@@ -550,8 +557,11 @@ html, body {
   overflow: hidden;
 }
 .camera-stage video, .camera-preview-stage img {
-  display: block; width: 100%; height: 100%; object-fit: contain;
+  display: block; width: 100%; height: 100%; object-fit: contain; touch-action: none;
 }
+.camera-zoom-row { display: flex; justify-content: center; gap: 8px; padding: 0 14px 8px; background: #000; }
+.camera-zoom-btn { min-width: 44px; height: 32px; border: 1px solid #fff; border-radius: 16px; background: transparent; color: #fff; font: 700 13px inherit; }
+.camera-zoom-btn.active { background: var(--orange); border-color: var(--orange); }
 .camera-footer {
   display: flex; justify-content: center; gap: 10px; padding: 10px 14px;
   padding-bottom: max(12px, env(safe-area-inset-bottom)); flex-shrink: 0; background: #000;
@@ -560,6 +570,12 @@ html, body {
 .camera-capture-btn { background: var(--orange); }
 .camera-preview-cancel { background: var(--gray-btn-dark); }
 .camera-preview-apply { background: var(--orange); }
+.zoomable-photo-stage { touch-action: none; overflow: hidden; }
+.zoomable-photo-stage img { transform-origin: 50% 50%; will-change: transform; }
+@media (pointer: fine) {
+  .zoomable-photo-stage { cursor: grab; }
+  .zoomable-photo-stage.dragging { cursor: grabbing; }
+}
 .photo-scroll {
   flex: 1; overflow-y: auto; overflow-x: hidden;
   padding: 12px 16px 12px;
@@ -605,6 +621,7 @@ html, body {
   background: #f0f0f0; cursor: pointer;
   border: 2px solid transparent;
   transition: border-color 0.15s, transform 0.1s;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
 }
 .photo-preview-item img {
   width: 100%; height: 100%; object-fit: cover;
@@ -845,6 +862,8 @@ html, body {
   padding: 32px 28px; margin: 20px;
   text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
 }
+.photo-preview-item picture { display: block; width: 100%; height: 100%; }
+.photo-preview-item picture img { width: 100%; height: 100%; object-fit: cover; }
 .success-title { font-size: 20px; font-weight: 700; margin-bottom: 24px; color: #1a2035; }
 .success-btns {
   display: flex; gap: 10px; justify-content: center;
@@ -2540,16 +2559,17 @@ html, body {
 
 <!-- ===== SCREEN: КАМЕРА ===== -->
 <div class="screen camera-screen" id="screen-card-camera">
-  <div class="camera-stage"><video id="card-camera-video" autoplay playsinline muted></video></div>
+  <div class="camera-stage" id="card-camera-stage"><video id="card-camera-video" autoplay playsinline muted></video></div>
+  <div class="camera-zoom-row" id="card-camera-zoom-row"></div>
   <div class="camera-footer">
     <button type="button" class="screen-back-btn" onclick="closeCardCamera()">Назад</button>
-    <button type="button" class="screen-back-btn camera-capture-btn" onclick="captureCardPhoto()">Сфотографировать</button>
+    <button type="button" class="screen-back-btn camera-capture-btn" onclick="captureCardPhoto()">Фото</button>
   </div>
 </div>
 
 <!-- ===== SCREEN: ПРЕДПРОСМОТР ФОТО ===== -->
 <div class="screen camera-preview-screen" id="screen-card-camera-preview">
-  <div class="camera-preview-stage"><img id="card-camera-preview" alt="Предпросмотр фото"></div>
+  <div class="camera-preview-stage zoomable-photo-stage" id="card-camera-preview-stage"><img id="card-camera-preview" alt="Предпросмотр фото"></div>
   <div class="camera-footer">
     <button type="button" class="screen-back-btn camera-preview-cancel" onclick="cancelCardCameraPreview()">Отмена</button>
     <button type="button" class="screen-back-btn camera-preview-apply" onclick="applyCardCameraPreview()">Применить</button>
@@ -2867,7 +2887,7 @@ html, body {
 
 <!-- ===== OVERLAY: ПРОСМОТР ФОТО ===== -->
 <div class="overlay" id="overlay-photo-viewer" style="z-index:300;background:rgba(0,0,0,0.92);align-items:center;justify-content:center;">
-  <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+  <div class="zoomable-photo-stage" id="photo-viewer-stage" style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
     <img id="photo-viewer-img" src="" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">
     <button type="button" onclick="closePhotoViewer()" style="position:absolute;top:12px;right:12px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;">&times;</button>
   </div>
@@ -4709,16 +4729,20 @@ function canEditRecord() {
 }
 
 function canUsePhotos() {
-  return !!_sessionAccess.superuser;
+  if (_photoRecord || cardEditRecord) return !!(_sessionAccess.superuser || _sessionAccess.admin);
+  return hasSession();
 }
 
 function photoButtonClick(record) {
+  if (record) {
+    openRecordPhotoScreen(record);
+    return;
+  }
   if (!canUsePhotos()) {
     alert('Раздел в разработке');
     return;
   }
-  if (record) openRecordPhotoScreen(record);
-  else openCardPhotoScreen();
+  openCardPhotoScreen();
 }
 
 function canEditSokb() {
@@ -6368,7 +6392,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v381';
+var APP_BUILD = 'pkb-v390';
 var APP_VERSION = '1.08';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -6446,7 +6470,7 @@ function bindUiTap(el, handler) {
   el.addEventListener('touchstart', function(e) {
     if (e.touches.length !== 1) { touchStart = null; return; }
     touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  }, { passive: true });
+  }, { passive: false });
   el.addEventListener('touchend', function(e) {
     if (!touchStart) return;
     var t = e.changedTouches && e.changedTouches[0];
@@ -9778,7 +9802,7 @@ function openDetail(r, source) {
       : '') +
     '<div class="detail-row detail-photo-row">' +
       '<div class="detail-label field-label-spacer">Фотографии нарушений</div>' +
-      '<button type="button" class="card-checklist-btn' + (isNonWorking ? '' : ' detail-photo-btn-disabled') + '"' + (isNonWorking ? ' onclick="photoButtonClick(detailRecordForEdit)"' : ' disabled') + '>Фото</button>' +
+      '<button type="button" id="detail-photo-btn" class="card-checklist-btn' + (isNonWorking ? '' : ' detail-photo-btn-disabled') + '"' + (isNonWorking ? ' onclick="photoButtonClick(detailRecordForEdit)"' : ' disabled') + '>' + (isNonWorking ? 'Нет фото' : 'Нет фото') + '</button>' +
     '</div>' +
     row('Барьер в ПК', r.barrierInPK, '', editRecord) +
     row('Барьер работоспособен', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', editRecord) +
@@ -9788,6 +9812,29 @@ function openDetail(r, source) {
   document.getElementById('detail-scroll').scrollTop = 0;
   showScreen('screen-detail');
   requestAnimationFrame(syncDetailFieldLabelWidths);
+  updateDetailPhotoButton(r, isNonWorking);
+}
+
+function updateDetailPhotoButton(record, isNonWorking) {
+  var btn = document.getElementById('detail-photo-btn');
+  if (!btn || !isNonWorking) return;
+  function apply(hasPhotos) {
+    btn.textContent = hasPhotos ? 'Фото' : 'Нет фото';
+    btn.classList.toggle('detail-photo-btn-disabled', !hasPhotos && !canUsePhotos());
+    btn.disabled = !hasPhotos && !canUsePhotos();
+  }
+  if (record && record._localPhotos && record._localPhotos.length) {
+    apply(true);
+    return;
+  }
+  if (!record || !record.checkId) {
+    apply(false);
+    return;
+  }
+  fetch('/api/photos/list/' + encodeURIComponent(record.checkId), { cache: 'no-store' })
+    .then(function(r) { return r.ok ? r.json() : { photos: [] }; })
+    .then(function(data) { apply(!!(data.photos && data.photos.length)); })
+    .catch(function() { apply(false); });
 }
 
 // ===== DRUM PICKER =====
@@ -10712,6 +10759,8 @@ var _photoRecord = null;
 function openCardPhotoScreen() {
   _photoRecord = null;
   _photoReturnScreen = 'screen-card';
+  var title = document.getElementById('card-photo-title');
+  if (title) title.textContent = 'Добавьте фотографии нарушений';
   renderCardPhotoScreen();
   showScreen('screen-card-photo');
   if (cardData.checkId) {
@@ -10733,6 +10782,8 @@ function openRecordPhotoScreen(r) {
   _cardChecklistMatch = r.checklistFilled ? { barrier: {} } : null;
   _photoRecord = r;
   _photoReturnScreen = 'screen-detail';
+  var title = document.getElementById('card-photo-title');
+  if (title) title.textContent = 'Фотографии нарушений';
   renderCardPhotoScreen();
   showScreen('screen-card-photo');
   if (cardData.checkId) loadCardPhotoPreviews();
@@ -10786,28 +10837,32 @@ function renderCardPhotoSection(body, violationIndex, text) {
   previewRow.className = 'photo-preview-row';
   previewRow.id = 'photo-preview-row-' + violationIndex;
   section.appendChild(previewRow);
-  var row = document.createElement('div');
-  row.className = 'photo-btn-row';
-  row.innerHTML =
-    '<button type="button" class="photo-action-btn" onclick="cardPhotoCamera(this)">' +
-      'Камера' +
-      '<svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
-    '</button>' +
-    '<button type="button" class="photo-action-btn" onclick="cardPhotoAttach(this,' + violationIndex + ')">' +
-      'Прикрепить' +
-      '<svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>' +
-    '</button>';
-  section.appendChild(row);
+  if (canUsePhotos()) {
+    var row = document.createElement('div');
+    row.className = 'photo-btn-row';
+    row.innerHTML =
+      '<button type="button" class="photo-action-btn" onclick="cardPhotoCamera(this)">' +
+        'Камера' +
+        '<svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
+      '</button>' +
+      '<button type="button" class="photo-action-btn" onclick="cardPhotoAttach(this,' + violationIndex + ')">' +
+        'Прикрепить' +
+        '<svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>' +
+      '</button>';
+    section.appendChild(row);
+  }
   body.appendChild(section);
 }
 
 function cardPhotoCamera(btn) {
+  if (!canUsePhotos()) return;
   _photoAttachViolationIndex = Number(btn.closest('.photo-violation-item').dataset.violationIndex) || 0;
   openCardCamera();
 }
 
 var _cardCameraStream = null;
 var _cardCameraPhotoData = null;
+var CAMERA_PERMISSION_KEY = 'pkb-camera-permission-granted';
 
 function openCardCamera() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -10815,13 +10870,51 @@ function openCardCamera() {
     return;
   }
   navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: 'environment' } }, audio: false })
-    .catch(function() { return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }); })
     .then(function(stream) {
+      try { localStorage.setItem(CAMERA_PERMISSION_KEY, '1'); } catch (_e) {}
       _cardCameraStream = stream;
       document.getElementById('card-camera-video').srcObject = stream;
+      setupCameraZoomControls(stream);
+      bindCameraFocusTap();
       showScreen('screen-card-camera');
     })
     .catch(function() { alert('Камера не найдена'); });
+}
+
+var _cameraZoom = 1;
+function setupCameraZoomControls(stream) {
+  var track = stream.getVideoTracks()[0];
+  var caps = track && track.getCapabilities ? track.getCapabilities() : {};
+  var max = caps.zoom ? Math.min(5, Number(caps.zoom.max) || 1) : 1;
+  var values = [1, 2, 5].filter(function(v) { return v <= max; });
+  var row = document.getElementById('card-camera-zoom-row');
+  row.innerHTML = '';
+  values.forEach(function(value) {
+    var btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'camera-zoom-btn'; btn.textContent = 'x' + value;
+    btn.onclick = function() {
+      _cameraZoom = value;
+      if (track && caps.zoom) track.applyConstraints({ advanced: [{ zoom: value }] }).catch(function() {});
+      row.querySelectorAll('.camera-zoom-btn').forEach(function(x) { x.classList.toggle('active', x === btn); });
+    };
+    if (value === 1) btn.classList.add('active');
+    row.appendChild(btn);
+  });
+}
+
+function bindCameraFocusTap() {
+  var stage = document.getElementById('card-camera-stage');
+  if (!stage || stage.dataset.focusBound) return;
+  stage.dataset.focusBound = '1';
+  stage.addEventListener('click', function(e) {
+    var track = _cardCameraStream && _cardCameraStream.getVideoTracks()[0];
+    var caps = track && track.getCapabilities ? track.getCapabilities() : {};
+    if (!track || !caps.focusMode || !track.applyConstraints) return;
+    var rect = stage.getBoundingClientRect();
+    var x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    var y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    track.applyConstraints({ advanced: [{ focusMode: 'single-shot', pointsOfInterest: [{ x: x, y: y }] }] }).catch(function() {});
+  });
 }
 
 function stopCardCamera() {
@@ -10831,6 +10924,8 @@ function stopCardCamera() {
   }
   var video = document.getElementById('card-camera-video');
   if (video) video.srcObject = null;
+  var row = document.getElementById('card-camera-zoom-row');
+  if (row) row.innerHTML = '';
 }
 
 function closeCardCamera() {
@@ -10850,6 +10945,7 @@ function captureCardPhoto() {
   document.getElementById('card-camera-preview').src = 'data:image/jpeg;base64,' + _cardCameraPhotoData;
   stopCardCamera();
   showScreen('screen-card-camera-preview');
+  bindZoomablePhoto('card-camera-preview-stage', 'card-camera-preview', 2);
 }
 
 function cancelCardCameraPreview() {
@@ -10878,6 +10974,7 @@ function addCapturedCardPhoto(base64) {
     uploadPhoto(_photoRecord.checkId, photo.violationIndex || 0, photo.base64, function(data) {
       if (!data) return;
       promoteLocalPhotoPreview(photo.tempId, data.filename, data.index);
+      if (_photoRecord) updateDetailPhotoButton(_photoRecord, true);
       _photoRecord._localPhotos = (_photoRecord._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
       cardData._localPhotos = (cardData._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
       saveState();
@@ -10888,8 +10985,11 @@ function addCapturedCardPhoto(base64) {
 }
 
 function cardPhotoAttach(btn, violationIndex) {
+  if (!canUsePhotos()) return;
   _photoAttachViolationIndex = violationIndex || 0;
-  document.getElementById('card-photo-input').click();
+  var input = document.getElementById('card-photo-input');
+  input.removeAttribute('capture');
+  input.click();
 }
 
 function onCardPhotoFileSelected(input) {
@@ -10910,8 +11010,9 @@ function onCardPhotoFileSelected(input) {
       saveState();
       if (_photoRecord.checkId) {
         uploadPhoto(_photoRecord.checkId, photo.violationIndex || 0, photo.base64, function(data) {
-          if (!data) return;
-          _photoRecord._localPhotos = (_photoRecord._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
+           if (!data) return;
+           if (_photoRecord) updateDetailPhotoButton(_photoRecord, true);
+           _photoRecord._localPhotos = (_photoRecord._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
           cardData._localPhotos = (cardData._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
           saveState();
         });
@@ -11018,6 +11119,7 @@ function bindPhotoPreviewEvents(item) {
   var startX, startY;
   var longTapTriggered = false;
   item.addEventListener('touchstart', function(e) {
+    e.preventDefault();
     if (e.touches.length > 1) return;
     longTapTriggered = false;
     startX = e.touches[0].clientX;
@@ -11041,6 +11143,7 @@ function bindPhotoPreviewEvents(item) {
   });
   item.addEventListener('touchmove', function() { clearTimeout(_photoLongTapTimer); });
   item.addEventListener('mousedown', function(e) {
+    e.preventDefault();
     longTapTriggered = false;
     startX = e.clientX;
     startY = e.clientY;
@@ -11062,9 +11165,11 @@ function bindPhotoPreviewEvents(item) {
     }
   });
   item.addEventListener('mouseleave', function() { clearTimeout(_photoLongTapTimer); });
+  item.addEventListener('contextmenu', function(e) { e.preventDefault(); });
 }
 
 function togglePhotoSelection(item) {
+  if (!canUsePhotos()) return;
   if (item.classList.contains('selected')) {
     item.classList.remove('selected');
     if (_photoSelectedItem === item) _photoSelectedItem = null;
@@ -11076,6 +11181,7 @@ function togglePhotoSelection(item) {
 }
 
 function deletePhoto(btn, event) {
+  if (!canUsePhotos()) return;
   if (event) event.stopPropagation();
   var item = btn.closest('.photo-preview-item');
   if (!item) return;
@@ -11089,6 +11195,7 @@ function deletePhoto(btn, event) {
       saveState();
     }
     item.remove();
+    refreshDetailPhotoButtonAfterChange();
     return;
   }
   var filename = item.dataset.filename;
@@ -11101,6 +11208,7 @@ function deletePhoto(btn, event) {
   .then(function(data) {
     if (data.success) {
       item.remove();
+      refreshDetailPhotoButtonAfterChange();
     } else {
       alert('Ошибка удаления: ' + (data.error || 'неизвестно'));
     }
@@ -11111,10 +11219,71 @@ function deletePhoto(btn, event) {
   });
 }
 
+function refreshDetailPhotoButtonAfterChange() {
+  var btn = document.getElementById('detail-photo-btn');
+  if (!btn) return;
+  var hasPhotos = !!document.querySelector('#card-photo-body .photo-preview-item');
+  btn.textContent = hasPhotos ? 'Фото' : 'Нет фото';
+  btn.classList.toggle('detail-photo-btn-disabled', !hasPhotos && !canUsePhotos());
+  btn.disabled = !hasPhotos && !canUsePhotos();
+}
+
 function openPhotoViewer(src) {
   var img = document.getElementById('photo-viewer-img');
   img.src = src;
   document.getElementById('overlay-photo-viewer').classList.add('active');
+  bindZoomablePhoto('photo-viewer-stage', 'photo-viewer-img', 2);
+}
+
+function bindZoomablePhoto(stageId, imageId, maxScale) {
+  var stage = document.getElementById(stageId);
+  var image = document.getElementById(imageId);
+  if (!stage || !image || stage.dataset.zoomBound) return;
+  stage.dataset.zoomBound = '1';
+  var scale = 1, x = 0, y = 0, startX = 0, startY = 0, startScale = 1;
+  var pinchStart = 0, lastTap = 0, mouseDown = false, mouseStartX = 0, mouseStartY = 0;
+  function apply() { image.style.transform = 'translate(' + x + 'px,' + y + 'px) scale(' + scale + ')'; }
+  function distance(a, b) { return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
+  stage.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    if (e.touches.length === 2) {
+      pinchStart = distance(e.touches[0], e.touches[1]); startScale = scale; return;
+    }
+    if (e.touches.length !== 1) return;
+    var now = Date.now();
+    if (now - lastTap < 300) {
+      scale = scale >= maxScale ? 1 : maxScale;
+      x = 0; y = 0; apply(); lastTap = 0; return;
+    }
+    lastTap = now; startX = e.touches[0].clientX - x; startY = e.touches[0].clientY - y;
+  }, { passive: false });
+  stage.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    if (e.touches.length === 2 && pinchStart) {
+      scale = Math.max(1, Math.min(maxScale, startScale * distance(e.touches[0], e.touches[1]) / pinchStart));
+    } else if (e.touches.length === 1 && scale > 1) {
+      x = e.touches[0].clientX - startX; y = e.touches[0].clientY - startY;
+    }
+    apply();
+  }, { passive: false });
+  stage.addEventListener('touchend', function() { pinchStart = 0; });
+  stage.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    scale = Math.max(1, Math.min(maxScale, scale * (e.deltaY < 0 ? 1.15 : 0.87)));
+    apply();
+  }, { passive: false });
+  stage.addEventListener('mousedown', function(e) {
+    if (e.button !== 0) return;
+    mouseDown = true; mouseStartX = e.clientX - x; mouseStartY = e.clientY - y;
+    stage.classList.add('dragging'); e.preventDefault();
+  });
+  stage.addEventListener('mousemove', function(e) {
+    if (!mouseDown) return;
+    x = e.clientX - mouseStartX; y = e.clientY - mouseStartY; apply();
+  });
+  stage.addEventListener('mouseup', function() { mouseDown = false; stage.classList.remove('dragging'); });
+  stage.addEventListener('mouseleave', function() { mouseDown = false; stage.classList.remove('dragging'); });
+  image.addEventListener('load', function() { scale = 1; x = 0; y = 0; apply(); });
 }
 
 function closePhotoViewer() {
