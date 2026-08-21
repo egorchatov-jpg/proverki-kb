@@ -1221,6 +1221,7 @@ html, body {
 }
 .detail-placeholder { color: #aaa; }
 .detail-photo-btn-disabled { opacity: 0.45; pointer-events: none; }
+.detail-photo-btn-pending { visibility: hidden; }
 .export-format-body { justify-content: flex-start; }
 .export-format-row { display: flex; gap: 10px; width: 100%; }
 .export-format-btn {
@@ -6404,7 +6405,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v397';
+var APP_BUILD = 'pkb-v400';
 var APP_VERSION = '1.08';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -9814,7 +9815,7 @@ function openDetail(r, source) {
       : '') +
     '<div class="detail-row detail-photo-row">' +
       '<div class="detail-label field-label-spacer">Фотографии нарушений</div>' +
-      '<button type="button" id="detail-photo-btn" class="card-checklist-btn' + (isNonWorking ? '' : ' detail-photo-btn-disabled') + '"' + (isNonWorking ? ' onclick="photoButtonClick(detailRecordForEdit)"' : ' disabled') + '>' + (isNonWorking ? 'Нет фото' : 'Нет фото') + '</button>' +
+      '<button type="button" id="detail-photo-btn" class="card-checklist-btn' + (isNonWorking ? ' detail-photo-btn-pending' : ' detail-photo-btn-disabled') + '"' + (isNonWorking ? ' onclick="photoButtonClick(detailRecordForEdit)"' : ' disabled') + '>Нет фото</button>' +
     '</div>' +
     row('Барьер в ПК', r.barrierInPK, '', editRecord) +
     row('Барьер работоспособен', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', editRecord) +
@@ -9832,6 +9833,7 @@ function updateDetailPhotoButton(record, isNonWorking) {
   if (!btn || !isNonWorking) return;
   function apply(hasPhotos) {
     btn.textContent = hasPhotos ? 'Фото' : 'Нет фото';
+    btn.classList.remove('detail-photo-btn-pending');
     btn.classList.toggle('detail-photo-btn-disabled', !hasPhotos && !canUsePhotos());
     btn.disabled = !hasPhotos && !canUsePhotos();
   }
@@ -11211,7 +11213,7 @@ function bindPhotoPreviewEvents(item) {
     var dx = Math.abs((e.changedTouches[0].clientX - startX) || 0);
     var dy = Math.abs((e.changedTouches[0].clientY - startY) || 0);
     if (dx < 10 && dy < 10 && !item.classList.contains('selected')) {
-      openPhotoViewer(item.querySelector('img').src);
+      openPhotoViewer(item.dataset.filename || item.querySelector('img').src);
     }
   });
   item.addEventListener('touchmove', function() { clearTimeout(_photoLongTapTimer); });
@@ -11234,7 +11236,7 @@ function bindPhotoPreviewEvents(item) {
     var dx = Math.abs((e.clientX - startX) || 0);
     var dy = Math.abs((e.clientY - startY) || 0);
     if (dx < 10 && dy < 10 && !item.classList.contains('selected')) {
-      openPhotoViewer(item.querySelector('img').src);
+      openPhotoViewer(item.dataset.filename || item.querySelector('img').src);
     }
   });
   item.addEventListener('mouseleave', function() { clearTimeout(_photoLongTapTimer); });
@@ -11303,7 +11305,15 @@ function refreshDetailPhotoButtonAfterChange() {
 
 function openPhotoViewer(src) {
   var img = document.getElementById('photo-viewer-img');
-  img.src = src;
+  if (/^data:image\//i.test(src)) {
+    img.src = src;
+  } else if (/\.avif$/i.test(src)) {
+    img.src = '/api/photos/variant/jpeg/' + encodeURIComponent(src) + '?v=' + Date.now();
+  } else if (/^[^/\\]+\.(?:jpeg|jpg|webp)$/i.test(src)) {
+    img.src = '/photos/' + encodeURIComponent(src) + '?v=' + Date.now();
+  } else {
+    img.src = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
+  }
   document.getElementById('overlay-photo-viewer').classList.add('active');
   bindZoomablePhoto('photo-viewer-stage', 'photo-viewer-img', 2);
 }

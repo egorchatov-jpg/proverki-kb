@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
   const matchUpload = req.url.match(/^\/upload/);
   const matchList = req.url.match(/^\/list\/([^\/]+)$/);
   const matchDelete = req.url.match(/^\/delete\/([^\/]+)\/([^\/]+)$/);
-  const matchVariant = req.url.match(/^\/variant\/(webp|jpeg)\/([^\/]+)$/i);
+  const matchVariant = req.url.match(/^\/variant\/(webp|jpeg)\/([^\/]+?)(?:\?.*)?$/i);
 
   try {
     if (matchUpload && req.method === 'POST') {
