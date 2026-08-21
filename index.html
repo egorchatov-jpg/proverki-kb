@@ -6392,7 +6392,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v390';
+var APP_BUILD = 'pkb-v391';
 var APP_VERSION = '1.08';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -10900,6 +10900,29 @@ function setupCameraZoomControls(stream) {
     if (value === 1) btn.classList.add('active');
     row.appendChild(btn);
   });
+  bindCameraPinch(track, caps);
+}
+
+function bindCameraPinch(track, caps) {
+  var stage = document.getElementById('card-camera-stage');
+  if (!stage || stage.dataset.pinchBound) return;
+  stage.dataset.pinchBound = '1';
+  var startDistance = 0, startZoom = 1;
+  function distance(a, b) { return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
+  stage.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 2) {
+      e.preventDefault(); startDistance = distance(e.touches[0], e.touches[1]); startZoom = _cameraZoom;
+    }
+  }, { passive: false });
+  stage.addEventListener('touchmove', function(e) {
+    if (e.touches.length !== 2 || !startDistance || !caps.zoom) return;
+    e.preventDefault();
+    var max = Math.min(5, Number(caps.zoom.max) || 1);
+    var zoom = Math.max(1, Math.min(max, startZoom * distance(e.touches[0], e.touches[1]) / startDistance));
+    _cameraZoom = zoom;
+    track.applyConstraints({ advanced: [{ zoom: zoom }] }).catch(function() {});
+  }, { passive: false });
+  stage.addEventListener('touchend', function() { startDistance = 0; });
 }
 
 function bindCameraFocusTap() {
@@ -11245,6 +11268,7 @@ function bindZoomablePhoto(stageId, imageId, maxScale) {
   function apply() { image.style.transform = 'translate(' + x + 'px,' + y + 'px) scale(' + scale + ')'; }
   function distance(a, b) { return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
   stage.addEventListener('touchstart', function(e) {
+    if (e.target && e.target.closest && e.target.closest('button')) return;
     e.preventDefault();
     if (e.touches.length === 2) {
       pinchStart = distance(e.touches[0], e.touches[1]); startScale = scale; return;
@@ -11252,8 +11276,13 @@ function bindZoomablePhoto(stageId, imageId, maxScale) {
     if (e.touches.length !== 1) return;
     var now = Date.now();
     if (now - lastTap < 300) {
-      scale = scale >= maxScale ? 1 : maxScale;
-      x = 0; y = 0; apply(); lastTap = 0; return;
+      var rect = stage.getBoundingClientRect();
+      var tapX = e.touches[0].clientX - rect.left - rect.width / 2;
+      var tapY = e.touches[0].clientY - rect.top - rect.height / 2;
+      var nextScale = scale >= maxScale ? 1 : maxScale;
+      x = nextScale === 1 ? 0 : x - tapX * (nextScale / scale - 1);
+      y = nextScale === 1 ? 0 : y - tapY * (nextScale / scale - 1);
+      scale = nextScale; apply(); lastTap = 0; return;
     }
     lastTap = now; startX = e.touches[0].clientX - x; startY = e.touches[0].clientY - y;
   }, { passive: false });
