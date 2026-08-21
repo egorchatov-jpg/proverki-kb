@@ -567,9 +567,9 @@ html, body {
   padding-bottom: max(12px, env(safe-area-inset-bottom)); flex-shrink: 0; background: #000;
 }
 .camera-footer .screen-back-btn { background: var(--gray-btn); }
-.camera-capture-btn { background: var(--orange); }
+.camera-footer .camera-capture-btn { background: var(--orange); }
 .camera-preview-cancel { background: var(--gray-btn-dark); }
-.camera-preview-apply { background: var(--orange); }
+.camera-footer .camera-preview-apply { background: var(--orange); }
 .zoomable-photo-stage { touch-action: none; overflow: hidden; }
 .zoomable-photo-stage img { transform-origin: 50% 50%; will-change: transform; }
 @media (pointer: fine) {
@@ -595,6 +595,8 @@ html, body {
 .photo-btn-row {
   display: flex; gap: 10px;
 }
+.photo-btn-row.photo-btn-row-single { justify-content: center; }
+.photo-btn-row.photo-btn-row-single .photo-action-btn { flex: 0 1 auto; width: min(100%, 220px); }
 .photo-action-btn {
   flex: 1;
   display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -6392,7 +6394,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v391';
+var APP_BUILD = 'pkb-v395';
 var APP_VERSION = '1.08';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -10839,12 +10841,13 @@ function renderCardPhotoSection(body, violationIndex, text) {
   section.appendChild(previewRow);
   if (canUsePhotos()) {
     var row = document.createElement('div');
-    row.className = 'photo-btn-row';
+    row.className = 'photo-btn-row' + (isPhotoCameraHidden() ? ' photo-btn-row-single' : '');
     row.innerHTML =
+      (isPhotoCameraHidden() ? '' :
       '<button type="button" class="photo-action-btn" onclick="cardPhotoCamera(this)">' +
         'Камера' +
         '<svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
-      '</button>' +
+      '</button>') +
       '<button type="button" class="photo-action-btn" onclick="cardPhotoAttach(this,' + violationIndex + ')">' +
         'Прикрепить' +
         '<svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>' +
@@ -10852,6 +10855,10 @@ function renderCardPhotoSection(body, violationIndex, text) {
     section.appendChild(row);
   }
   body.appendChild(section);
+}
+
+function isPhotoCameraHidden() {
+  return !!(_isIOS || document.documentElement.classList.contains('is-win'));
 }
 
 function cardPhotoCamera(btn) {
@@ -10869,16 +10876,33 @@ function openCardCamera() {
     alert('Камера не найдена');
     return;
   }
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: 'environment' } }, audio: false })
-    .then(function(stream) {
-      try { localStorage.setItem(CAMERA_PERMISSION_KEY, '1'); } catch (_e) {}
-      _cardCameraStream = stream;
-      document.getElementById('card-camera-video').srcObject = stream;
-      setupCameraZoomControls(stream);
-      bindCameraFocusTap();
-      showScreen('screen-card-camera');
-    })
-    .catch(function() { alert('Камера не найдена'); });
+  function startCamera() {
+    return navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: 'environment' } }, audio: false });
+  }
+  function handleStream(stream) {
+    try { localStorage.setItem(CAMERA_PERMISSION_KEY, '1'); } catch (_e) {}
+    _cardCameraStream = stream;
+    document.getElementById('card-camera-video').srcObject = stream;
+    setupCameraZoomControls(stream);
+    bindCameraFocusTap();
+    showScreen('screen-card-camera');
+  }
+  var permissionQuery = navigator.permissions && navigator.permissions.query
+    ? navigator.permissions.query({ name: 'camera' })
+    : Promise.resolve(null);
+  permissionQuery.then(function(permission) {
+    var alreadyGranted = permission && permission.state === 'granted';
+    var marker = false;
+    try { marker = localStorage.getItem(CAMERA_PERMISSION_KEY) === '1'; } catch (_e) {}
+    if (marker && permission && permission.state !== 'granted') {
+      alert('Доступ к камере не разрешен. Разрешите камеру в настройках браузера/PWA.');
+      return;
+    }
+    return startCamera().then(handleStream);
+  })
+  .catch(function() { return startCamera().then(handleStream); })
+  /* Permission is requested only on the first call; later calls reuse the browser grant. */
+  .catch(function() { alert('Камера не найдена'); });
 }
 
 var _cameraZoom = 1;
@@ -10929,15 +10953,24 @@ function bindCameraFocusTap() {
   var stage = document.getElementById('card-camera-stage');
   if (!stage || stage.dataset.focusBound) return;
   stage.dataset.focusBound = '1';
-  stage.addEventListener('click', function(e) {
+  function focusAt(x, y) {
     var track = _cardCameraStream && _cardCameraStream.getVideoTracks()[0];
     var caps = track && track.getCapabilities ? track.getCapabilities() : {};
     if (!track || !caps.focusMode || !track.applyConstraints) return;
+    track.applyConstraints({ advanced: [{ focusMode: 'single-shot', pointsOfInterest: [{ x: x, y: y }] }] }).catch(function() {
+      track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function() {});
+    });
+  }
+  stage.addEventListener('click', function(e) {
     var rect = stage.getBoundingClientRect();
-    var x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    var y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-    track.applyConstraints({ advanced: [{ focusMode: 'single-shot', pointsOfInterest: [{ x: x, y: y }] }] }).catch(function() {});
+    focusAt(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)), Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height)));
   });
+  stage.addEventListener('touchend', function(e) {
+    if (e.changedTouches.length !== 1) return;
+    var rect = stage.getBoundingClientRect();
+    var t = e.changedTouches[0];
+    focusAt(Math.max(0, Math.min(1, (t.clientX - rect.left) / rect.width)), Math.max(0, Math.min(1, (t.clientY - rect.top) / rect.height)));
+  }, { passive: true });
 }
 
 function stopCardCamera() {
@@ -11290,7 +11323,7 @@ function bindZoomablePhoto(stageId, imageId, maxScale) {
     e.preventDefault();
     if (e.touches.length === 2 && pinchStart) {
       scale = Math.max(1, Math.min(maxScale, startScale * distance(e.touches[0], e.touches[1]) / pinchStart));
-    } else if (e.touches.length === 1 && scale > 1) {
+    } else if (e.touches.length === 1) {
       x = e.touches[0].clientX - startX; y = e.touches[0].clientY - startY;
     }
     apply();

@@ -66,10 +66,14 @@ module.exports = async (req, res) => {
        const filePath = path.join(photosDir, filename);
        fs.writeFileSync(filePath, processed);
        removeStoredFallbacks(photosDir, filename);
-
-      db.prepare(
-        "INSERT INTO photos (check_id, filename, violation_index, uploaded_at) VALUES (?, ?, ?, unixepoch())"
-      ).run(checkId, filename, violationIndex || 0);
+       try {
+         db.prepare(
+           "INSERT INTO photos (check_id, filename, violation_index, uploaded_at) VALUES (?, ?, ?, unixepoch())"
+         ).run(checkId, filename, violationIndex || 0);
+       } catch (dbError) {
+         try { fs.rmSync(filePath, { force: true }); } catch (_e) {}
+         throw dbError;
+       }
 
       return res.status(200).json({ success: true, filename, index: nextIndex });
     }
@@ -80,7 +84,17 @@ module.exports = async (req, res) => {
       const rows = db.prepare(
         "SELECT filename, violation_index, uploaded_at FROM photos WHERE check_id = ? ORDER BY id"
       ).all(checkId);
-      return res.status(200).json({ photos: rows });
+      const photosDir = getPhotosDir();
+      const validRows = rows.filter(function(row) {
+        return /^[^\\/]+$/.test(row.filename) && fs.existsSync(path.join(photosDir, row.filename));
+      });
+      if (validRows.length !== rows.length) {
+        const remove = db.prepare('DELETE FROM photos WHERE check_id = ? AND filename = ?');
+        rows.forEach(function(row) {
+          if (validRows.indexOf(row) < 0) remove.run(checkId, row.filename);
+        });
+      }
+      return res.status(200).json({ photos: validRows });
     }
 
     if (matchVariant && req.method === 'GET') {
