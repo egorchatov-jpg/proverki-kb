@@ -522,6 +522,7 @@ html, body {
   display: flex; flex-direction: column; gap: 8px;
 }
 .field-label-spacer { visibility: hidden; pointer-events: none; }
+.field-photo-action { align-items: center; }
 #screen-card .card-checklist-btn {
   flex: 1 1 0; min-width: 0; box-sizing: border-box;
   min-height: 36px; padding: 6px 10px;
@@ -2308,7 +2309,6 @@ html, body {
             <span class="placeholder" id="val-barrier">Выбрать</span>
           </div>
           <button type="button" class="card-checklist-btn" id="btn-card-checklist" hidden onclick="openCardChecklistScreen()">Заполнить чек-лист</button>
-          <button type="button" class="card-checklist-btn" id="btn-card-photo" hidden onclick="photoButtonClick()">Добавить фото</button>
         </div>
       </div>
 
@@ -2317,6 +2317,11 @@ html, body {
         <div class="field-cell" id="cell-works" onclick="openDrumWorks()">
           <span class="placeholder" id="val-works">—</span>
         </div>
+      </div>
+
+      <div class="field-wrap field-photo-action" id="field-wrap-photo">
+        <div class="field-label field-label-spacer">Фотографии нарушений</div>
+        <button type="button" class="card-checklist-btn" id="btn-card-photo" hidden onclick="photoButtonClick()">Добавить фото</button>
       </div>
 
       <div class="field-wrap field-block">
@@ -2945,7 +2950,7 @@ function normalizeDateStr(s) {
 function normalizeDbDates() {
   (appState.db || []).forEach(function(r) {
     if (r.dateCheck) r.dateCheck = normalizeDateStr(r.dateCheck);
-  });
+         }, photo.tempId);
 }
 
 // Sort by cmpRecords, then assign sequential numbers: oldest=1, newest=N
@@ -2989,7 +2994,7 @@ function migrateSamoproverkaToSamootsenka() {
       var n = renameSamoproverkaText(m.name);
       if (n !== m.name) { m.name = n; changed = true; }
     }
-  });
+         }, photo.tempId);
   (appState.db || []).forEach(touchMethod);
   try {
     var sq = getSyncQueue();
@@ -3410,7 +3415,7 @@ function syncToServer(record, onSuccess, onComplete) {
       console.warn('[sync] нет соединения или таймаут, запись в очередь');
       updateSyncIndicator();
       if (onComplete) onComplete();
-    });
+    }, photo.tempId);
   });
 }
 
@@ -3764,7 +3769,7 @@ function sendSubscriptionToServer(sub) {
 function subscribeToPush(reg) {
   if (!('PushManager' in window)) return;
   if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY === '__VAPID_PUBLIC_KEY__') return;
-  if (Notification.permission !== 'granted') return; // prompt handles first-time
+  if (!('Notification' in window) || Notification.permission !== 'granted') return; // prompt handles first-time
 
   reg.pushManager.getSubscription().then(function(existing) {
     var storedKey = localStorage.getItem(VAPID_KEY_STORE);
@@ -4055,8 +4060,12 @@ var _appUpdateOverlayShown = false;
 var _updateReloadDone = false;
 var _lastUpdateCheckMs = 0;
 
-function showAppUpdateOverlay() {
+function showAppUpdateOverlay(updateKey) {
   if (_appUpdateOverlayShown || _appUpdateApplying) return;
+  try {
+    if (updateKey && sessionStorage.getItem('pkb-update-overlay-key') === updateKey) return;
+    if (updateKey) sessionStorage.setItem('pkb-update-overlay-key', updateKey);
+  } catch (_e) {}
   _appUpdateOverlayShown = true;
   var el = document.getElementById('overlay-app-update');
   if (el) el.classList.add('active');
@@ -4112,12 +4121,6 @@ function applyAppUpdate() {
 
 function evaluateAppUpdate(reg) {
   if (_appUpdateOverlayShown || _appUpdateApplying) return;
-  try {
-    if (sessionStorage.getItem('pkb-update-done') === '1') {
-      sessionStorage.removeItem('pkb-update-done');
-      return;
-    }
-  } catch (_) {}
   var now = Date.now();
   if (now - _lastUpdateCheckMs < 5000) return;
   _lastUpdateCheckMs = now;
@@ -4128,14 +4131,14 @@ function evaluateAppUpdate(reg) {
     .then(function(d) {
       var serverBuild = d && d.build;
       var htmlStale = serverBuild && serverBuild !== APP_BUILD && serverBuild !== 'unknown' && serverBuild !== 'local';
-      if (htmlStale || swWaiting) {
-        showAppUpdateOverlay();
+       if (htmlStale || swWaiting) {
+         showAppUpdateOverlay(htmlStale ? 'build:' + serverBuild : 'waiting:' + APP_BUILD);
       } else {
         clearUpdateInProgressFlag();
       }
     })
     .catch(function() {
-      if (swWaiting) showAppUpdateOverlay();
+      if (swWaiting) showAppUpdateOverlay('waiting:' + APP_BUILD);
     });
 }
 
@@ -4221,7 +4224,7 @@ window.addEventListener('DOMContentLoaded', function() {
     // a second refresh was wiping scroll after idle.
     loadFromServer(null, { forceFull: false });
   }, 90000);
-  window.addEventListener('online', syncWhenOnline);
+  window.addEventListener('online', function() { syncWhenOnline(); retryQueuedPhotoUploads(); });
   document.addEventListener('visibilitychange', function() {
     if (document.hidden) {
       saveListScrollPositions();
@@ -4232,6 +4235,7 @@ window.addEventListener('DOMContentLoaded', function() {
       }
     }
     if (!document.hidden) {
+      retryQueuedPhotoUploads();
       try {
         var savedScr = sessionStorage.getItem('pkb-active-screen');
         if (hasSession() && savedScr && document.getElementById(savedScr)) {
@@ -4349,8 +4353,11 @@ function registerSW() {
     });
     navigator.serviceWorker.register('/sw.js').then(function(reg) {
       swRegistration = reg;
-      subscribeToPush(reg);
-      checkPushSubscriptionWeekly(reg);
+      navigator.serviceWorker.ready.then(function(readyReg) {
+        swRegistration = readyReg;
+        subscribeToPush(readyReg);
+        checkPushSubscriptionWeekly(readyReg);
+      }).catch(function(e) { console.warn('[push] SW not ready:', e.message); });
       reg.update().then(function() { evaluateAppUpdate(reg); });
       if (reg.active) prefetchPassportAssets();
       reg.addEventListener('updatefound', function() {
@@ -4743,6 +4750,13 @@ function canEditRecord() {
 
 function canUsePhotos() {
   if (_photoRecord || cardEditRecord) return !!(_sessionAccess.superuser || _sessionAccess.admin);
+  return hasSession();
+}
+function canModifySavedPhotos() {
+  return !!(_sessionAccess.superuser || _sessionAccess.admin);
+}
+
+function canViewPhotos() {
   return hasSession();
 }
 
@@ -5587,6 +5601,12 @@ function cancelCard() {
   if (cardEditRecord) {
     var rec = cardEditRecord;
     var src = detailSource;
+    if (_photoEditSession && _photoEditSession.record) {
+      _photoEditSession.record._localPhotos = (_photoEditSession.originalLocalPhotos || []).slice();
+    }
+    cardData._localPhotos = [];
+    _photoEditSession = null;
+    _photoRecord = null;
     cardEditRecord = null;
     setCardScreenMode(false);
     openDetail(rec, src);
@@ -5725,19 +5745,35 @@ function submitCardEdit() {
   if (fields.checklistFilled) r.checklistFilled = true;
   saveRecordFieldUpdate(r.dateEntry, year, fields);
   var localPhotos = (cardData._localPhotos || []).slice();
-  if (localPhotos.length && r.checkId) {
-    uploadLocalPhotos(r.checkId, localPhotos, function() {
+  var pendingPhotoDeletes = _photoEditSession ? (_photoEditSession.pendingDeletes || []).slice() : [];
+  var deletePromises = pendingPhotoDeletes.map(function(filename) {
+    return fetch('/api/photos/delete/' + encodeURIComponent(r.checkId) + '/' + encodeURIComponent(filename), { method: 'DELETE' })
+      .catch(function(e) { console.warn('[photo] deferred delete failed:', e.message); });
+  });
+  var uploadPromise = new Promise(function(resolve) {
+    if (localPhotos.length && r.checkId) {
+      uploadLocalPhotos(r.checkId, localPhotos, function(errors) { resolve(errors || []); });
+    } else resolve();
+  });
+  Promise.all(deletePromises.concat([uploadPromise])).then(function(results) {
+    var uploadErrors = results[results.length - 1] || [];
+    if (!uploadErrors.length) {
       cardData._localPhotos = [];
-    });
-  }
-  cardEditRecord = null;
-  var titleEl = document.querySelector('#screen-card .card-title');
-  if (titleEl) titleEl.textContent = 'Внесите результат проведенной проверки';
-  setCardSubtitle('');
-  applyFindFilters();
-  renderCorrectiveList();
-  renderLobby();
-  openDetail(r, detailSource || 'find');
+      r._localPhotos = [];
+    } else {
+      r._localPhotos = localPhotos.slice();
+    }
+    _photoEditSession = null;
+    _photoRecord = null;
+    cardEditRecord = null;
+    var titleEl = document.querySelector('#screen-card .card-title');
+    if (titleEl) titleEl.textContent = 'Внесите результат проведенной проверки';
+    setCardSubtitle('');
+    applyFindFilters();
+    renderCorrectiveList();
+    renderLobby();
+    openDetail(r, detailSource || 'find');
+  });
 }
 
 function submitCard() {
@@ -5834,6 +5870,8 @@ function openExportFormatScreen(year) {
     photosBtn.textContent = 'Фото zip'; photosBtn.disabled = false;
     photosBtn.onclick = function() { downloadPhotosZip(_exportYear, photosBtn); };
   }
+  _photoEditSession = null;
+  _photoRecord = null;
   if (excelBtn) {
     excelBtn.textContent = 'Список excel'; excelBtn.disabled = false;
     excelBtn.onclick = function() { downloadExcel(_exportYear, excelBtn); };
@@ -6405,7 +6443,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v401';
+var APP_BUILD = 'pkb-v420';
 var APP_VERSION = '1.08';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -9813,12 +9851,12 @@ function openDetail(r, source) {
           '<button type="button" class="card-checklist-btn" onclick="openRecordChecklistView(detailRecordForEdit)">Чек-лист</button>' +
         '</div>'
       : '') +
-    '<div class="detail-row detail-photo-row">' +
-      '<div class="detail-label field-label-spacer">Фотографии нарушений</div>' +
-      '<button type="button" id="detail-photo-btn" class="card-checklist-btn' + (isNonWorking ? '' : ' detail-photo-btn-disabled') + '"' + (isNonWorking && canUsePhotos() ? ' onclick="photoButtonClick(detailRecordForEdit)"' : ' disabled') + '>Фото</button>' +
-    '</div>' +
     row('Барьер в ПК', r.barrierInPK, '', editRecord) +
     row('Барьер работоспособен', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', editRecord) +
+    '<div class="detail-row detail-photo-row">' +
+      '<div class="detail-label field-label-spacer">Фотографии нарушений</div>' +
+      '<button type="button" id="detail-photo-btn" class="card-checklist-btn detail-photo-btn-pending"' + (!isNonWorking ? ' hidden' : '') + ' style="visibility:hidden">Фото</button>' +
+    '</div>' +
     (showViolationDesc ? block('Описание нарушений', formatRecordDescHtml(r), editRecord) : '') +
     corrBlock +
     contestBlock;
@@ -9830,13 +9868,21 @@ function openDetail(r, source) {
 
 function updateDetailPhotoButton(record, isNonWorking) {
   var btn = document.getElementById('detail-photo-btn');
-  if (!btn || !isNonWorking) return;
+  if (!btn) return;
   function apply(hasPhotos) {
-    btn.textContent = hasPhotos ? 'Фото' : 'Нет фото';
-    var canChange = canUsePhotos();
+    btn.textContent = hasPhotos ? 'Фото' : 'Добавить фото';
+    var canChange = canModifySavedPhotos();
+    btn.hidden = !hasPhotos && !canChange;
+    btn.classList.remove('detail-photo-btn-pending');
+    btn.style.visibility = 'visible';
     btn.classList.toggle('detail-photo-btn-disabled', !canChange && !hasPhotos);
     btn.disabled = !canChange && !hasPhotos;
-    btn.onclick = canChange ? function() { photoButtonClick(detailRecordForEdit); } : null;
+    btn.onclick = canViewPhotos() ? function() { photoButtonClick(detailRecordForEdit); } : null;
+  }
+  if (!isNonWorking) {
+    btn.hidden = true;
+    btn.style.visibility = 'visible';
+    return;
   }
   if (record && record._localPhotos && record._localPhotos.length) {
     apply(true);
@@ -10288,28 +10334,14 @@ function updateCardDescEditable(editable) {
 function updateCardPhotoButton() {
   var btn = document.getElementById('btn-card-photo');
   if (!btn) return;
-  btn.textContent = cardEditRecord ? 'Фото' : 'Добавить фото';
-  if (!cardBarrierSelected()) {
+  btn.textContent = cardEditRecord ? 'Добавить фото' : 'Добавить фото';
+  if (!cardBarrierSelected() || cardData.works !== 'Нет') {
     btn.hidden = true;
     btn.classList.remove('disabled');
     return;
   }
-  if (cardData.works !== 'Нет') {
-    btn.hidden = false;
-    btn.classList.add('disabled');
-    return;
-  }
-  var hasChecklist = cardBarrierHasChecklist();
-  if (hasChecklist) {
-    // Checklist exists: show photo button, disable if checklist not filled
-    btn.hidden = false;
-    var filled = cardData.checklistFilled && cardChecklistReadyForViolation();
-    btn.classList.toggle('disabled', !filled);
-  } else {
-    // No checklist: show photo button active (replaces checklist button)
-    btn.hidden = false;
-    btn.classList.remove('disabled');
-  }
+  btn.hidden = false;
+  btn.classList.remove('disabled');
 }
 
 function updateCardChecklistButton() {
@@ -10770,10 +10802,47 @@ var _photoLongTapTimer = null;
 var _photoSelectedItem = null;
 var _photoReturnScreen = 'screen-card';
 var _photoRecord = null;
+var _photoEditSession = null;
+var _photoQueueDbPromise = null;
+
+function photoQueueDb() {
+  if (_photoQueueDbPromise) return _photoQueueDbPromise;
+  _photoQueueDbPromise = new Promise(function(resolve, reject) {
+    if (!window.indexedDB) { reject(new Error('IndexedDB unavailable')); return; }
+    var req = indexedDB.open('pkb-photo-queue', 1);
+    req.onupgradeneeded = function() { req.result.createObjectStore('uploads', { keyPath: 'tempId' }); };
+    req.onsuccess = function() { resolve(req.result); };
+    req.onerror = function() { reject(req.error); };
+  });
+  return _photoQueueDbPromise;
+}
+
+function queuePhotoUpload(checkId, photo) {
+  if (!checkId || !photo || !photo.tempId) return Promise.resolve();
+  return photoQueueDb().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx = db.transaction('uploads', 'readwrite');
+      tx.objectStore('uploads').put({ tempId: photo.tempId, checkId: checkId, base64: photo.base64, violationIndex: photo.violationIndex || 0 });
+      tx.oncomplete = resolve; tx.onerror = function() { reject(tx.error); };
+    });
+  }).catch(function(e) { console.warn('[photo-queue] save failed:', e.message); });
+}
+
+function removeQueuedPhoto(tempId) {
+  if (!tempId) return Promise.resolve();
+  return photoQueueDb().then(function(db) {
+    return new Promise(function(resolve) {
+      var tx = db.transaction('uploads', 'readwrite');
+      tx.objectStore('uploads').delete(tempId); tx.oncomplete = resolve; tx.onerror = resolve;
+    });
+  }).catch(function() {});
+}
 
 function openCardPhotoScreen() {
   _photoRecord = null;
   _photoReturnScreen = 'screen-card';
+  var photoBody = document.getElementById('card-photo-body');
+  if (photoBody) photoBody.innerHTML = '';
   var title = document.getElementById('card-photo-title');
   if (title) title.textContent = 'Добавьте фотографии нарушений';
   var desc = document.getElementById('card-photo-desc');
@@ -10787,18 +10856,33 @@ function openCardPhotoScreen() {
 }
 function openRecordPhotoScreen(r) {
   if (!r) return;
-  cardData = {
-    checkId: r.checkId || '',
-    barrier: r.barrier || '',
-    checklistFilled: !!r.checklistFilled,
-    checklistViolations: r.checklistViolations ? Object.assign({}, r.checklistViolations) : {},
-    desc: r.desc || '',
-    _localPhotos: r._localPhotos ? r._localPhotos.slice() : []
-  };
+  var photoBody = document.getElementById('card-photo-body');
+  if (photoBody) photoBody.innerHTML = '';
+  var editingPhotos = canModifySavedPhotos();
+  if (editingPhotos) {
+    openCardForEdit(r);
+    _photoEditSession = {
+      record: r,
+      originalLocalPhotos: (r._localPhotos || []).slice(),
+      pendingDeletes: []
+    };
+  } else {
+    cardEditRecord = null;
+    cardData = {
+      checkId: r.checkId || '',
+      barrier: r.barrier || '',
+      checklistFilled: !!r.checklistFilled,
+      checklistViolations: r.checklistViolations ? Object.assign({}, r.checklistViolations) : {},
+      desc: r.desc || '',
+      _localPhotos: []
+    };
+    _photoEditSession = null;
+  }
+  cardData.checkId = r.checkId || '';
   _cardChecklistQuestionTexts = r.checklistQuestionTexts ? Object.assign({}, r.checklistQuestionTexts) : {};
   _cardChecklistMatch = r.checklistFilled ? { barrier: {} } : null;
   _photoRecord = r;
-  _photoReturnScreen = 'screen-detail';
+  _photoReturnScreen = editingPhotos ? 'screen-card' : 'screen-detail';
   var title = document.getElementById('card-photo-title');
   if (title) title.textContent = 'Фотографии нарушений';
   var desc = document.getElementById('card-photo-desc');
@@ -10813,6 +10897,16 @@ function openRecordPhotoScreen(r) {
 }
 
 function closeCardPhotoScreen() {
+  if (_photoEditSession && !_photoEditSession.pendingDeletes.length &&
+      JSON.stringify(cardData._localPhotos || []) === JSON.stringify(_photoEditSession.originalLocalPhotos || [])) {
+    var record = _photoEditSession.record;
+    var source = detailSource;
+    _photoEditSession = null;
+    _photoRecord = null;
+    cardEditRecord = null;
+    openDetail(record, source);
+    return;
+  }
   showScreen(_photoReturnScreen || 'screen-card');
 }
 
@@ -10884,6 +10978,12 @@ function isPhotoCameraHidden() {
 function cardPhotoCamera(btn) {
   if (!canUsePhotos()) return;
   _photoAttachViolationIndex = Number(btn.closest('.photo-violation-item').dataset.violationIndex) || 0;
+  if (/Android/i.test(navigator.userAgent)) {
+    var input = document.getElementById('card-photo-input');
+    input.setAttribute('capture', 'environment');
+    input.click();
+    return;
+  }
   openCardCamera();
 }
 
@@ -11041,20 +11141,23 @@ function addCapturedCardPhoto(base64) {
   var photo = { base64: base64, violationIndex: _photoAttachViolationIndex, tempId: tempId };
   if (!cardData._localPhotos) cardData._localPhotos = [];
   cardData._localPhotos.push(photo);
+  updateCardPhotoButton();
   if (_photoRecord) {
     if (!_photoRecord._localPhotos) _photoRecord._localPhotos = [];
     _photoRecord._localPhotos.push(photo);
   }
   saveState();
-  if (_photoRecord && _photoRecord.checkId) {
-    uploadPhoto(_photoRecord.checkId, photo.violationIndex || 0, photo.base64, function(data) {
-      if (!data) return;
+  if (_photoRecord && _photoRecord.checkId && !_photoEditSession) {
+        queuePhotoUpload(_photoRecord.checkId, photo);
+        uploadPhoto(_photoRecord.checkId, photo.violationIndex || 0, photo.base64, function(data) {
+          if (!data) return;
+          removeQueuedPhoto(photo.tempId);
       promoteLocalPhotoPreview(photo.tempId, data.filename, data.index);
       if (_photoRecord) updateDetailPhotoButton(_photoRecord, true);
       _photoRecord._localPhotos = (_photoRecord._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
       cardData._localPhotos = (cardData._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
-      saveState();
-    });
+           saveState();
+         }, photo.tempId);
   }
   var num = document.querySelectorAll('#card-photo-body .photo-preview-item').length + 1;
   addPhotoPreview(_photoAttachViolationIndex, null, num, base64, tempId);
@@ -11079,19 +11182,22 @@ function onCardPhotoFileSelected(input) {
     var photo = { base64: base64, violationIndex: _photoAttachViolationIndex, tempId: tempId };
     if (!cardData._localPhotos) cardData._localPhotos = [];
     cardData._localPhotos.push(photo);
+    updateCardPhotoButton();
     saveState();
     if (_photoRecord) {
       if (!_photoRecord._localPhotos) _photoRecord._localPhotos = [];
       _photoRecord._localPhotos.push(photo);
       saveState();
-      if (_photoRecord.checkId) {
-        uploadPhoto(_photoRecord.checkId, photo.violationIndex || 0, photo.base64, function(data) {
+      if (_photoRecord.checkId && !_photoEditSession) {
+         queuePhotoUpload(_photoRecord.checkId, photo);
+         uploadPhoto(_photoRecord.checkId, photo.violationIndex || 0, photo.base64, function(data) {
            if (!data) return;
+           removeQueuedPhoto(photo.tempId);
            if (_photoRecord) updateDetailPhotoButton(_photoRecord, true);
            _photoRecord._localPhotos = (_photoRecord._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
           cardData._localPhotos = (cardData._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
-          saveState();
-        });
+           saveState();
+         }, photo.tempId);
       }
     }
     var num = document.querySelectorAll('#card-photo-body .photo-preview-item').length + 1;
@@ -11100,11 +11206,11 @@ function onCardPhotoFileSelected(input) {
   reader.readAsDataURL(file);
 }
 
-function uploadPhoto(checkId, violationIndex, imageData, onDone) {
+function uploadPhoto(checkId, violationIndex, imageData, onDone, clientPhotoId) {
   fetch('/api/photos/upload', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ checkId: checkId, imageData: imageData, violationIndex: violationIndex })
+    body: JSON.stringify({ checkId: checkId, imageData: imageData, violationIndex: violationIndex, clientPhotoId: clientPhotoId || null })
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
@@ -11127,14 +11233,16 @@ function uploadLocalPhotos(checkId, photos, onDone) {
   var pending = photos.length;
   var errors = [];
   photos.forEach(function(photo) {
+    queuePhotoUpload(checkId, photo);
     uploadPhoto(checkId, photo.violationIndex || 0, photo.base64, function(data) {
       if (!data) errors.push(photo.tempId);
+      else removeQueuedPhoto(photo.tempId);
       pending--;
       if (pending === 0) {
         if (errors.length) console.warn('[photo] some uploads failed:', errors);
-        if (onDone) onDone();
-      }
-    });
+         if (onDone) onDone(errors);
+       }
+     }, photo.tempId);
   });
 }
 
@@ -11147,6 +11255,10 @@ function loadCardPhotoPreviews() {
       data.photos.forEach(function(p, index) {
         addPhotoPreview(p.violation_index || 0, p.filename, index + 1);
       });
+      if (_photoRecord && cardData.checkId && !_photoEditSession) {
+        document.querySelectorAll('#card-photo-body .photo-preview-item[data-local="true"]').forEach(function(item) { item.remove(); });
+        cardData._localPhotos = [];
+      }
     }
   })
   .catch(function(err) { console.warn('[photo] load previews failed:', err); });
@@ -11163,6 +11275,11 @@ function renderLocalPhotoPreviews() {
 function addPhotoPreview(violationIndex, filename, num, base64, tempId) {
   var row = document.getElementById('photo-preview-row-' + violationIndex);
   if (!row) return;
+  var existingItems = document.querySelectorAll('#card-photo-body .photo-preview-item');
+  for (var existingIdx = 0; existingIdx < existingItems.length; existingIdx++) {
+    if ((filename && existingItems[existingIdx].dataset.filename === filename) ||
+        (tempId && existingItems[existingIdx].dataset.tempId === tempId)) return;
+  }
   var item = document.createElement('div');
   item.className = 'photo-preview-item';
   var src, displayNum;
@@ -11257,7 +11374,7 @@ function togglePhotoSelection(item) {
 }
 
 function deletePhoto(btn, event) {
-  if (!canUsePhotos()) return;
+  if (_photoRecord ? !canModifySavedPhotos() : !canUsePhotos()) return;
   if (event) event.stopPropagation();
   var item = btn.closest('.photo-preview-item');
   if (!item) return;
@@ -11277,6 +11394,12 @@ function deletePhoto(btn, event) {
   var filename = item.dataset.filename;
   if (!filename || !cardData.checkId) return;
   if (!confirm('Удалить фото?')) return;
+  if (_photoEditSession) {
+    _photoEditSession.pendingDeletes.push(filename);
+    item.remove();
+    refreshDetailPhotoButtonAfterChange();
+    return;
+  }
   fetch('/api/photos/delete/' + encodeURIComponent(cardData.checkId) + '/' + encodeURIComponent(filename), {
     method: 'DELETE'
   })
@@ -11299,7 +11422,7 @@ function refreshDetailPhotoButtonAfterChange() {
   var btn = document.getElementById('detail-photo-btn');
   if (!btn) return;
   var hasPhotos = !!document.querySelector('#card-photo-body .photo-preview-item');
-  btn.textContent = hasPhotos ? 'Фото' : 'Нет фото';
+  btn.textContent = hasPhotos ? 'Фото' : 'Добавить фото';
   btn.classList.toggle('detail-photo-btn-disabled', !hasPhotos && !canUsePhotos());
   btn.disabled = !hasPhotos && !canUsePhotos();
 }
@@ -11496,6 +11619,16 @@ function applyCardChecklist() {
     r.checklistFilled = true;
     r.works = hasViol ? 'Нет' : 'Да';
     r.desc = plain;
+    cardData.works = r.works;
+    cardData.desc = plain;
+    cardData.descFromChecklist = true;
+    var detailDescEl = document.getElementById('val-desc');
+    if (detailDescEl) {
+      detailDescEl.innerHTML = hasViol
+        ? buildChecklistDescHtml(violations, _cardChecklistQuestionTexts)
+        : '—';
+      detailDescEl.classList.toggle('placeholder', !hasViol);
+    }
     var year = r.year || (r.dateCheck ? r.dateCheck.split('.')[2] : String(new Date().getFullYear()));
     saveRecordFieldUpdate(r.dateEntry, year, {
       works: r.works,
@@ -11958,6 +12091,23 @@ function openDrumWorks() {
     updateValidation();
     updateCardPhotoButton();
   });
+}
+
+function retryQueuedPhotoUploads() {
+  if (!navigator.onLine) return;
+  photoQueueDb().then(function(db) {
+    return new Promise(function(resolve) {
+      var req = db.transaction('uploads', 'readonly').objectStore('uploads').getAll();
+      req.onsuccess = function() { resolve(req.result || []); };
+      req.onerror = function() { resolve([]); };
+    });
+  }).then(function(items) {
+    items.forEach(function(item) {
+      uploadPhoto(item.checkId, item.violationIndex, item.base64, function(data) {
+        if (data) removeQueuedPhoto(item.tempId);
+      }, item.tempId);
+    });
+  }).catch(function() {});
 }
 
 function promoteLocalPhotoPreview(tempId, filename, number) {

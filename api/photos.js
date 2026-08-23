@@ -48,12 +48,16 @@ module.exports = async (req, res) => {
 
   try {
     if (matchUpload && req.method === 'POST') {
-      const { checkId, imageData, violationIndex } = req.body || {};
+      const { checkId, imageData, violationIndex, clientPhotoId } = req.body || {};
       if (!checkId || !imageData) {
         return res.status(400).json({ error: 'Missing checkId or imageData' });
       }
 
       const db = getDb();
+      if (clientPhotoId) {
+        const existing = db.prepare('SELECT filename FROM photos WHERE client_photo_id = ?').get(clientPhotoId);
+        if (existing) return res.status(200).json({ success: true, filename: existing.filename, duplicate: true });
+      }
       const countRow = db.prepare("SELECT COUNT(*) as cnt FROM photos WHERE check_id = ?").get(checkId);
       const nextIndex = (countRow.cnt || 0) + 1;
       const dateStr = formatDateDMY(new Date());
@@ -68,8 +72,8 @@ module.exports = async (req, res) => {
        removeStoredFallbacks(photosDir, filename);
        try {
          db.prepare(
-           "INSERT INTO photos (check_id, filename, violation_index, uploaded_at) VALUES (?, ?, ?, unixepoch())"
-         ).run(checkId, filename, violationIndex || 0);
+           "INSERT INTO photos (check_id, filename, violation_index, uploaded_at, client_photo_id) VALUES (?, ?, ?, unixepoch(), ?)"
+         ).run(checkId, filename, violationIndex || 0, clientPhotoId || null);
        } catch (dbError) {
          try { fs.rmSync(filePath, { force: true }); } catch (_e) {}
          throw dbError;
