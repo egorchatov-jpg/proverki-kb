@@ -4209,6 +4209,7 @@ window.addEventListener('DOMContentLoaded', function() {
   bindIosKbOverlayViewport();
   initIosKbOverlayInputFixes();
   syncSettingsOnAppOpen(function() {
+    _settingsReady = true;
     loadFromServer(function() {
       renderLobby();
     }, { forceFull: true });
@@ -4718,6 +4719,8 @@ var _sessionAccess = { inspector: false, admin: false, superuser: false, orgs: {
 var _sessionRole = null;
 var _pinPending = null;
 var _pinReturnScreen = 'screen-lobby';
+var _settingsReady = false;
+var _pinSettingsRefreshInFlight = false;
 
 function clearSessionAccess() {
   _sessionAccess = { inspector: false, admin: false, superuser: false, orgs: {} };
@@ -4837,6 +4840,18 @@ function showGatePin(returnScreen) {
 }
 
 function gateAccess(perm, fn, ctx) {
+  if (!hasSession()) {
+    if (_pinSettingsRefreshInFlight) return;
+    _pinSettingsRefreshInFlight = true;
+    syncSettingsFromServer(function() {
+      _pinSettingsRefreshInFlight = false;
+      _settingsReady = true;
+      _pinPending = { fn: fn, perm: perm, ctx: ctx != null ? ctx : null };
+      var refreshedActive = document.querySelector('.screen.active');
+      showGatePin(refreshedActive ? refreshedActive.id : 'screen-lobby');
+    }, { force: true });
+    return;
+  }
   if (checkPermission(perm, ctx)) { fn(); return; }
   if (hasSession()) {
     alert('Недостаточно прав');
@@ -4964,9 +4979,16 @@ function updatePinDots() {
 }
 
 function checkPin() {
-  var pw = getPw();
-
-  if (grantPinAccess(pinValue)) {
+  var enteredPin = pinValue;
+  function finishAuth(user) {
+    if (user) {
+      _sessionAccess = { superuser: user.role === 'superuser', admin: user.role === 'superuser' || user.role === 'admin', inspector: user.role !== 'org', orgs: {} };
+      if (user.role === 'org' && user.orgName) _sessionAccess.orgs[user.orgName] = true;
+      _sessionRole = user.role;
+    } else if (!grantPinAccess(enteredPin)) {
+      document.getElementById('pin-error').textContent = 'Неверный пароль';
+      pinValue = ''; updatePinDots(); setPinInputLocked(false); return;
+    }
     var pending = _pinPending;
     _pinPending = null;
     pinValue = '';
@@ -4982,12 +5004,18 @@ function checkPin() {
       setPinInputLocked(false);
       showScreen(_pinReturnScreen || 'screen-lobby');
     }
-  } else {
-    document.getElementById('pin-error').textContent = 'Неверный пароль';
-    pinValue = '';
-    updatePinDots();
-    setPinInputLocked(false);
   }
+  fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: enteredPin }) })
+    .then(function(r) {
+      if (r.status === 401) { var e = new Error('invalid-credentials'); e.authFailure = true; throw e; }
+      if (!r.ok) throw new Error('offline-auth');
+      return r.json();
+    })
+    .then(function(data) { finishAuth(data.user); })
+    .catch(function(e) {
+      if (e.authFailure) finishAuth(null);
+      else finishAuth(null); // network offline: preserve legacy local PIN fallback
+    });
 }
 
 // ===== SETTINGS SYNC =====
@@ -6443,7 +6471,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v420';
+var APP_BUILD = 'pkb-v426';
 var APP_VERSION = '1.08';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -10963,7 +10991,7 @@ function renderCardPhotoSection(body, violationIndex, text) {
         '<svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
       '</button>') +
       '<button type="button" class="photo-action-btn" onclick="cardPhotoAttach(this,' + violationIndex + ')">' +
-        (isPhotoCameraHidden() ? 'Фото' : 'Прикрепить') +
+        photoAttachLabel() +
         '<svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>' +
       '</button>';
     section.appendChild(row);
@@ -10973,6 +11001,12 @@ function renderCardPhotoSection(body, violationIndex, text) {
 
 function isPhotoCameraHidden() {
   return !!(_isIOS || document.documentElement.classList.contains('is-win'));
+}
+
+function photoAttachLabel() {
+  return /Android/i.test(navigator.userAgent) || document.documentElement.classList.contains('is-win')
+    ? 'Файлы'
+    : 'Фото';
 }
 
 function cardPhotoCamera(btn) {

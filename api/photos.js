@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 const { getDb, getDbPath } = require('../lib/db');
+const { requireSession } = require('../lib/auth-session');
 
 function getPhotosDir() {
   return path.join(path.dirname(getDbPath()), 'photos');
@@ -48,6 +49,7 @@ module.exports = async (req, res) => {
 
   try {
     if (matchUpload && req.method === 'POST') {
+      if (!requireSession(req, res)) return;
       const { checkId, imageData, violationIndex, clientPhotoId } = req.body || {};
       if (!checkId || !imageData) {
         return res.status(400).json({ error: 'Missing checkId or imageData' });
@@ -114,6 +116,8 @@ module.exports = async (req, res) => {
     }
 
     if (matchDelete && req.method === 'DELETE') {
+      const session = requireSession(req, res, ['superuser', 'admin']);
+      if (!session) return;
       const checkId = decodeURIComponent(matchDelete[1]);
       const filename = decodeURIComponent(matchDelete[2]);
 

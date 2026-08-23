@@ -2,6 +2,7 @@ const { getDb } = require('../lib/db');
 const { loadSettings, saveSettings } = require('../lib/settings-store');
 const { scheduleDbPersist, pushDbToGithub } = require('../lib/github-persist');
 const { isLocalDev } = require('../lib/runtime-env');
+const { requireSession } = require('../lib/auth-session');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -17,6 +18,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'PUT') {
+      if (!requireSession(req, res, ['superuser', 'admin'])) return;
       const result = saveSettings(req.body || {});
       if (result.rejected) {
         return res.status(409).json({

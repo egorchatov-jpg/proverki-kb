@@ -5,6 +5,7 @@ const { insertRecord } = require('../lib/records-store');
 const { getDb } = require('../lib/db');
 const { scheduleDbPersist } = require('../lib/github-persist');
 const { assertWritesAllowed } = require('../lib/write-gate');
+const { requireSession } = require('../lib/auth-session');
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -16,6 +17,7 @@ module.exports = async (req, res) => {
 
   try {
     if (!assertWritesAllowed(res)) return;
+    if (!requireSession(req, res)) return;
     getDb();
     const { record, senderEndpoint } = req.body || {};
     if (!record) return res.status(400).json({ error: 'Missing record' });

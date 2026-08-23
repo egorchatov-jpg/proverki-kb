@@ -4,6 +4,7 @@ const { getDb } = require('../lib/db');
 const { scheduleDbPersist } = require('../lib/github-persist');
 const { sendRecordsChangedPush } = require('../lib/push-notify');
 const { assertWritesAllowed } = require('../lib/write-gate');
+const { requireSession } = require('../lib/auth-session');
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -15,6 +16,7 @@ module.exports = async (req, res) => {
 
   try {
     if (!assertWritesAllowed(res)) return;
+    if (!requireSession(req, res)) return;
     getDb();
     const body = req.body || {};
     const { dateEntry, year, fields, dateCheck, method, org, barrier, updatedAt, senderEndpoint } = body;
