@@ -3,7 +3,7 @@
  *
  * Usage:
  *   node scripts/delete-records-after.js [--dry-run] [--cutoff "19.07.2026 17:00:00"]
- *   node scripts/delete-records-after.js --url https://kbcheck.webtm.ru
+ *   node scripts/delete-records-after.js --url https://proverkikb.tw1.ru
  */
 require('dotenv').config({ path: require('path').join(__dirname, '../.env.prod') });
 require('dotenv').config({ path: require('path').join(__dirname, '../.env.local') });
@@ -47,7 +47,7 @@ async function runRemote() {
 async function runLocal() {
   const token = resolveGithubToken();
   if (!token) {
-    console.error('No GITHUB_TOKEN. Use gh auth login or --url https://kbcheck.webtm.ru');
+    console.error('No GITHUB_TOKEN. Use gh auth login or --url https://proverkikb.tw1.ru');
     process.exit(1);
   }
   process.env.GITHUB_TOKEN = token;
