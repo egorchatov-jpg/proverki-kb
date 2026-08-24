@@ -1,4 +1,4 @@
-const { loadSettings, savePasswordHashes } = require('../lib/settings-store');
+const { loadSettings, savePasswordHashes, passwordVersionFor } = require('../lib/settings-store');
 const { hashPassword, verifyPassword } = require('../lib/password-hash');
 const { createSession, setSessionCookie, getSession, clearSessionCookie } = require('../lib/auth-session');
 
@@ -6,11 +6,17 @@ function identify(pin) {
   const settings = loadSettings();
   const pw = settings.passwords || {};
   const hashes = pw.hashes || { orgs: {} };
+  if (process.env.SUPERUSER_PIN && (!hashes.superuser || !verifyPassword(process.env.SUPERUSER_PIN, hashes.superuser))) {
+    hashes.superuser = hashPassword(process.env.SUPERUSER_PIN);
+    // The superuser credential is fixed by server environment, not by the
+    // settings UI. Rehashing it must not revoke existing superuser sessions.
+    savePasswordHashes(hashes);
+  }
+  if (hashes.superuser && verifyPassword(pin, hashes.superuser)) return { role: 'superuser' };
   if (hashes.admin && verifyPassword(pin, hashes.admin)) return { role: 'admin' };
   if (hashes.inspector && verifyPassword(pin, hashes.inspector)) return { role: 'inspector' };
   for (const name of Object.keys(hashes.orgs || {})) if (verifyPassword(pin, hashes.orgs[name])) return { role: 'org', orgName: name };
-  if (String(pin || '') === '2003') return { role: 'superuser' };
-  const newHashes = { admin: hashes.admin, inspector: hashes.inspector, orgs: Object.assign({}, hashes.orgs || {}) };
+  const newHashes = { superuser: hashes.superuser, admin: hashes.admin, inspector: hashes.inspector, orgs: Object.assign({}, hashes.orgs || {}) };
   let migrated = false;
   if (pw.admin && String(pin) === String(pw.admin)) { newHashes.admin = hashPassword(pin); migrated = true; }
   if (pw.inspector && String(pin) === String(pw.inspector)) { newHashes.inspector = hashPassword(pin); migrated = true; }
@@ -32,6 +38,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const user = identify(req.body && req.body.pin);
   if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-  setSessionCookie(res, createSession(user.role, user.orgName), req.secure || req.headers['x-forwarded-proto'] === 'https');
+  const settings = loadSettings();
+  setSessionCookie(res, createSession(user.role, user.orgName, passwordVersionFor(user.role, user.orgName, settings.passwords)), req.secure || req.headers['x-forwarded-proto'] === 'https');
   return res.status(200).json({ success: true, user });
 };

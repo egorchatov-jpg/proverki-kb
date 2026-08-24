@@ -14,7 +14,10 @@ module.exports = async (req, res) => {
     getDb();
 
     if (req.method === 'GET') {
-      return res.status(200).json(Object.assign({}, loadSettings(), { localDev: isLocalDev() }));
+      const settings = loadSettings();
+      // Password hashes are server-only and must never be sent to clients.
+      if (settings.passwords) delete settings.passwords.hashes;
+      return res.status(200).json(Object.assign({}, settings, { localDev: isLocalDev() }));
     }
 
     if (req.method === 'PUT') {
