@@ -6509,7 +6509,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v441';
+var APP_BUILD = 'pkb-v442';
 var APP_VERSION = '1.08';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -9817,17 +9817,21 @@ function renderFindList(records, preserveScroll) {
 }
 
 function syncRecordFieldLabelWidths(root, selector) {
-  if (!root) return;
-  var labels = root.querySelectorAll(selector);
-  if (!labels.length) return;
-  labels.forEach(function(el) { el.style.width = ''; });
-  var maxW = 0;
-  labels.forEach(function(el) {
-    maxW = Math.max(maxW, el.scrollWidth);
-  });
-  if (!maxW) return;
-  var w = Math.ceil(maxW) + 'px';
-  labels.forEach(function(el) { el.style.width = w; });
+  try {
+    if (!root) return;
+    var labels = root.querySelectorAll(selector);
+    if (!labels.length) return;
+    labels.forEach(function(el) { el.style.width = ''; });
+    var maxW = 0;
+    labels.forEach(function(el) {
+      maxW = Math.max(maxW, el.scrollWidth);
+    });
+    if (!maxW) return;
+    var w = Math.ceil(maxW) + 'px';
+    labels.forEach(function(el) { el.style.width = w; });
+  } catch (e) {
+    console.error('[UI] syncRecordFieldLabelWidths failed:', e);
+  }
 }
 
 function syncCardFieldLabelWidths() {
@@ -9933,35 +9937,42 @@ function openDetail(r, source) {
 }
 
 function updateDetailPhotoButton(record, isNonWorking) {
-  var btn = document.getElementById('detail-photo-btn');
-  if (!btn) return;
-  function apply(hasPhotos) {
-    btn.textContent = hasPhotos ? 'Фото' : 'Добавить фото';
-    var canChange = canModifySavedPhotos();
-    btn.hidden = !hasPhotos && !canChange;
-    btn.classList.remove('detail-photo-btn-pending');
-    btn.style.visibility = 'visible';
-    btn.classList.toggle('detail-photo-btn-disabled', !canChange && !hasPhotos);
-    btn.disabled = !canChange && !hasPhotos;
-    btn.onclick = canViewPhotos() ? function() { photoButtonClick(detailRecordForEdit); } : null;
+  try {
+    var btn = document.getElementById('detail-photo-btn');
+    if (!btn) return;
+    function apply(hasPhotos) {
+      btn.textContent = hasPhotos ? 'Фото' : 'Добавить фото';
+      var canChange = canModifySavedPhotos();
+      btn.hidden = !hasPhotos && !canChange;
+      btn.classList.remove('detail-photo-btn-pending');
+      btn.style.visibility = 'visible';
+      btn.classList.toggle('detail-photo-btn-disabled', !canChange && !hasPhotos);
+      btn.disabled = !canChange && !hasPhotos;
+      btn.onclick = canViewPhotos() ? function() { photoButtonClick(detailRecordForEdit); } : null;
+    }
+    if (!isNonWorking) {
+      btn.hidden = true;
+      btn.style.visibility = 'visible';
+      return;
+    }
+    if (record && record._localPhotos && record._localPhotos.length) {
+      apply(true);
+      return;
+    }
+    if (!record || !record.checkId) {
+      apply(false);
+      return;
+    }
+    fetch('/api/photos/list/' + encodeURIComponent(record.checkId), { cache: 'no-store' })
+      .then(function(r) { return r.ok ? r.json() : { photos: [] }; })
+      .then(function(data) { apply(!!(data.photos && data.photos.length)); })
+      .catch(function(err) {
+        console.error('[photo] updateDetailPhotoButton failed:', err);
+        apply(false);
+      });
+  } catch (e) {
+    console.error('[photo] updateDetailPhotoButton error:', e);
   }
-  if (!isNonWorking) {
-    btn.hidden = true;
-    btn.style.visibility = 'visible';
-    return;
-  }
-  if (record && record._localPhotos && record._localPhotos.length) {
-    apply(true);
-    return;
-  }
-  if (!record || !record.checkId) {
-    apply(false);
-    return;
-  }
-  fetch('/api/photos/list/' + encodeURIComponent(record.checkId), { cache: 'no-store' })
-    .then(function(r) { return r.ok ? r.json() : { photos: [] }; })
-    .then(function(data) { apply(!!(data.photos && data.photos.length)); })
-    .catch(function() { apply(false); });
 }
 
 // ===== DRUM PICKER =====
@@ -11307,14 +11318,23 @@ function uploadPhoto(checkId, violationIndex, imageData, onDone, clientPhotoId, 
   })
   .then(function(r) {
     clearTimeout(timer);
-    return r.json().then(function(data) { return { status: r.status, data: data || {} }; });
+    return r.json().then(function(data) { return { status: r.status, data: data || {} }; }).catch(function() {
+      return { status: r.status, data: {} };
+    });
   })
   .then(function(result) {
     var data = result.data || {};
     if (result.status >= 200 && result.status < 300 && data.success) {
+      if (data.duplicate && clientPhotoId) {
+        console.log('[photo] duplicate detected for clientPhotoId:', clientPhotoId);
+      }
       if (onDone) onDone(data);
     } else {
-      if (!silent) alert('Ошибка загрузки: ' + (data.error || ('HTTP ' + result.status)));
+      var errorMsg = data.error || ('HTTP ' + result.status);
+      console.error('[photo] upload error:', errorMsg);
+      if (!silent && errorMsg.indexOf('UNIQUE constraint') === -1) {
+        alert('Ошибка загрузки: ' + errorMsg);
+      }
       if (onDone) onDone(null);
     }
   })

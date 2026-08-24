@@ -68,18 +68,26 @@ module.exports = async (req, res) => {
       const buffer = Buffer.from(imageData, 'base64');
        const processed = await processImage(buffer);
 
-      const photosDir = ensurePhotosDir();
-       const filePath = path.join(photosDir, filename);
-       fs.writeFileSync(filePath, processed);
-       removeStoredFallbacks(photosDir, filename);
-       try {
-         db.prepare(
-           "INSERT INTO photos (check_id, filename, violation_index, uploaded_at, client_photo_id) VALUES (?, ?, ?, unixepoch(), ?)"
-         ).run(checkId, filename, violationIndex || 0, clientPhotoId || null);
-       } catch (dbError) {
-         try { fs.rmSync(filePath, { force: true }); } catch (_e) {}
-         throw dbError;
-       }
+       const photosDir = ensurePhotosDir();
+        const filePath = path.join(photosDir, filename);
+        fs.writeFileSync(filePath, processed);
+        removeStoredFallbacks(photosDir, filename);
+        try {
+          db.prepare(
+            "INSERT INTO photos (check_id, filename, violation_index, uploaded_at, client_photo_id) VALUES (?, ?, ?, unixepoch(), ?)"
+          ).run(checkId, filename, violationIndex || 0, clientPhotoId || null);
+        } catch (dbError) {
+          try { fs.rmSync(filePath, { force: true }); } catch (_e) {}
+          // If UNIQUE constraint on client_photo_id, check if duplicate exists
+          if (clientPhotoId && dbError.message && dbError.message.includes('UNIQUE constraint failed: photos.client_photo_id')) {
+            const existing = db.prepare('SELECT filename FROM photos WHERE client_photo_id = ?').get(clientPhotoId);
+            if (existing) {
+              console.log('[photos] duplicate clientPhotoId detected, returning existing:', existing.filename);
+              return res.status(200).json({ success: true, filename: existing.filename, duplicate: true });
+            }
+          }
+          throw dbError;
+        }
 
       return res.status(200).json({ success: true, filename, index: nextIndex });
     }
