@@ -6509,7 +6509,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v442';
+var APP_BUILD = 'pkb-v443';
 var APP_VERSION = '1.08';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -10881,6 +10881,7 @@ var _photoReturnScreen = 'screen-card';
 var _photoRecord = null;
 var _photoEditSession = null;
 var _photoQueueDbPromise = null;
+var _photoTempIdCounter = 0;
 
 function photoQueueDb() {
   if (_photoQueueDbPromise) return _photoQueueDbPromise;
@@ -11220,7 +11221,7 @@ function applyCardCameraPreview() {
 }
 
 function addCapturedCardPhoto(base64) {
-  var tempId = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  var tempId = 'local_' + Date.now() + '_' + (++_photoTempIdCounter) + '_' + Math.random().toString(36).substr(2, 9);
   var photo = { base64: base64, violationIndex: _photoAttachViolationIndex, tempId: tempId };
   if (!cardData._localPhotos) cardData._localPhotos = [];
   cardData._localPhotos.push(photo);
@@ -11277,7 +11278,7 @@ function onCardPhotoFileSelected(input) {
   var reader = new FileReader();
   reader.onload = function(e) {
     normalizePhotoBase64(e.target.result, function(base64) {
-    var tempId = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    var tempId = 'local_' + Date.now() + '_' + (++_photoTempIdCounter) + '_' + Math.random().toString(36).substr(2, 9);
     var photo = { base64: base64, violationIndex: _photoAttachViolationIndex, tempId: tempId };
     if (!cardData._localPhotos) cardData._localPhotos = [];
     cardData._localPhotos.push(photo);
@@ -11292,6 +11293,7 @@ function onCardPhotoFileSelected(input) {
          uploadPhoto(_photoRecord.checkId, photo.violationIndex || 0, photo.base64, function(data) {
            if (!data) return;
            removeQueuedPhoto(photo.tempId);
+           promoteLocalPhotoPreview(photo.tempId, data.filename, data.index);
            if (_photoRecord) updateDetailPhotoButton(_photoRecord, true);
            _photoRecord._localPhotos = (_photoRecord._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
           cardData._localPhotos = (cardData._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
