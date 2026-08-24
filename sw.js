@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'pkb-static-v426';
-const API_CACHE = 'pkb-api-v426';
+const STATIC_CACHE = 'pkb-static-v436';
+const API_CACHE = 'pkb-api-v436';
 
 const SHELL_PRECACHE = [
   '/',
@@ -53,6 +53,22 @@ function networkFirstApi(request) {
   return caches.open(API_CACHE).then(function(cache) {
     return fetch(request).then(function(res) {
       return putCache(cache, request, res);
+    }).catch(function() {
+      return cacheMatchAny(cache, request).then(function(cached) {
+        if (cached) return cached;
+        throw new Error('offline');
+      });
+    });
+  });
+}
+
+function networkFirstShell(request) {
+  return caches.open(STATIC_CACHE).then(function(cache) {
+    return fetch(request, { cache: 'no-store' }).then(function(response) {
+      if (response && response.ok) {
+        cache.put(new Request(new URL(request.url).pathname), response.clone());
+      }
+      return response;
     }).catch(function() {
       return cacheMatchAny(cache, request).then(function(cached) {
         if (cached) return cached;
@@ -216,21 +232,12 @@ self.addEventListener('fetch', function(e) {
   }
 
   if (url.pathname === '/' || url.pathname === '/index.html') {
-    if (url.search.indexOf('v=') >= 0) {
-      e.respondWith(fetch(e.request, { cache: 'no-store' }).then(function(res) {
-        if (!res || !res.ok) return res;
-        return caches.open(STATIC_CACHE).then(function(cache) {
-          return cache.put(new Request(url.pathname), res.clone()).then(function() { return res; });
-        });
-      }));
-      return;
-    }
-    e.respondWith(cacheFirst(e.request, true));
+    e.respondWith(networkFirstShell(e.request));
     return;
   }
 
   if (url.pathname === '/sw.js') {
-    e.respondWith(cacheFirst(e.request, true));
+    e.respondWith(networkFirstShell(e.request));
     return;
   }
 

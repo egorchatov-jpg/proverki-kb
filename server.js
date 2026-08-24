@@ -66,7 +66,8 @@ function setNoCache(res) {
 
 const app = express();
 app.set('trust proxy', 1);
-app.use(express.json({ limit: '4mb' }));
+// Photo uploads arrive as base64 JSON before sharp compresses them.
+app.use(express.json({ limit: '12mb' }));
 
 let bootstrapReady = false;
 let bootstrapInfo = null;

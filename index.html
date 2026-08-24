@@ -2994,8 +2994,8 @@ function migrateSamoproverkaToSamootsenka() {
       var n = renameSamoproverkaText(m.name);
       if (n !== m.name) { m.name = n; changed = true; }
     }
-         }, photo.tempId);
-  (appState.db || []).forEach(touchMethod);
+   });
+   (appState.db || []).forEach(touchMethod);
   try {
     var sq = getSyncQueue();
     var sqChanged = false;
@@ -3351,10 +3351,17 @@ function retrySyncQueue() {
 // --- Save record to server ---
 function getPushSenderEndpoint() {
   return new Promise(function(resolve) {
-    if (!swRegistration || !swRegistration.pushManager) { resolve(null); return; }
+    var settled = false;
+    var finish = function(value) {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    setTimeout(function() { finish(null); }, 1500);
+    if (!swRegistration || !swRegistration.pushManager) { finish(null); return; }
     swRegistration.pushManager.getSubscription()
-      .then(function(sub) { resolve(sub ? sub.endpoint : null); })
-      .catch(function() { resolve(null); });
+      .then(function(sub) { finish(sub ? sub.endpoint : null); })
+      .catch(function() { finish(null); });
   });
 }
 
@@ -3379,31 +3386,37 @@ function syncToServer(record, onSuccess, onComplete) {
       body: JSON.stringify({ record: record, senderEndpoint: senderEp || null }),
       signal: ctrl.signal
     })
-    .then(function(r) { clearTimeout(timer); return r.json(); })
+    .then(function(r) {
+      clearTimeout(timer);
+      return r.json().catch(function() { return {}; }).then(function(d) {
+        return { status: r.status, body: d || {} };
+      });
+    })
     .then(function(d) {
-      if (d.success) {
+      var body = d.body || {};
+      if (d.status >= 200 && d.status < 300 && body.success) {
         removeFromSyncQueue(record.id);
         updateSyncStatusFromQueues();
         if (!hasPendingSync()) syncStatus = 'ok';
         var shas = getServerShas();
-        delete shas['sha' + d.year];
+        delete shas['sha' + body.year];
         saveServerShas(shas);
         var savedRec = appState.db.find(function(r) { return r.id === record.id || r.dateEntry === record.dateEntry; });
         if (savedRec) {
-          if (d.checkId) savedRec.checkId = d.checkId;
-          if (d.num) savedRec.num = d.num;
-          if (d.checklistUpdatedAt) savedRec.checklistUpdatedAt = d.checklistUpdatedAt;
+          if (body.checkId) savedRec.checkId = body.checkId;
+          if (body.num) savedRec.num = body.num;
+          if (body.checklistUpdatedAt) savedRec.checklistUpdatedAt = body.checklistUpdatedAt;
           saveState();
         }
-        console.log('[sync] сохранено на сервере ' + (d.checkId || ('№' + d.num)) + ' (' + d.year + ')');
-        if (record.works === 'Нет' && !d.duplicate && (!d.notified || d.notified === 0)) {
-          postViolationNotify(record, senderEp);
-        }
-        if (onSuccess) onSuccess(d);
+        // The server ACK changes the local identity (checkId). Re-render
+        // active lists immediately so the pending-sync icon disappears.
+        refreshActiveRecordLists();
+        console.log('[sync] сохранено на сервере ' + (body.checkId || ('№' + body.num)) + ' (' + body.year + ')');
+        if (onSuccess) onSuccess(body);
       } else {
         syncStatus = 'error';
         addToSyncQueue(record);
-        console.warn('[sync] ошибка сервера:', d.error);
+        console.warn('[sync] ошибка сервера:', body.error || ('HTTP ' + d.status));
       }
       updateSyncIndicator();
       if (onComplete) onComplete();
@@ -3415,7 +3428,7 @@ function syncToServer(record, onSuccess, onComplete) {
       console.warn('[sync] нет соединения или таймаут, запись в очередь');
       updateSyncIndicator();
       if (onComplete) onComplete();
-    }, photo.tempId);
+    });
   });
 }
 
@@ -3425,12 +3438,30 @@ function mergeWithQueue(serverRecords) {
   if (!queue.length) return serverRecords;
   // Build fingerprint map from server data (dateCheck+org+barrier+method)
   var fps = {};
+  var serverByFp = {};
+  var serverByEntry = {};
   serverRecords.forEach(function(r) {
-    fps[[r.dateCheck, r.method, r.org, r.obj, r.barrier, r.desc].join('|')] = true;
+    var fp = [r.dateCheck, r.method, r.org, r.obj, r.barrier, r.desc].join('|');
+    fps[fp] = true;
+    serverByFp[fp] = r;
+    if (r.dateEntry) serverByEntry[String(r.dateEntry)] = r;
   });
   // Records already on server — remove from queue to prevent duplicate re-sync
   queue.forEach(function(r) {
-    if (fps[[r.dateCheck, r.method, r.org, r.obj, r.barrier, r.desc].join('|')]) {
+    var fp = [r.dateCheck, r.method, r.org, r.obj, r.barrier, r.desc].join('|');
+    var serverRecord = (r.dateEntry && serverByEntry[String(r.dateEntry)]) || serverByFp[fp];
+    if (serverRecord) {
+      // The old client may have kept a local copy without the server checkId.
+      // Copy the server identity before dropping the queue item.
+      r.checkId = serverRecord.checkId || r.checkId;
+      r.num = serverRecord.num || r.num;
+      var local = (appState.db || []).find(function(x) {
+        return x.id === r.id || x.dateEntry === r.dateEntry;
+      });
+      if (local) {
+        local.checkId = serverRecord.checkId || local.checkId;
+        local.num = serverRecord.num || local.num;
+      }
       removeFromSyncQueue(r.id);
     }
   });
@@ -3895,6 +3926,24 @@ var DEFAULT_ORGS = [
   'ЮНС'
 ];
 
+var DEFAULT_INSPECTING_ORGS = ['СПД', 'Техресурс'];
+function buildDefaultOrgState() {
+  return DEFAULT_ORGS.map(function(n) {
+    return { name: n, show: true, inspects: false };
+  }).concat(DEFAULT_INSPECTING_ORGS.map(function(n) {
+    return { name: n, show: false, inspects: true };
+  }));
+}
+function ensureDefaultInspectingOrgs(list) {
+  list = list || [];
+  DEFAULT_INSPECTING_ORGS.forEach(function(name) {
+    if (!list.some(function(o) { return String(o.name || o) === name; })) {
+      list.push({ name: name, show: false, inspects: true });
+    }
+  });
+  return list;
+}
+
 var appState = {
   db: [],          // массив записей проверок
   orgs: [],        // список организаций (из настроек)
@@ -4063,7 +4112,6 @@ var _lastUpdateCheckMs = 0;
 function showAppUpdateOverlay(updateKey) {
   if (_appUpdateOverlayShown || _appUpdateApplying) return;
   try {
-    if (updateKey && sessionStorage.getItem('pkb-update-overlay-key') === updateKey) return;
     if (updateKey) sessionStorage.setItem('pkb-update-overlay-key', updateKey);
   } catch (_e) {}
   _appUpdateOverlayShown = true;
@@ -4276,17 +4324,18 @@ function loadState() {
       if (parsed.orgs && parsed.orgs.length) {
         if (typeof parsed.orgs[0] === 'string') {
           appState.orgs = parsed.orgs.map(function(n) { return { name: n, show: true, inspects: false }; });
-        } else {
+      } else {
           appState.orgs = parsed.orgs.map(function(o) {
             return normalizeOrgRoleFlags({ name: o.name, show: o.show !== false, inspects: o.inspects === true });
           });
         }
+        ensureDefaultInspectingOrgs(appState.orgs);
       } else {
-        appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true, inspects: false }; });
+        appState.orgs = buildDefaultOrgState();
       }
       // Migrate legacy org names with guillemets to DEFAULT_ORGS
       if (appState.orgs.some(function(o) { return (o.name||o).indexOf('«') >= 0; })) {
-        appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true, inspects: false }; });
+          appState.orgs = buildDefaultOrgState();
       }
       appState.barriers = parsed.barriers || ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
       appState.autocomplete = parsed.autocomplete || {};
@@ -4303,7 +4352,7 @@ function loadState() {
       normalizeDbDates();
       renumberDb();
     } else {
-      appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true, inspects: false }; });
+        appState.orgs = buildDefaultOrgState();
       appState.barriers = ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
       appState.barriersPK = {};
       appState.methods = DEFAULT_METHODS.map(function(m) { return Object.assign({}, m); });
@@ -4358,6 +4407,9 @@ function registerSW() {
         swRegistration = readyReg;
         subscribeToPush(readyReg);
         checkPushSubscriptionWeekly(readyReg);
+        // Check again after SW activation. The first check can run before a
+        // stale installed PWA has finished registering its new worker.
+        setTimeout(function() { evaluateAppUpdate(readyReg); }, 250);
       }).catch(function(e) { console.warn('[push] SW not ready:', e.message); });
       reg.update().then(function() { evaluateAppUpdate(reg); });
       if (reg.active) prefetchPassportAssets();
@@ -4675,7 +4727,7 @@ function _showLobbyBanners(count) {
 function renderLobby() {
   var today = todayStr();
   var violations = appState.db.filter(function(r) {
-    return r.dateEntry.startsWith(today) && r.works === 'Нет' && r.checkId;
+    return String(r.dateEntry || '').startsWith(today) && r.works === 'Нет' && r.checkId;
   });
 
   var content = document.getElementById('lobby-content');
@@ -5217,11 +5269,12 @@ function applyMasterSettingsPayload(data) {
       serverOrgs = serverOrgs.map(function(n) { return { name: n, show: true, inspects: false }; });
     }
     if (serverOrgs.some(function(o) { return String(o.name || o).indexOf(String.fromCharCode(171)) >= 0; })) {
-      serverOrgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true, inspects: false }; });
+      serverOrgs = buildDefaultOrgState();
     }
     appState.orgs = serverOrgs.map(function(o) {
       return normalizeOrgRoleFlags(Object.assign({}, typeof o === 'string' ? { name: o, show: true, inspects: false } : o));
     });
+    ensureDefaultInspectingOrgs(appState.orgs);
   }
   if (data.barriers && data.barriers.length) appState.barriers = data.barriers;
   if (data.barriersConfig) {
@@ -5262,12 +5315,6 @@ function syncSettingsFromServer(callback, opts) {
     .then(function(data) {
       if (errEl) errEl.textContent = '';
       if (data && data.localDev) _isLocalDevRuntime = true;
-      if (isLocalDevRuntime()) {
-        clearSettingsDirty();
-        saveState();
-        if (callback) callback();
-        return;
-      }
       // Master absolute priority when not mid-edit (or when force on app open).
       var editingNow = isSettingsDirty();
       if (force || !editingNow) {
@@ -6471,7 +6518,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v426';
+var APP_BUILD = 'pkb-v436';
 var APP_VERSION = '1.08';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -8216,7 +8263,7 @@ function saveNewOrg() {
   var input = document.getElementById('org-new-input');
   var name = input.value.trim();
   if (!name) return;
-  if (!appState.orgs) appState.orgs = DEFAULT_ORGS.map(function(n) { return { name: n, show: true, inspects: false }; });
+  if (!appState.orgs) appState.orgs = buildDefaultOrgState();
   appState.orgs.push(normalizeOrgRoleFlags({ name: name, show: true, inspects: false }));
   // Generate unique password for the new org
   var pw = getPw();
@@ -11182,16 +11229,17 @@ function addCapturedCardPhoto(base64) {
   }
   saveState();
   if (_photoRecord && _photoRecord.checkId && !_photoEditSession) {
-        queuePhotoUpload(_photoRecord.checkId, photo);
-        uploadPhoto(_photoRecord.checkId, photo.violationIndex || 0, photo.base64, function(data) {
-          if (!data) return;
-          removeQueuedPhoto(photo.tempId);
+         queuePhotoUpload(_photoRecord.checkId, photo).then(function() {
+         uploadPhoto(_photoRecord.checkId, photo.violationIndex || 0, photo.base64, function(data) {
+            if (!data) return;
+            removeQueuedPhoto(photo.tempId);
       promoteLocalPhotoPreview(photo.tempId, data.filename, data.index);
       if (_photoRecord) updateDetailPhotoButton(_photoRecord, true);
       _photoRecord._localPhotos = (_photoRecord._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
       cardData._localPhotos = (cardData._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
            saveState();
-         }, photo.tempId);
+          }, photo.tempId);
+         });
   }
   var num = document.querySelectorAll('#card-photo-body .photo-preview-item').length + 1;
   addPhotoPreview(_photoAttachViolationIndex, null, num, base64, tempId);
@@ -11205,13 +11253,28 @@ function cardPhotoAttach(btn, violationIndex) {
   input.click();
 }
 
+function normalizePhotoBase64(dataUrl, onDone) {
+  var image = new Image();
+  image.onload = function() {
+    var maxSide = Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height);
+    var scale = Math.min(1, 1080 / Math.max(1, maxSide));
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
+    canvas.height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+    canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+    onDone(canvas.toDataURL('image/jpeg', 0.82).split(',')[1]);
+  };
+  image.onerror = function() { onDone(dataUrl.split(',')[1] || ''); };
+  image.src = dataUrl;
+}
+
 function onCardPhotoFileSelected(input) {
   var file = input.files && input.files[0];
   input.value = '';
   if (!file) return;
   var reader = new FileReader();
   reader.onload = function(e) {
-    var base64 = e.target.result.split(',')[1];
+    normalizePhotoBase64(e.target.result, function(base64) {
     var tempId = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     var photo = { base64: base64, violationIndex: _photoAttachViolationIndex, tempId: tempId };
     if (!cardData._localPhotos) cardData._localPhotos = [];
@@ -11223,7 +11286,7 @@ function onCardPhotoFileSelected(input) {
       _photoRecord._localPhotos.push(photo);
       saveState();
       if (_photoRecord.checkId && !_photoEditSession) {
-         queuePhotoUpload(_photoRecord.checkId, photo);
+         queuePhotoUpload(_photoRecord.checkId, photo).then(function() {
          uploadPhoto(_photoRecord.checkId, photo.violationIndex || 0, photo.base64, function(data) {
            if (!data) return;
            removeQueuedPhoto(photo.tempId);
@@ -11231,33 +11294,43 @@ function onCardPhotoFileSelected(input) {
            _photoRecord._localPhotos = (_photoRecord._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
           cardData._localPhotos = (cardData._localPhotos || []).filter(function(p) { return p.tempId !== photo.tempId; });
            saveState();
-         }, photo.tempId);
+          }, photo.tempId);
+         });
       }
     }
     var num = document.querySelectorAll('#card-photo-body .photo-preview-item').length + 1;
     addPhotoPreview(_photoAttachViolationIndex, null, num, base64, tempId);
+    });
   };
   reader.readAsDataURL(file);
 }
 
-function uploadPhoto(checkId, violationIndex, imageData, onDone, clientPhotoId) {
+function uploadPhoto(checkId, violationIndex, imageData, onDone, clientPhotoId, silent) {
+  var ctrl = new AbortController();
+  var timer = setTimeout(function() { ctrl.abort(); }, 20000);
   fetch('/api/photos/upload', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ checkId: checkId, imageData: imageData, violationIndex: violationIndex, clientPhotoId: clientPhotoId || null })
+    body: JSON.stringify({ checkId: checkId, imageData: imageData, violationIndex: violationIndex, clientPhotoId: clientPhotoId || null }),
+    signal: ctrl.signal
   })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    if (data.success) {
+  .then(function(r) {
+    clearTimeout(timer);
+    return r.json().then(function(data) { return { status: r.status, data: data || {} }; });
+  })
+  .then(function(result) {
+    var data = result.data || {};
+    if (result.status >= 200 && result.status < 300 && data.success) {
       if (onDone) onDone(data);
     } else {
-      alert('Ошибка загрузки: ' + (data.error || 'неизвестно'));
+      if (!silent) alert('Ошибка загрузки: ' + (data.error || ('HTTP ' + result.status)));
       if (onDone) onDone(null);
     }
   })
   .catch(function(err) {
+    clearTimeout(timer);
     console.error('[photo] upload failed:', err);
-    alert('Ошибка загрузки фото');
+    if (!silent) alert('Ошибка загрузки фото');
     if (onDone) onDone(null);
   });
 }
@@ -11267,7 +11340,7 @@ function uploadLocalPhotos(checkId, photos, onDone) {
   var pending = photos.length;
   var errors = [];
   photos.forEach(function(photo) {
-    queuePhotoUpload(checkId, photo);
+    queuePhotoUpload(checkId, photo).then(function() {
     uploadPhoto(checkId, photo.violationIndex || 0, photo.base64, function(data) {
       if (!data) errors.push(photo.tempId);
       else removeQueuedPhoto(photo.tempId);
@@ -11276,7 +11349,8 @@ function uploadLocalPhotos(checkId, photos, onDone) {
         if (errors.length) console.warn('[photo] some uploads failed:', errors);
          if (onDone) onDone(errors);
        }
-     }, photo.tempId);
+      }, photo.tempId);
+    });
   });
 }
 
@@ -12139,7 +12213,7 @@ function retryQueuedPhotoUploads() {
     items.forEach(function(item) {
       uploadPhoto(item.checkId, item.violationIndex, item.base64, function(data) {
         if (data) removeQueuedPhoto(item.tempId);
-      }, item.tempId);
+      }, item.tempId, true);
     });
   }).catch(function() {});
 }

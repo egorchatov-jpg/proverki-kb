@@ -46,12 +46,11 @@ module.exports = async (req, res) => {
 
     let notified = 0;
     if (!saveResult.duplicate && record.works === 'Нет') {
-      try {
-        const pushResult = await sendViolationPush(record, senderEndpoint || null);
-        notified = pushResult.sent || 0;
-      } catch (pushErr) {
+      // Push delivery must not block saving. A stale subscription can take
+      // several retry attempts and otherwise makes the client look frozen.
+      sendViolationPush(record, senderEndpoint || null).catch(function(pushErr) {
         console.warn('[save] push notify failed:', pushErr.message);
-      }
+      });
     }
 
     if (!saveResult.duplicate) {
