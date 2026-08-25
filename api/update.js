@@ -1,7 +1,7 @@
 const { saveChecklistForRecord, assertChecklistWritable } = require('../lib/checklists-lib');
 const { updateRecord } = require('../lib/records-store');
 const { getDb } = require('../lib/db');
-const { scheduleDbPersist } = require('../lib/github-persist');
+const { flushDbPersist } = require('../lib/github-persist');
 const { sendRecordsChangedPush } = require('../lib/push-notify');
 const { assertWritesAllowed } = require('../lib/write-gate');
 const { requireSession } = require('../lib/auth-session');
@@ -63,7 +63,14 @@ module.exports = async (req, res) => {
       });
     }
 
-    scheduleDbPersist();
+    // Persist synchronously before responding: Timeweb's disk is ephemeral
+    // and a redeploy right after this response (before a debounced push
+    // completes) would otherwise silently drop the update.
+    try {
+      await flushDbPersist();
+    } catch (persistErr) {
+      console.warn('[update] github persist failed:', persistErr.message);
+    }
     sendRecordsChangedPush(senderEndpoint || null).catch(function(e) {
       console.warn('[update] silent sync push failed:', e.message);
     });

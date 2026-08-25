@@ -3,6 +3,7 @@ const path = require('path');
 const sharp = require('sharp');
 const { getDb, getDbPath } = require('../lib/db');
 const { requireSession } = require('../lib/auth-session');
+const { pushPhotoToGithub, deletePhotoFromGithub, flushDbPersist } = require('../lib/github-persist');
 
 function getPhotosDir() {
   return path.join(path.dirname(getDbPath()), 'photos');
@@ -104,6 +105,16 @@ module.exports = async (req, res) => {
       }
       // ---- End atomic section ----
 
+      // Persist synchronously before responding: Timeweb's disk is ephemeral
+      // and a redeploy right after this response (before a debounced/queued
+      // push completes) would otherwise silently drop the new photo.
+      try {
+        await pushPhotoToGithub(filename, filePath);
+        await flushDbPersist();
+      } catch (persistErr) {
+        console.warn('[photos] github persist after upload failed:', persistErr.message);
+      }
+
       return res.status(200).json({ success: true, filename, index: nextIndex });
     }
 
@@ -156,6 +167,13 @@ module.exports = async (req, res) => {
            try { fs.unlinkSync(variantPath); } catch (_e) {}
          }
        });
+
+      try {
+        await deletePhotoFromGithub(filename);
+        await flushDbPersist();
+      } catch (persistErr) {
+        console.warn('[photos] github persist after delete failed:', persistErr.message);
+      }
 
       return res.status(200).json({ success: true });
     }

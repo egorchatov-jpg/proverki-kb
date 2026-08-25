@@ -1,6 +1,6 @@
 const { getDb } = require('../lib/db');
 const { loadSettings, saveSettings } = require('../lib/settings-store');
-const { scheduleDbPersist, pushDbToGithub } = require('../lib/github-persist');
+const { flushDbPersist } = require('../lib/github-persist');
 const { isLocalDev } = require('../lib/runtime-env');
 const { requireSession } = require('../lib/auth-session');
 
@@ -33,10 +33,12 @@ module.exports = async (req, res) => {
         });
       }
       if (!isLocalDev()) {
-        scheduleDbPersist();
-        pushDbToGithub().catch(function(e) {
-          console.warn('[settings] immediate GitHub db push failed:', e.message);
-        });
+        // Persist synchronously before responding — see api/update.js for why.
+        try {
+          await flushDbPersist();
+        } catch (persistErr) {
+          console.warn('[settings] github persist failed:', persistErr.message);
+        }
       }
       return res.status(200).json({
         success: true,

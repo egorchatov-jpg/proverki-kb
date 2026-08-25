@@ -1,6 +1,6 @@
 const { deleteRecord } = require('../lib/delete-record-lib');
 const { getDb } = require('../lib/db');
-const { scheduleDbPersist } = require('../lib/github-persist');
+const { flushDbPersist, deletePhotoFromGithub } = require('../lib/github-persist');
 const { sendRecordsChangedPush } = require('../lib/push-notify');
 const { assertWritesAllowed } = require('../lib/write-gate');
 const { requireSession } = require('../lib/auth-session');
@@ -23,7 +23,19 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Missing record dateEntry or checkId' });
     }
     const result = await deleteRecord(record);
-    scheduleDbPersist();
+    // Persist synchronously before responding — see api/update.js for why.
+    try {
+      await flushDbPersist();
+    } catch (persistErr) {
+      console.warn('[delete-record] github persist failed:', persistErr.message);
+    }
+    if (result && result.deletedPhotos && result.deletedPhotos.length) {
+      for (const filename of result.deletedPhotos) {
+        try { await deletePhotoFromGithub(filename); } catch (e) {
+          console.warn('[delete-record] photo delete from github failed:', filename, e.message);
+        }
+      }
+    }
     sendRecordsChangedPush(req.body && req.body.senderEndpoint).catch(function(e) {
       console.warn('[delete] silent sync push failed:', e.message);
     });

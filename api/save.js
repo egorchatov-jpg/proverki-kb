@@ -3,7 +3,7 @@ const { saveChecklistForRecord } = require('../lib/checklists-lib');
 const { loadSettings } = require('../lib/settings-store');
 const { insertRecord } = require('../lib/records-store');
 const { getDb } = require('../lib/db');
-const { scheduleDbPersist } = require('../lib/github-persist');
+const { flushDbPersist } = require('../lib/github-persist');
 const { assertWritesAllowed } = require('../lib/write-gate');
 const { requireSession } = require('../lib/auth-session');
 
@@ -54,7 +54,12 @@ module.exports = async (req, res) => {
     }
 
     if (!saveResult.duplicate) {
-      scheduleDbPersist();
+      // Persist synchronously before responding — see api/update.js for why.
+      try {
+        await flushDbPersist();
+      } catch (persistErr) {
+        console.warn('[save] github persist failed:', persistErr.message);
+      }
       sendRecordsChangedPush(senderEndpoint || null).catch(function(e) {
         console.warn('[save] silent sync push failed:', e.message);
       });
