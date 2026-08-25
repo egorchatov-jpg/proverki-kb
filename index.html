@@ -1705,7 +1705,7 @@ html, body {
   gap: 10px;
 }
 .screen-save-btn {
-  width: calc((100vw - 48px) / 3);
+  width: calc((100% - 20px) / 3);
   height: 53px;
   background: var(--orange); color: #fff;
   font-size: 15px; font-weight: 700;
@@ -2407,7 +2407,11 @@ html, body {
     <div class="photo-body" id="card-photo-body"></div>
   </div>
   <div class="settings-footer">
-    <button type="button" class="screen-back-btn" id="btn-card-photo-back" onclick="closeCardPhotoScreen()">Назад</button>
+    <button type="button" class="screen-back-btn settings-footer-single" id="btn-card-photo-back" onclick="closeCardPhotoScreen()">Назад</button>
+    <div class="settings-footer-dual" id="card-photo-footer-dual">
+      <button type="button" class="screen-back-btn" id="btn-card-photo-cancel" onclick="cancelCardPhotoScreen()">Отмена</button>
+      <button type="button" class="screen-save-btn" id="btn-card-photo-done" onclick="finishCardPhotoScreen()">Готово</button>
+    </div>
   </div>
 </div>
 
@@ -6509,7 +6513,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v445';
+var APP_BUILD = 'pkb-v446';
 var APP_VERSION = '1.08';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -10931,6 +10935,102 @@ function openCardPhotoScreen() {
     loadCardPhotoPreviews();
   }
   renderLocalPhotoPreviews();
+  syncCardPhotoFooter();
+}
+
+// Показывает "Отмена"/"Готово" в экране фото только когда есть хотя бы одно
+// локальное (несохранённое) фото или запланированное удаление. Кнопка
+// "Назад" остаётся, когда изменений нет.
+function syncCardPhotoFooter() {
+  var single = document.getElementById('btn-card-photo-back');
+  var dual = document.getElementById('card-photo-footer-dual');
+  if (!single || !dual) return;
+  var hasPendingDeletes = !!(_photoEditSession && _photoEditSession.pendingDeletes && _photoEditSession.pendingDeletes.length);
+  var hasLocalPhotos = !!(cardData._localPhotos && cardData._localPhotos.length);
+  var dirty = hasPendingDeletes || hasLocalPhotos;
+  single.style.display = dirty ? 'none' : '';
+  dual.style.display = dirty ? 'flex' : 'none';
+}
+
+// "Отмена" в экране фото: откатывает все локальные изменения (добавленные
+// фото и запланированные удаления) и возвращает пользователя в предыдущий
+// экран без отправки чего-либо на сервер.
+function cancelCardPhotoScreen() {
+  if (_photoEditSession) {
+    cardData._localPhotos = (_photoEditSession.originalLocalPhotos || []).slice();
+    if (_photoEditSession.record) {
+      _photoEditSession.record._localPhotos = (_photoEditSession.originalLocalPhotos || []).slice();
+    }
+    _photoEditSession.pendingDeletes = [];
+  } else {
+    cardData._localPhotos = [];
+    if (_photoRecord) _photoRecord._localPhotos = [];
+  }
+  saveState();
+  var returnScreen = _photoReturnScreen || 'screen-card';
+  showScreen(returnScreen);
+  if (returnScreen === 'screen-detail') {
+    requestAnimationFrame(syncDetailFieldLabelWidths);
+  } else if (returnScreen === 'screen-card') {
+    requestAnimationFrame(syncCardFieldLabelWidths);
+  }
+}
+
+// "Готово" в экране фото: сохраняет добавленные/удалённые фото на сервере
+// (если у записи уже есть checkId) и возвращает пользователя в карточку
+// изменения проверки (screen-card) / детальное окно, не подтверждая
+// остальные поля проверки — это делает основная кнопка "Готово" карточки.
+function finishCardPhotoScreen() {
+  var checkId = (cardEditRecord && cardEditRecord.checkId) || cardData.checkId;
+  var btnDone = document.getElementById('btn-card-photo-done');
+  var btnCancel = document.getElementById('btn-card-photo-cancel');
+  if (!checkId) {
+    // Новая, ещё не сохранённая проверка — фото просто остаются локальными
+    // до отправки всей проверки на сервер через submitCard().
+    returnFromCardPhotoScreen();
+    return;
+  }
+  if (btnDone) btnDone.disabled = true;
+  if (btnCancel) btnCancel.disabled = true;
+  var localPhotos = (cardData._localPhotos || []).slice();
+  var pendingDeletes = _photoEditSession ? (_photoEditSession.pendingDeletes || []).slice() : [];
+  var deletePromises = pendingDeletes.map(function(filename) {
+    return fetch('/api/photos/delete/' + encodeURIComponent(checkId) + '/' + encodeURIComponent(filename), { method: 'DELETE' })
+      .catch(function(e) { console.warn('[photo] deferred delete failed:', e.message); });
+  });
+  var uploadPromise = new Promise(function(resolve) {
+    if (localPhotos.length) {
+      uploadLocalPhotos(checkId, localPhotos, function(errors) { resolve(errors || []); });
+    } else resolve([]);
+  });
+  Promise.all(deletePromises.concat([uploadPromise])).then(function(results) {
+    var uploadErrors = results[results.length - 1] || [];
+    if (!uploadErrors.length) {
+      cardData._localPhotos = [];
+      if (cardEditRecord) cardEditRecord._localPhotos = [];
+      if (_photoRecord) _photoRecord._localPhotos = [];
+    }
+    if (_photoEditSession) _photoEditSession.pendingDeletes = [];
+    saveState();
+    if (btnDone) btnDone.disabled = false;
+    if (btnCancel) btnCancel.disabled = false;
+    if (uploadErrors.length) {
+      alert('Не удалось загрузить некоторые фото. Проверьте соединение и повторите.');
+      return;
+    }
+    returnFromCardPhotoScreen();
+  });
+}
+
+function returnFromCardPhotoScreen() {
+  if (_photoEditSession) _photoEditSession = null;
+  var returnScreen = _photoReturnScreen || 'screen-card';
+  showScreen(returnScreen);
+  if (returnScreen === 'screen-detail') {
+    requestAnimationFrame(syncDetailFieldLabelWidths);
+  } else if (returnScreen === 'screen-card') {
+    requestAnimationFrame(syncCardFieldLabelWidths);
+  }
 }
 function openRecordPhotoScreen(r) {
   if (!r) return;
@@ -10972,6 +11072,7 @@ function openRecordPhotoScreen(r) {
   showScreen('screen-card-photo');
   if (cardData.checkId) loadCardPhotoPreviews();
   renderLocalPhotoPreviews();
+  syncCardPhotoFooter();
 }
 
 function closeCardPhotoScreen() {
@@ -10988,9 +11089,9 @@ function closeCardPhotoScreen() {
   var returnScreen = _photoReturnScreen || 'screen-card';
   showScreen(returnScreen);
   if (returnScreen === 'screen-detail') {
-    requestAnimationFrame(function() {
-      syncDetailFieldLabelWidths();
-    });
+    requestAnimationFrame(syncDetailFieldLabelWidths);
+  } else if (returnScreen === 'screen-card') {
+    requestAnimationFrame(syncCardFieldLabelWidths);
   }
 }
 
@@ -11256,6 +11357,7 @@ function addCapturedCardPhoto(base64) {
   }
   var num = document.querySelectorAll('#card-photo-body .photo-preview-item').length + 1;
   addPhotoPreview(_photoAttachViolationIndex, null, num, base64, tempId);
+  syncCardPhotoFooter();
 }
 
 function cardPhotoAttach(btn, violationIndex) {
@@ -11318,6 +11420,7 @@ function onCardPhotoFileSelected(input) {
     }
     var num = document.querySelectorAll('#card-photo-body .photo-preview-item').length + 1;
     addPhotoPreview(_photoAttachViolationIndex, null, num, base64, tempId);
+    syncCardPhotoFooter();
     });
   };
   reader.readAsDataURL(file);
@@ -11369,8 +11472,12 @@ function uploadLocalPhotos(checkId, photos, onDone) {
   photos.forEach(function(photo) {
     queuePhotoUpload(checkId, photo).then(function() {
     uploadPhoto(checkId, photo.violationIndex || 0, photo.base64, function(data) {
-      if (!data) errors.push(photo.tempId);
-      else removeQueuedPhoto(photo.tempId);
+      if (!data) {
+        errors.push(photo.tempId);
+      } else {
+        removeQueuedPhoto(photo.tempId);
+        promoteLocalPhotoPreview(photo.tempId, data.filename, data.index);
+      }
       pending--;
       if (pending === 0) {
         if (errors.length) console.warn('[photo] some uploads failed:', errors);
@@ -11555,6 +11662,7 @@ function deletePhoto(btn, event) {
 
 function refreshDetailPhotoButtonAfterChange() {
   var btn = document.getElementById('detail-photo-btn');
+  syncCardPhotoFooter();
   if (!btn) return;
   var hasPhotos = !!document.querySelector('#card-photo-body .photo-preview-item');
   btn.textContent = hasPhotos ? 'Фото' : 'Добавить фото';
