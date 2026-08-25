@@ -60,34 +60,49 @@ module.exports = async (req, res) => {
         const existing = db.prepare('SELECT filename FROM photos WHERE client_photo_id = ?').get(clientPhotoId);
         if (existing) return res.status(200).json({ success: true, filename: existing.filename, duplicate: true });
       }
+
+      // Do async image processing BEFORE reading the count/inserting the row.
+      // node:sqlite calls below are synchronous, so once we start reading the
+      // count there must be no `await` until after the INSERT — otherwise a
+      // concurrent upload request can interleave, read the same count, and
+      // collide on the same filename/index (this was the root cause of
+      // "only 1 of N photos survives" when uploading several at once).
+      const buffer = Buffer.from(imageData, 'base64');
+      const processed = await processImage(buffer);
+
+      // Re-check duplicate right before the atomic section in case a
+      // concurrent retry with the same clientPhotoId completed while we were
+      // processing the image.
+      if (clientPhotoId) {
+        const existingAfter = db.prepare('SELECT filename FROM photos WHERE client_photo_id = ?').get(clientPhotoId);
+        if (existingAfter) return res.status(200).json({ success: true, filename: existingAfter.filename, duplicate: true });
+      }
+
+      // ---- Atomic section: no `await` between count and insert ----
       const countRow = db.prepare("SELECT COUNT(*) as cnt FROM photos WHERE check_id = ?").get(checkId);
       const nextIndex = (countRow.cnt || 0) + 1;
       const dateStr = formatDateDMY(new Date());
-       const filename = checkId + '_' + nextIndex + '_' + dateStr + '.avif';
+      const filename = checkId + '_' + nextIndex + '_' + dateStr + '.avif';
 
-      const buffer = Buffer.from(imageData, 'base64');
-       const processed = await processImage(buffer);
-
-       const photosDir = ensurePhotosDir();
-        const filePath = path.join(photosDir, filename);
-        fs.writeFileSync(filePath, processed);
-        removeStoredFallbacks(photosDir, filename);
-        try {
-          db.prepare(
-            "INSERT INTO photos (check_id, filename, violation_index, uploaded_at, client_photo_id) VALUES (?, ?, ?, unixepoch(), ?)"
-          ).run(checkId, filename, violationIndex || 0, clientPhotoId || null);
-        } catch (dbError) {
-          try { fs.rmSync(filePath, { force: true }); } catch (_e) {}
-          // If UNIQUE constraint on client_photo_id, check if duplicate exists
-          if (clientPhotoId && dbError.message && dbError.message.includes('UNIQUE constraint failed: photos.client_photo_id')) {
-            const existing = db.prepare('SELECT filename FROM photos WHERE client_photo_id = ?').get(clientPhotoId);
-            if (existing) {
-              console.log('[photos] duplicate clientPhotoId detected, returning existing:', existing.filename);
-              return res.status(200).json({ success: true, filename: existing.filename, duplicate: true });
-            }
+      const photosDir = ensurePhotosDir();
+      const filePath = path.join(photosDir, filename);
+      fs.writeFileSync(filePath, processed);
+      removeStoredFallbacks(photosDir, filename);
+      try {
+        db.prepare(
+          "INSERT INTO photos (check_id, filename, violation_index, uploaded_at, client_photo_id) VALUES (?, ?, ?, unixepoch(), ?)"
+        ).run(checkId, filename, violationIndex || 0, clientPhotoId || null);
+      } catch (dbError) {
+        try { fs.rmSync(filePath, { force: true }); } catch (_e) {}
+        if (clientPhotoId && dbError.message && dbError.message.includes('UNIQUE constraint failed: photos.client_photo_id')) {
+          const existing = db.prepare('SELECT filename FROM photos WHERE client_photo_id = ?').get(clientPhotoId);
+          if (existing) {
+            return res.status(200).json({ success: true, filename: existing.filename, duplicate: true });
           }
-          throw dbError;
         }
+        throw dbError;
+      }
+      // ---- End atomic section ----
 
       return res.status(200).json({ success: true, filename, index: nextIndex });
     }
