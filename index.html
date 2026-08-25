@@ -2943,7 +2943,7 @@ function normalizeDateStr(s) {
 function normalizeDbDates() {
   (appState.db || []).forEach(function(r) {
     if (r.dateCheck) r.dateCheck = normalizeDateStr(r.dateCheck);
-         }, photo.tempId);
+  });
 }
 
 // Sort by cmpRecords, then assign sequential numbers: oldest=1, newest=N
@@ -2982,12 +2982,6 @@ function migrateSamoproverkaToSamootsenka() {
       if (n !== obj.method) { obj.method = n; changed = true; }
     }
   }
-  (appState.methods || []).forEach(function(m) {
-    if (m && m.name) {
-      var n = renameSamoproverkaText(m.name);
-      if (n !== m.name) { m.name = n; changed = true; }
-    }
-   });
    (appState.db || []).forEach(touchMethod);
   try {
     var sq = getSyncQueue();
@@ -4357,25 +4351,21 @@ function loadState() {
       appState.barriersPK    = parsed.barriersPK    || {};
       appState.barriersConfig  = parsed.barriersConfig  || {};
       appState.barriersCustomPassports = parsed.barriersCustomPassports || {};
-      appState.methods = parsed.methods && parsed.methods.length
-        ? parsed.methods
-        : DEFAULT_METHODS.map(function(m) { return Object.assign({}, m); });
       // Passwords
       appState.passwords     = parsed.passwords     || getDefaultPasswords();
       appState.usedPasswords = parsed.usedPasswords || getDefaultUsedPasswords();
       appState.settingsUpdatedAt = parsed.settingsUpdatedAt || 0;
+      appState._serverMethods = parsed._serverMethods || null;
       normalizeDbDates();
       renumberDb();
     } else {
         appState.orgs = buildDefaultOrgState();
       appState.barriers = ['ДТП.04', 'ЭЛБ.05', 'ПБ.01'];
       appState.barriersPK = {};
-      appState.methods = DEFAULT_METHODS.map(function(m) { return Object.assign({}, m); });
       appState.passwords     = getDefaultPasswords();
       appState.usedPasswords = getDefaultUsedPasswords();
     }
   } catch(e) {
-    appState.methods = DEFAULT_METHODS.map(function(m) { return Object.assign({}, m); });
   }
 }
 
@@ -4389,10 +4379,10 @@ function saveState() {
       barriersPK: appState.barriersPK || {},
       barriersConfig: normalizeBarriersConfigForSave(),
       barriersCustomPassports: appState.barriersCustomPassports || {},
-      methods: appState.methods || DEFAULT_METHODS,
       passwords: appState.passwords || getDefaultPasswords(),
       usedPasswords: appState.usedPasswords || getDefaultUsedPasswords(),
-      settingsUpdatedAt: appState.settingsUpdatedAt || 0
+      settingsUpdatedAt: appState.settingsUpdatedAt || 0,
+      _serverMethods: appState._serverMethods || null
     }));
   } catch(e) {}
 }
@@ -5117,7 +5107,7 @@ function syncSettingsOnAppOpen(callback) {
     refreshSettingsDependentUi();
     if (callback) callback();
   }
-  if (!isLocalDevRuntime() && isSettingsDirty()) {
+  if (isSettingsDirty()) {
     syncSettingsToServer(function() { after(); });
     return;
   }
@@ -5129,27 +5119,6 @@ function clearSettingsDirty() {
 }
 function isSettingsDirty() {
   try { return sessionStorage.getItem('pkb-settings-dirty') === '1'; } catch(e) { return false; }
-}
-function mergeMethods(server, local) {
-  if (!server || !server.length) return local || DEFAULT_METHODS;
-  local = local || [];
-  var localMap = {};
-  local.forEach(function(m) { if (m && m.name) localMap[m.name] = m; });
-  var out = server.map(function(m) {
-    var loc = localMap[m.name];
-    if (!loc) return Object.assign({}, m);
-    return { name: m.name, show: loc.show !== undefined ? loc.show : (m.show !== false), fixed: m.fixed || loc.fixed };
-  });
-  local.forEach(function(m) {
-    if (m && m.name && !out.some(function(x) { return x.name === m.name; })) out.push(Object.assign({}, m));
-  });
-  return out;
-}
-
-function methodsSnapForCompare(list) {
-  return JSON.stringify((list || []).map(function(m) {
-    return { name: m.name, show: m.show !== false, fixed: !!m.fixed };
-  }).sort(function(a, b) { return String(a.name).localeCompare(String(b.name), 'ru'); }));
 }
 function mergeOrgs(server, local) {
   if (!server || !server.length) return local || [];
@@ -5263,13 +5232,10 @@ function refreshSettingsDependentUi() {
 
 function applyMasterSettingsPayload(data) {
   if (!data) return;
-  if (data.methods && data.methods.length) {
-    appState.methods = data.methods.map(function(m) {
-      var copy = Object.assign({}, m);
-      if (copy.name) copy.name = renameSamoproverkaText(copy.name);
-      return copy;
-    });
-  }
+  // "Методы проверок" больше не редактируются в UI, но сервер до сих пор
+  // хранит их и отвергает запись без этого поля (защита от катастрофической
+  // потери данных) — сохраняем как непрозрачный passthrough.
+  if (data.methods) appState._serverMethods = data.methods;
   if (data.barriersPK) appState.barriersPK = data.barriersPK;
   if (data.orgs && data.orgs.length) {
     var serverOrgs = data.orgs;
@@ -5350,12 +5316,10 @@ function syncSettingsToServer(callback) {
       try { callback(!!ok); } catch (_e) {}
     }
   }
-  if (isLocalDevRuntime()) {
-    saveState();
-    clearSettingsDirty();
-    done(true);
-    return;
-  }
+  // Note: dev (localhost) and production point at fully separate databases
+  // (DATABASE_PATH=data/proverki-dev.db + separate GitHub data repo for dev),
+  // so pushing settings here is safe on localhost — it never touches the
+  // production Timeweb deployment.
   // Master: never push unless this session has explicit admin edits.
   if (!isSettingsDirty()) {
     saveState();
@@ -5374,7 +5338,7 @@ function syncSettingsToServer(callback) {
     return;
   }
   var settings = {
-    methods:       appState.methods       || DEFAULT_METHODS,
+    methods:       appState._serverMethods || DEFAULT_METHODS,
     barriersPK:    appState.barriersPK    || {},
     barriersConfig: normalizeBarriersConfigForSave(),
     barriersCustomPassports: appState.barriersCustomPassports || {},
@@ -5561,7 +5525,6 @@ function openCardForEdit(r) {
   }
   updateCardChecklistButton();
   updateCardPhotoButton();
-  syncInspectorOrgCellState();
   var titleEl = document.querySelector('#screen-card .card-title');
   if (titleEl) titleEl.textContent = 'Измените проведенную проверку ' + checkIdLabel(r);
   setCardSubtitle('');
@@ -6354,7 +6317,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v449';
+var APP_BUILD = 'pkb-v450';
 var APP_VERSION = '1.08';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
