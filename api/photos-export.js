@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
+const sharp = require('sharp');
 const { getDb, getDbPath } = require('../lib/db');
 
 function getPhotosDir() {
@@ -34,7 +35,22 @@ module.exports = async (req, res) => {
     const archive = archiver('zip', { zlib: { level: 9 } });
     archive.on('error', function(err) { res.destroy(err); });
     archive.pipe(res);
-    files.forEach(function(photo) { archive.file(path.join(photosDir, photo.filename), { name: photo.filename }); });
+    // Files stay AVIF on disk; the exported ZIP contains JPEG copies for
+    // compatibility with viewers/editors that don't support AVIF.
+    for (const photo of files) {
+      const filePath = path.join(photosDir, photo.filename);
+      if (/\.avif$/i.test(photo.filename)) {
+        try {
+          const jpegBuffer = await sharp(filePath).jpeg({ quality: 90 }).toBuffer();
+          archive.append(jpegBuffer, { name: photo.filename.replace(/\.avif$/i, '.jpg') });
+        } catch (convErr) {
+          console.error('[photos-export] avif->jpeg failed for', photo.filename, convErr.message);
+          archive.file(filePath, { name: photo.filename });
+        }
+      } else {
+        archive.file(filePath, { name: photo.filename });
+      }
+    }
     return archive.finalize();
   } catch (err) {
     console.error('[photos-export] error:', err.message);
