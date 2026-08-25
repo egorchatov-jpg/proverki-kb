@@ -3,12 +3,11 @@ const COLUMNS = [
   { h: 'ID проверки',                             k: 'checkId'         },
   { h: 'Дата проверки',                           k: 'dateCheck'       },
   { h: 'Дата внесения проверки',                  k: 'dateEntry'       },
-  { h: 'Метод проверки',                          k: 'method'          },
-  { h: 'Проверяющая организация',                 k: 'inspector'       },
-  { h: 'Проверяемая организация',                 k: 'org'             },
-  { h: 'Проверяемый объект',                      k: 'obj'             },
+  { h: 'Проверяющий',                             k: 'method'          },
+  { h: 'Проверяемый',                             k: 'org'             },
+  { h: 'Объект',                                  k: 'obj'             },
   { h: 'Куратор от заказчика',                    k: 'curator'         },
-  { h: 'Проверяемый барьер',                      k: 'barrier'         },
+  { h: 'Барьер',                                  k: 'barrier'         },
   { h: 'Барьер в ПК',                             k: 'barrierInPK'     },
   { h: 'Работоспособность барьера',               k: 'works'           },
   { h: 'Нарушение допустил',                      k: 'violator'        },
@@ -18,9 +17,9 @@ const COLUMNS = [
 ];
 
 const COL = {
-  num: 0, checkId: 1, dateCheck: 2, dateEntry: 3, method: 4, inspector: 5, org: 6, obj: 7,
-  curator: 8, barrier: 9, barrierInPK: 10, works: 11, violator: 12, desc: 13,
-  corrective: 14, contestMeasures: 15,
+  num: 0, checkId: 1, dateCheck: 2, dateEntry: 3, method: 4, org: 5, obj: 6,
+  curator: 7, barrier: 8, barrierInPK: 9, works: 10, violator: 11, desc: 12,
+  corrective: 13, contestMeasures: 14,
 };
 
 function pad2(n) { return String(n).padStart(2, '0'); }

@@ -1245,7 +1245,7 @@ html, body {
 #screen-passport-appendix,
 #screen-passport-checklist,
 #screen-card-checklist,
-#screen-methods, #screen-orgs,
+#screen-orgs,
 #screen-meropr-menu, #screen-corrective-list, #screen-corrective-edit, #screen-sokb-list, #screen-sokb-edit { background: var(--bg); }
 
 /* Shared title at top of each settings sub-screen */
@@ -2158,13 +2158,13 @@ html, body {
   <div class="list-filter-head">
     <table class="find-table find-filter-table">
       <colgroup>
-        <col style="width:20%"><col style="width:18%"><col style="width:25%"><col style="width:17%"><col style="width:20%">
+        <col style="width:20%"><col style="width:21.5%"><col style="width:21.5%"><col style="width:17%"><col style="width:20%">
       </colgroup>
       <thead>
         <tr>
           <th><button class="th-col-btn" id="cfl-btn-dateCheck" onclick="openCorrFilter('dateCheck')"><span>Дата<br>проверки</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-dateCheck"></span></div></button></th>
-          <th><button class="th-col-btn" id="cfl-btn-method" onclick="openCorrFilter('method')"><span>Метод<br>проверки</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-method"></span></div></button></th>
-          <th><button class="th-col-btn" id="cfl-btn-org" onclick="openCorrFilter('org')"><span>Проверка<br>организации</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-org"></span></div></button></th>
+          <th><button class="th-col-btn" id="cfl-btn-method" onclick="openCorrFilter('method')"><span>Проверяющий</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-method"></span></div></button></th>
+          <th><button class="th-col-btn" id="cfl-btn-org" onclick="openCorrFilter('org')"><span>Проверяемый</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-org"></span></div></button></th>
           <th><button class="th-col-btn" id="cfl-btn-barrier" onclick="openCorrFilter('barrier')"><span>Проверка<br>барьера</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-barrier"></span></div></button></th>
           <th><button class="th-col-btn" id="cfl-btn-status" onclick="openCorrFilter('status')"><span>Меро-<br>приятия</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-status"></span></div></button></th>
         </tr>
@@ -2174,7 +2174,7 @@ html, body {
   <div class="find-list-wrap">
     <table class="find-table find-body-table">
       <colgroup>
-        <col style="width:20%"><col style="width:18%"><col style="width:25%"><col style="width:17%"><col style="width:20%">
+        <col style="width:20%"><col style="width:21.5%"><col style="width:21.5%"><col style="width:17%"><col style="width:20%">
       </colgroup>
       <tbody id="corr-list-tbody"></tbody>
     </table>
@@ -2195,7 +2195,7 @@ html, body {
       <thead>
         <tr>
           <th><button class="th-col-btn" id="sfl-btn-dateCheck" onclick="openSokbFilter('dateCheck')"><span>Дата<br>проверки</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="sfl-count-dateCheck"></span></div></button></th>
-          <th><button class="th-col-btn" id="sfl-btn-org" onclick="openSokbFilter('org')"><span>Проверка<br>организации</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="sfl-count-org"></span></div></button></th>
+          <th><button class="th-col-btn" id="sfl-btn-org" onclick="openSokbFilter('org')"><span>Проверяемый</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="sfl-count-org"></span></div></button></th>
           <th><button class="th-col-btn" id="sfl-btn-barrier" onclick="openSokbFilter('barrier')"><span>Проверка<br>барьера</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="sfl-count-barrier"></span></div></button></th>
           <th><button class="th-col-btn" id="sfl-btn-status" onclick="openSokbFilter('status')"><span>Оспа-<br>ривание</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="sfl-count-status"></span></div></button></th>
         </tr>
@@ -2314,35 +2314,28 @@ html, body {
       </div>
 
       <div class="field-wrap">
-        <div class="field-label" id="lbl-method">Метод проверки</div>
+        <div class="field-label" id="lbl-method">Проверяющий</div>
         <div class="field-cell" id="cell-method" onclick="openDrumMethod()">
           <span class="placeholder" id="val-method">Выбрать</span>
         </div>
       </div>
 
       <div class="field-wrap">
-        <div class="field-label" id="lbl-inspectorOrg">Проверяющая организация</div>
-        <div class="field-cell" id="cell-inspectorOrg" onclick="openDrumInspectorOrg()">
-          <span class="placeholder" id="val-inspectorOrg">Выбрать</span>
-        </div>
-      </div>
-
-      <div class="field-wrap">
-        <div class="field-label" id="lbl-org">Проверяемая организация</div>
+        <div class="field-label" id="lbl-org">Проверяемый</div>
         <div class="field-cell" id="cell-org" onclick="openDrumOrg()">
           <span class="placeholder" id="val-org">Выбрать</span>
         </div>
       </div>
 
       <div class="field-wrap">
-        <div class="field-label">Проверяемый объект</div>
+        <div class="field-label">Объект</div>
         <div class="field-cell" id="cell-obj" onclick="openTextOverlay('obj','Введите проверяемый объект / участок / производственную площадку','val-obj',false)">
           <span class="placeholder" id="val-obj">—</span>
         </div>
       </div>
 
       <div class="field-wrap" id="field-wrap-barrier">
-        <div class="field-label">Проверяемый барьер</div>
+        <div class="field-label">Барьер</div>
         <div class="field-barrier-col">
           <div class="field-cell" id="cell-barrier" onclick="openDrumBarrier()">
             <span class="placeholder" id="val-barrier">Выбрать</span>
@@ -2390,8 +2383,8 @@ html, body {
       <thead>
         <tr>
           <th><button class="th-col-btn" id="filter-btn-dateCheck" onclick="openFindFilter('dateCheck')"><span>Дата<br>проверки</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="filter-count-dateCheck"></span></div></button></th>
-          <th><button class="th-col-btn" id="filter-btn-method" onclick="openFindFilter('method')"><span>Метод<br>проверки</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="filter-count-method"></span></div></button></th>
-          <th><button class="th-col-btn" id="filter-btn-org" onclick="openFindFilter('org')"><span>Проверка<br>организации</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="filter-count-org"></span></div></button></th>
+          <th><button class="th-col-btn" id="filter-btn-method" onclick="openFindFilter('method')"><span>Проверяющий</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="filter-count-method"></span></div></button></th>
+          <th><button class="th-col-btn" id="filter-btn-org" onclick="openFindFilter('org')"><span>Проверяемый</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="filter-count-org"></span></div></button></th>
           <th><button class="th-col-btn" id="filter-btn-barrier" onclick="openFindFilter('barrier')"><span>Проверка<br>барьера</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="filter-count-barrier"></span></div></button></th>
         </tr>
       </thead>
@@ -2597,7 +2590,6 @@ html, body {
     <button class="settings-wide-btn" onclick="openExportScreen()">Выгрузить проверки КБ</button>
     <button class="settings-wide-btn" onclick="openPassportsKBYearsScreen()">Паспорта КБ</button>
     <button class="settings-wide-btn" onclick="openBarriersPKYearsScreen()">Барьеры ПК</button>
-    <button class="settings-wide-btn" onclick="openMethodsScreen()">Методы проверок</button>
     <button class="settings-wide-btn" onclick="openOrgsScreen()">Организации</button>
     <button class="settings-wide-btn" onclick="openPasswordsScreen()">Управление паролями</button>
     <button class="settings-wide-btn" onclick="openRestorePointsScreen()">Резервные копии</button>
@@ -2779,48 +2771,6 @@ html, body {
   </div>
 </div>
 
-<!-- ===== SCREEN: МЕТОДЫ ПРОВЕРОК ===== -->
-<div class="screen" id="screen-methods">
-  <div class="settings-screen-title">Методы проверок</div>
-  <div class="methods-table-wrap">
-    <table class="methods-table">
-      <thead>
-        <tr>
-          <th class="methods-th methods-th-cb-col" style="width:44px;">Выбрать<span class="methods-th-count methods-th-count-gray" id="methods-count-sel">0</span></th>
-          <th class="methods-th methods-th-name methods-th-count-col">Метод<span class="methods-th-count methods-th-count-label" id="methods-count-items">0</span></th>
-          <th class="methods-th methods-th-cb-col" style="width:74px;">Показывать<span class="methods-th-count methods-th-count-orange" id="methods-count-show">0</span></th>
-        </tr>
-      </thead>
-      <tbody id="methods-tbody"></tbody>
-    </table>
-    <!-- Action buttons sit right below the last row (Прочее) inside the scroll area -->
-    <div class="methods-action-row">
-      <button class="method-sq-btn minus" id="method-btn-minus" onclick="deleteSelectedMethods()" disabled>
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-      <button class="method-sq-btn plus" onclick="showAddMethodInput()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" width="22" height="22"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-    </div>
-  </div>
-  <div id="method-new-row" style="display:none;" class="method-new-row">
-    <input class="method-new-input" id="method-new-input" type="text" placeholder="Название метода" autocomplete="off">
-    <button class="method-cancel-btn" onclick="hideAddMethodInput()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    <button class="method-save-btn" onclick="saveNewMethod()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><polyline points="4 12 9 17 20 6"/></svg>
-    </button>
-  </div>
-  <div class="settings-footer">
-    <button class="screen-back-btn settings-footer-single" onclick="backFromMethodsScreen()">Назад</button>
-    <div class="settings-footer-dual">
-      <button class="screen-back-btn" onclick="cancelMethodsChanges()">Отмена</button>
-      <button class="screen-save-btn" onclick="backFromMethodsScreen()">Готово</button>
-    </div>
-  </div>
-</div>
-
 <!-- ===== SCREEN: ПРОВЕРЯЕМЫЕ ОРГАНИЗАЦИИ ===== -->
 <div class="screen" id="screen-orgs">
   <div class="settings-screen-title">Организации</div>
@@ -2830,8 +2780,8 @@ html, body {
         <tr>
           <th class="methods-th methods-th-cb-col" style="width:44px;">Выбрать<span class="methods-th-count methods-th-count-gray" id="orgs-count-sel">0</span></th>
           <th class="methods-th methods-th-name methods-th-count-col">Организация<span class="methods-th-count methods-th-count-label" id="orgs-count-items">0</span></th>
-          <th class="methods-th methods-th-cb-col" style="width:74px;">Проверяет<span class="methods-th-count methods-th-count-orange" id="orgs-count-inspects">0</span></th>
-          <th class="methods-th methods-th-cb-col" style="width:74px;">Проверяемая<span class="methods-th-count methods-th-count-orange" id="orgs-count-show">0</span></th>
+          <th class="methods-th methods-th-cb-col" style="width:74px;">Проверяющий<span class="methods-th-count methods-th-count-orange" id="orgs-count-inspects">0</span></th>
+          <th class="methods-th methods-th-cb-col" style="width:74px;">Проверяемый<span class="methods-th-count methods-th-count-orange" id="orgs-count-show">0</span></th>
         </tr>
       </thead>
       <tbody id="orgs-tbody"></tbody>
@@ -3725,7 +3675,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-export-format', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-card-photo', 'screen-card-camera', 'screen-card-camera-preview', 'screen-barriers-years', 'screen-barriers-list', 'screen-methods', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios', 'screen-install-android'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-export-format', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-card-photo', 'screen-card-camera', 'screen-card-camera-preview', 'screen-barriers-years', 'screen-barriers-list', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios', 'screen-install-android'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -4704,7 +4654,7 @@ function openFindFilter(col) {
   function sortAlpha(a) { return a.sort(function(x, y) { return x.localeCompare(y, 'ru'); }); }
   function sortDateAsc(a) { return a.sort(function(x, y) { return dateNumFromStr(x) - dateNumFromStr(y); }); }
   function sortMethod(a) {
-    return sortMethodsForDrum(a.sort(function(x, y) { return x.localeCompare(y, 'ru'); }));
+    return a.sort(function(x, y) { return x.localeCompare(y, 'ru'); });
   }
 
   if (col === 'dateCheck') {
@@ -4735,7 +4685,7 @@ function openFindFilter(col) {
 
   var cfgMap = {
     method: {
-      title: 'Фильтр: метод проверки',
+      title: 'Фильтр: проверяющий',
       items: sortMethod(unique(all.map(function(r) { return r.method; }))),
       drumCfg: function(items) { return [{ id: 'method', items: items, value: findFilters.method || items[0], minWidth: 200 }]; }
     },
@@ -4813,13 +4763,13 @@ function renderLobby() {
             '<span>' + esc(checkIdBannerLabel(r)) + '</span>' +
           '</div>' +
           '<div class="violation-card-header-line proverka-row">' +
-            '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Метод: ' + esc(r.method || '') + '</span>' +
+            '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Проверяющий: ' + esc(r.method || '') + '</span>' +
             '<span class="barrier-right">' +
               '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
               (r.barrierInPK === 'Да' ? '<span class="pk-tag">в ПК</span>' : '') +
             '</span>' +
           '</div>' +
-          '<div class="violation-card-header-line">Организация: ' + esc(r.org || '') + '</div>' +
+          '<div class="violation-card-header-line">Проверяемый: ' + esc(r.org || '') + '</div>' +
           '<div class="violation-card-header-line clip">Объект: ' + esc(r.obj || '') + '</div>' +
         '</div>' +
         '<div class="violation-card-body">' + formatRecordDescHtml(r) + '</div>';
@@ -5022,10 +4972,12 @@ function orgShowsInPasswordScreen(o) {
   return !orgUsesInspectorPassword(o);
 }
 
+// "Проверяющий" (inspects) и "Проверяемый" (show) — независимые флаги;
+// одна организация может быть отмечена в обоих столбцах одновременно.
 function normalizeOrgRoleFlags(org) {
   if (!org) return org;
-  if (org.inspects === true) org.show = false;
-  else if (org.show !== false) org.inspects = false;
+  if (org.inspects == null) org.inspects = false;
+  if (org.show == null) org.show = true;
   return org;
 }
 
@@ -5491,59 +5443,29 @@ function isStaffSession() {
   return _sessionAccess.superuser || _sessionAccess.admin || _sessionAccess.inspector;
 }
 
-function methodDisablesInspectorOrg(method) {
-  return method === 'ОСИР' || method === 'ЦРПО';
-}
-
+// Список организаций, отмеченных в настройках "Организации" в столбце
+// "Проверяющий" (org.inspects === true) — источник данных для поля
+// "Проверяющий" в карточке проверки (бывшее "Метод проверки").
 function getInspectingOrgsList() {
   return (appState.orgs || []).filter(function(o) { return o.inspects === true; })
     .map(function(o) { return o.name; })
     .sort(function(a, b) { return a.localeCompare(b, 'ru'); });
 }
 
-function syncInspectorOrgCellState() {
-  if (isOrgSession()) return;
-  if (methodDisablesInspectorOrg(cardData.method)) {
-    cardData.inspectorOrg = '';
-    setCardVal('inspectorOrg', '—', false);
-    setDimmed('inspectorOrg', true);
-  } else {
-    setDimmed('inspectorOrg', false);
-    if (cardData.inspectorOrg) {
-      setCardVal('inspectorOrg', cardData.inspectorOrg, false);
-    } else {
-      setCardVal('inspectorOrg', 'Выбрать', true);
-    }
-  }
-}
-
 function applyCardSessionFields() {
-  if (cardEditRecord) {
-    syncInspectorOrgCellState();
-    return;
-  }
+  if (cardEditRecord) return;
   if (isOrgSession()) {
     var orgName = getActiveOrgSessionName();
-    cardData.method = 'Самооценка';
-    cardData.inspectorOrg = orgName;
+    cardData.method = orgName;
     cardData.org = orgName;
-    setCardVal('method', 'Самооценка', false);
-    setCardVal('inspectorOrg', orgName, false);
+    setCardVal('method', orgName, false);
     setCardVal('org', orgName, false);
     setDimmed('method', true);
-    setDimmed('inspectorOrg', true);
     setDimmed('org', true);
     return;
   }
   setDimmed('method', false);
   setDimmed('org', false);
-  syncInspectorOrgCellState();
-}
-
-function isInspectorOrgSatisfied() {
-  if (isOrgSession()) return true;
-  if (methodDisablesInspectorOrg(cardData.method)) return true;
-  return !!(cardData.inspectorOrg && String(cardData.inspectorOrg).trim());
 }
 
 function setTodayDate() {
@@ -5597,7 +5519,6 @@ function openCardForEdit(r) {
     checkId: r.checkId || '',
     dateCheck: r.dateCheck || '',
     method: r.method || '',
-    inspectorOrg: r.inspector || '',
     org: r.org || '',
     obj: r.obj || '',
     barrier: r.barrier || '',
@@ -5607,7 +5528,6 @@ function openCardForEdit(r) {
   };
   setCardVal('date', r.dateCheck || '—', !r.dateCheck);
   setCardVal('method', r.method || 'Выбрать', !r.method);
-  setCardVal('inspectorOrg', r.inspector || 'Выбрать', !r.inspector);
   setCardVal('org', r.org || 'Выбрать', !r.org);
   setDimmed('method', false);
   setDimmed('org', false);
@@ -5755,13 +5675,12 @@ function resetCard() {
   if (titleEl) titleEl.textContent = 'Внесите результат проведенной проверки';
   setCardSubtitle('');
   setTodayDate();
-  ['method','inspectorOrg','org','barrier','works','desc'].forEach(function(k) {
-    var isPick = k === 'method' || k === 'org' || k === 'barrier' || k === 'works' || k === 'inspectorOrg';
+  ['method','org','barrier','works','desc'].forEach(function(k) {
+    var isPick = k === 'method' || k === 'org' || k === 'barrier' || k === 'works';
     setCardVal(k, isPick ? 'Выбрать' : '—', isPick);
   });
   setCardVal('obj', 'Ввести', true);
   setDimmed('method', false);
-  setDimmed('inspectorOrg', false);
   setDimmed('org', false);
   setWorksCellDisplay('');
   setDimmed('desc', true);
@@ -5819,7 +5738,6 @@ function updateValidation() {
   var ok = required.every(function(k) {
     return cardData[k] && cardData[k].trim && cardData[k].trim() !== '' || (cardData[k] && typeof cardData[k] === 'string' && cardData[k] !== '');
   });
-  ok = ok && isInspectorOrgSatisfied();
   if (cardUsesChecklistFlow()) {
     ok = ok && cardChecklistReadyForViolation();
   } else if (cardData.works === 'Нет') {
@@ -5854,7 +5772,6 @@ function submitCardEdit() {
   var fields = {
     dateCheck: cardData.dateCheck,
     method: cardData.method,
-    inspector: cardData.inspectorOrg || '',
     org: cardData.org,
     obj: cardData.obj,
     curator: '',
@@ -5918,7 +5835,6 @@ function submitCard() {
   cardData.dateEntry = dateTimeStr();
   var year = cardData.dateCheck ? cardData.dateCheck.split('.')[2] : new Date().getFullYear();
   cardData.year = year;
-  cardData.inspector = cardData.inspectorOrg || '';
   // Барьер в ПК (auto) — проверяем по году даты проверки
 // barrierInPK uses barriersConfig (data preserved — only set on NEW records)
   var _bCfg = (appState.barriersConfig || {})[year];
@@ -6086,20 +6002,6 @@ function setSettingsBackLabel(screenId, dirty) {
   if (btn) btn.textContent = dirty ? 'Готово' : 'Назад';
 }
 
-function cancelMethodsChanges() {
-  try {
-    var snap = JSON.parse(_settingsSnap.methods || '[]');
-    appState.methods = snap.map(function(m) {
-      return { name: m.name, show: m.show !== false };
-    });
-  } catch (e) {}
-  saveState();
-  var row = document.getElementById('method-new-row');
-  if (row) row.style.display = 'none';
-  renderMethodsTable();
-  setSettingsBackLabel('screen-methods', false);
-}
-
 function cancelOrgsChanges() {
   try {
     var snap = JSON.parse(_settingsSnap.orgs || '[]');
@@ -6211,12 +6113,6 @@ function sortBarriersAlphabeticallyInPassports(year) {
   appState.barriersConfig[year] = sorted;
 }
 
-function snapMethodsList() {
-  return (appState.methods || []).map(function(m) {
-    return { name: m.name, show: m.show !== false };
-  });
-}
-
 function snapOrgsList() {
   return (appState.orgs || []).map(function(o) {
     return { name: o.name, show: o.show !== false, inspects: o.inspects === true };
@@ -6246,11 +6142,6 @@ function markBarriersDirty() {
   refreshSettingsBackLabel('screen-barriers-list', 'barriers', snapBarriersYearList());
 }
 
-function markMethodsDirty() {
-  markSettingsDirty();
-  refreshSettingsBackLabel('screen-methods', 'methods', snapMethodsList());
-}
-
 function markOrgsDirty() {
   markSettingsDirty();
   refreshSettingsBackLabel('screen-orgs', 'orgs', snapOrgsList());
@@ -6259,125 +6150,6 @@ function markOrgsDirty() {
 function markPasswordsDirty() {
   markSettingsDirty();
   refreshSettingsBackLabel('screen-passwords', 'passwords', snapPasswordsState());
-}
-
-function openMethodsScreen() {
-  document.getElementById('method-new-row').style.display = 'none';
-  document.getElementById('method-new-input').value = '';
-  renderMethodsTable();
-  takeSettingsSnap('methods', snapMethodsList());
-  setSettingsBackLabel('screen-methods', false);
-  showScreen('screen-methods');
-}
-
-function backFromMethodsScreen() {
-  if (_settingsSnap.methods !== JSON.stringify(snapMethodsList())) syncSettingsToServer();
-  showScreen('screen-settings');
-}
-
-function updateMethodsCheckboxCounts() {
-  var sel = document.querySelectorAll('#methods-tbody .method-circle-cb:checked:not(:disabled)').length;
-  var show = document.querySelectorAll('#methods-tbody .method-square-cb:checked').length;
-  var items = document.querySelectorAll('#methods-tbody tr').length;
-  var elSel = document.getElementById('methods-count-sel');
-  var elShow = document.getElementById('methods-count-show');
-  var elItems = document.getElementById('methods-count-items');
-  if (elSel) elSel.textContent = sel;
-  if (elShow) elShow.textContent = show;
-  if (elItems) elItems.textContent = items;
-}
-
-function renderMethodsTable() {
-  var list = appState.methods || [];
-  var tbody = document.getElementById('methods-tbody');
-  tbody.innerHTML = '';
-  list.forEach(function(m, idx) {
-    var tr = document.createElement('tr');
-    // Выбрать (left, circle)
-    var tdSel = document.createElement('td');
-    tdSel.className = 'methods-td methods-td-cb';
-    var cbSel = document.createElement('input');
-    cbSel.type = 'checkbox'; cbSel.className = 'method-circle-cb'; cbSel.dataset.idx = idx;
-    // "Прочее" cannot be selected for deletion
-    if (m.name !== 'Прочее') {
-      cbSel.addEventListener('change', function() {
-        updateMethodMinusBtnState();
-        updateMethodsCheckboxCounts();
-      });
-      tdSel.appendChild(cbSel);
-    }
-    // Метод (name)
-    var tdName = document.createElement('td');
-    tdName.className = 'methods-td methods-td-name'; tdName.textContent = m.name;
-    // Показывать (right, square)
-    var tdShow = document.createElement('td');
-    tdShow.className = 'methods-td methods-td-cb';
-    var cbShow = document.createElement('input');
-    cbShow.type = 'checkbox'; cbShow.className = 'method-square-cb';
-    cbShow.checked = (m.show !== false); cbShow.dataset.idx = idx;
-    cbShow.addEventListener('change', function() {
-      (appState.methods || [])[+this.dataset.idx].show = this.checked;
-      saveState();
-      markMethodsDirty();
-      updateMethodsCheckboxCounts();
-    });
-    tdShow.appendChild(cbShow);
-    tr.appendChild(tdSel); tr.appendChild(tdName); tr.appendChild(tdShow);
-    tbody.appendChild(tr);
-  });
-  updateMethodMinusBtnState();
-  updateMethodsCheckboxCounts();
-}
-
-function updateMethodMinusBtnState() {
-  var anyChecked = !!document.querySelector('#methods-tbody .method-circle-cb:checked:not(:disabled)');
-  var btn = document.getElementById('method-btn-minus');
-  if (btn) btn.disabled = !anyChecked;
-  updateMethodsCheckboxCounts();
-}
-
-function deleteSelectedMethods() {
-  var selected = [];
-  document.querySelectorAll('#methods-tbody .method-circle-cb:checked:not(:disabled)').forEach(function(cb) {
-    selected.push(+cb.dataset.idx);
-  });
-  if (!selected.length) return;
-  appState.methods = (appState.methods || []).filter(function(_, i) { return selected.indexOf(i) < 0; });
-  saveState();
-  renderMethodsTable();
-  markMethodsDirty();
-}
-
-function showAddMethodInput() {
-  document.getElementById('method-new-row').style.display = 'flex';
-  document.getElementById('method-new-input').focus();
-}
-
-function hideAddMethodInput() {
-  var input = document.getElementById('method-new-input');
-  input.value = ''; input.blur();
-  document.getElementById('method-new-row').style.display = 'none';
-}
-
-function saveNewMethod() {
-  var input = document.getElementById('method-new-input');
-  var name = input.value.trim();
-  if (!name) return;
-  var methods = appState.methods || [];
-  // Insert before "Прочее" (always last)
-  var lastIdx = methods.length - 1;
-  var last = methods[lastIdx];
-  if (last && last.name === 'Прочее') {
-    methods.splice(lastIdx, 0, { name: name, show: true });
-  } else {
-    methods.push({ name: name, show: true });
-  }
-  appState.methods = methods;
-  saveState();
-  input.value = '';
-  document.getElementById('method-new-row').style.display = 'none';
-  renderMethodsTable();
-  markMethodsDirty();
 }
 
 var _passportsKBReturnScreen = 'screen-settings';
@@ -6582,7 +6354,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v448';
+var APP_BUILD = 'pkb-v449';
 var APP_VERSION = '1.08';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -8237,12 +8009,6 @@ function renderOrgsTable() {
     cbInspects.addEventListener('change', function() {
       var org = (appState.orgs || [])[+this.dataset.idx];
       org.inspects = this.checked;
-      if (this.checked) org.show = false;
-      var row = this.closest('tr');
-      if (row) {
-        var showCb = row.querySelector('td:last-child .method-square-cb');
-        if (showCb) showCb.checked = org.show !== false;
-      }
       saveState();
       markOrgsDirty();
       updateOrgsCheckboxCounts();
@@ -8256,12 +8022,6 @@ function renderOrgsTable() {
     cbShow.addEventListener('change', function() {
       var org = (appState.orgs || [])[+this.dataset.idx];
       org.show = this.checked;
-      if (this.checked) org.inspects = false;
-      var row = this.closest('tr');
-      if (row) {
-        var inspCb = row.querySelector('.method-org-inspects-cb');
-        if (inspCb) inspCb.checked = org.inspects === true;
-      }
       saveState();
       markOrgsDirty();
       updateOrgsCheckboxCounts();
@@ -8847,13 +8607,13 @@ function openSokbEdit(r) {
           '<span>' + esc(checkIdBannerLabel(r)) + '</span>' +
         '</div>' +
         '<div class="violation-card-header-line proverka-row">' +
-          '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Метод: ' + esc(r.method || '') + '</span>' +
+          '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Проверяющий: ' + esc(r.method || '') + '</span>' +
           '<span class="barrier-right">' +
             '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
             (r.barrierInPK === 'Да' ? '<span class="pk-tag">в ПК</span>' : '') +
           '</span>' +
         '</div>' +
-        '<div class="violation-card-header-line">Организация: ' + esc(r.org || '') + '</div>' +
+        '<div class="violation-card-header-line">Проверяемый: ' + esc(r.org || '') + '</div>' +
         '<div class="violation-card-header-line clip">Объект: ' + esc(r.obj || '') + '</div>' +
       '</div>' +
       (formatRecordDescPlain(r) ? '<div class="violation-card-body">' + formatRecordDescHtml(r) + '</div>' : '') +
@@ -9356,7 +9116,7 @@ function openCorrFilter(col) {
   } else {
     cfg = [{ id: col, items: items, value: f[col] || items[0], minWidth: 200 }];
   }
-  var titles = { method: 'Фильтр: метод проверки', org: 'Фильтр: организация', barrier: 'Фильтр: проверяемый барьер' };
+  var titles = { method: 'Фильтр: проверяющий', org: 'Фильтр: организация', barrier: 'Фильтр: проверяемый барьер' };
   navyDrum(titles[col] || 'Фильтр', cfg, function(d) {
     f[col] = d[col].getValue();
     document.getElementById('cfl-btn-' + col).classList.toggle('active', !!f[col]);
@@ -9474,13 +9234,13 @@ function openCorrectiveEdit(r) {
           '<span>' + esc(checkIdBannerLabel(r)) + '</span>' +
         '</div>' +
         '<div class="violation-card-header-line proverka-row">' +
-          '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Метод: ' + esc(r.method || '') + '</span>' +
+          '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Проверяющий: ' + esc(r.method || '') + '</span>' +
           '<span class="barrier-right">' +
             '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
             (r.barrierInPK === 'Да' ? '<span class="pk-tag">в ПК</span>' : '') +
           '</span>' +
         '</div>' +
-        '<div class="violation-card-header-line">Организация: ' + esc(r.org || '') + '</div>' +
+        '<div class="violation-card-header-line">Проверяемый: ' + esc(r.org || '') + '</div>' +
         '<div class="violation-card-header-line clip">Объект: ' + esc(r.obj || '') + '</div>' +
       '</div>' +
       (formatRecordDescPlain(r) ? '<div class="violation-card-body">' + formatRecordDescHtml(r) + '</div>' : '') +
@@ -9983,14 +9743,13 @@ function openDetail(r, source) {
   body.innerHTML =
     row('Дата проверки', r.dateCheck, '', editRecord) +
     row('Дата внесения проверки', r.dateEntry, '', editRecord) +
-    row('Метод проверки', r.method, '', editRecord) +
-    row('Проверяющая организация', r.inspector, '', editRecord) +
-    row('Проверяемая организация', r.org, '', editRecord) +
-    row('Проверяемый объект', r.obj, '', editRecord) +
-    row('Проверяемый барьер', r.barrier, '', editRecord) +
+    row('Проверяющий', r.method, '', editRecord) +
+    row('Проверяемый', r.org, '', editRecord) +
+    row('Объект', r.obj, '', editRecord) +
+    row('Барьер', r.barrier, '', editRecord) +
     (recordHasSavedChecklist(r)
       ? '<div class="detail-row detail-checklist-row">' +
-          '<div class="detail-label field-label-spacer">Проверяемый барьер</div>' +
+          '<div class="detail-label field-label-spacer">Барьер</div>' +
           '<button type="button" class="card-checklist-btn" onclick="openRecordChecklistView(detailRecordForEdit)">Чек-лист</button>' +
         '</div>'
       : '') +
@@ -10233,38 +9992,20 @@ function sortMethodsForDrum(methods) {
   return list;
 }
 
+// "Проверяющий" — раньше поле "Метод проверки" со списком из отдельного
+// раздела настроек "Методы проверок". Теперь источник данных — окно
+// "Организации", столбец "Проверяющий" (org.inspects === true).
 function openDrumMethod() {
   if (isOrgSession()) return;
-  var visibleMethods = sortMethodsForDrum((appState.methods || DEFAULT_METHODS)
-    .filter(function(m) { return m.show !== false; })
-    .map(function(m) { return m.name; }));
-  if (!visibleMethods.length) { alert('Нет доступных методов. Настройте их в разделе «Методы проверок».'); return; }
+  var visibleMethods = getInspectingOrgsList();
+  if (!visibleMethods.length) { alert('Нет проверяющих организаций. Отметьте их в настройках «Организации», столбец «Проверяющий».'); return; }
   var def = (visibleMethods.indexOf(cardData.method) >= 0) ? cardData.method : visibleMethods[0];
-  openDrumOverlay('Выберите метод проверки', [
+  openDrumOverlay('Проверяющий', [
     { id: 'method', items: visibleMethods, value: def, minWidth: 200 }
   ], function(d) {
     cardData.method = d['method'].getValue();
     document.getElementById('val-method').textContent = cardData.method;
     document.getElementById('val-method').classList.remove('placeholder');
-    syncInspectorOrgCellState();
-    updateValidation();
-  });
-}
-
-function openDrumInspectorOrg() {
-  if (isOrgSession()) return;
-  if (methodDisablesInspectorOrg(cardData.method)) return;
-  var orgs = getInspectingOrgsList();
-  if (!orgs.length) {
-    alert('Нет проверяющих организаций. Отметьте их в настройках «Организации», столбец «Проверяет».');
-    return;
-  }
-  var cur = cardData.inspectorOrg && orgs.indexOf(cardData.inspectorOrg) >= 0 ? cardData.inspectorOrg : orgs[0];
-  openDrumOverlay('Выберите проверяющую организацию', [
-    { id: 'inspectorOrg', items: orgs, value: cur, fullWidth: true, widthFactor: 0.8, leftAlign: true }
-  ], function(d) {
-    cardData.inspectorOrg = d['inspectorOrg'].getValue();
-    setCardVal('inspectorOrg', cardData.inspectorOrg, false);
     updateValidation();
   });
 }
