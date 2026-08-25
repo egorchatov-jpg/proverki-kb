@@ -640,7 +640,7 @@ html, body {
   display: block; pointer-events: none;
 }
 .photo-preview-item.selected {
-  border-color: var(--orange);
+  border-color: var(--navy);
   transform: scale(0.96);
 }
 .photo-preview-num {
@@ -649,16 +649,55 @@ html, body {
   font-size: 11px; font-weight: 700; text-align: center;
   padding: 2px 0; pointer-events: none;
 }
-.photo-preview-delete {
+.photo-preview-check {
   position: absolute; top: 4px; right: 4px;
   width: 22px; height: 22px; border-radius: 50%;
-  background: var(--red); color: #fff;
+  background: var(--navy); color: #fff;
   border: none; display: none;
   align-items: center; justify-content: center;
-  font-size: 14px; line-height: 1; cursor: pointer;
   z-index: 2; padding: 0;
+  pointer-events: none;
 }
-.photo-preview-item.selected .photo-preview-delete { display: flex; }
+.photo-preview-check svg { width: 13px; height: 13px; stroke: #fff; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.photo-preview-item.selected .photo-preview-check { display: flex; }
+/* Violation sections other than the active one: dim text/buttons, but photo
+   previews stay tappable (long-press) so the user can switch selection to
+   another group; a quick tap on them is ignored while selection is active
+   (handled in JS) instead of via pointer-events. */
+#card-photo-body.photo-select-active .photo-violation-item:not(.photo-selection-owner) {
+  opacity: 0.45;
+}
+#card-photo-body.photo-select-active .photo-violation-item:not(.photo-selection-owner) .photo-violation-text,
+#card-photo-body.photo-select-active .photo-violation-item:not(.photo-selection-owner) .photo-btn-row {
+  pointer-events: none;
+}
+#card-photo-body.photo-select-active .photo-violation-item.photo-selection-owner .photo-preview-item:not(.selected) {
+  opacity: 0.55;
+}
+.photo-select-actions {
+  display: none; gap: 10px;
+}
+.photo-violation-item.photo-selection-owner .photo-btn-row { display: none; }
+.photo-violation-item.photo-selection-owner .photo-select-actions { display: flex; }
+.photo-select-actions .photo-select-btn {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: var(--btn-radius);
+  height: 53px; font-size: 14px; font-weight: 700; color: #fff;
+  cursor: pointer; font-family: inherit;
+  appearance: none; -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
+}
+.photo-select-actions .photo-select-btn:active { opacity: 0.8; }
+.photo-select-btn-cancel { background: var(--gray-btn); }
+.photo-select-btn-delete { background: var(--red); }
+.photo-select-btn-download { background: var(--orange); }
+/* Non-photo controls (checklist buttons, back button) dim while selection is active */
+#screen-card-photo.photo-select-active .settings-footer .screen-back-btn,
+#screen-card-photo.photo-select-active .settings-footer .settings-footer-dual {
+  opacity: 0.45; pointer-events: none;
+}
 .card-btn-gray {
   background: var(--gray-btn); color: #fff;
   border-radius: 999px;
@@ -3742,6 +3781,28 @@ function triggerManualSync() {
   });
 }
 
+// Универсальный индикатор верхней панели для любых действий с сетевыми
+// запросами (не только pull-to-refresh). showTopSyncIndicator() показывает
+// вращающийся спиннер с текстом; finishTopSyncIndicator() показывает
+// зелёную галочку на 1.4с и скрывает панель.
+var _topSyncActive = false;
+function showTopSyncIndicator(text) {
+  _topSyncActive = true;
+  setPullIndicator('syncing', text || 'Сохранение...');
+  animatePullIndicator(0, true);
+}
+function finishTopSyncIndicator(doneText) {
+  if (!_topSyncActive) return;
+  _topSyncActive = false;
+  setPullIndicator('done', doneText || 'Готово');
+  setTimeout(function() { hidePullIndicator(true); }, 1400);
+}
+function failTopSyncIndicator() {
+  if (!_topSyncActive) return;
+  _topSyncActive = false;
+  hidePullIndicator(true);
+}
+
 document.addEventListener('touchstart', function(e) {
   pullState.can = false;
   if (!pullIsEnabled()) return;
@@ -5816,6 +5877,7 @@ function submitCardEdit() {
   saveRecordFieldUpdate(r.dateEntry, year, fields);
   var localPhotos = (cardData._localPhotos || []).slice();
   var pendingPhotoDeletes = _photoEditSession ? (_photoEditSession.pendingDeletes || []).slice() : [];
+  showTopSyncIndicator('Сохранение...');
   var deletePromises = pendingPhotoDeletes.map(function(filename) {
     return fetch('/api/photos/delete/' + encodeURIComponent(r.checkId) + '/' + encodeURIComponent(filename), { method: 'DELETE' })
       .catch(function(e) { console.warn('[photo] deferred delete failed:', e.message); });
@@ -5842,6 +5904,7 @@ function submitCardEdit() {
     applyFindFilters();
     renderCorrectiveList();
     renderLobby();
+    finishTopSyncIndicator('Сохранено');
     openDetail(r, detailSource || 'find');
   });
 }
@@ -5951,6 +6014,7 @@ function openExportFormatScreen(year) {
 
 function downloadPhotosZip(year, btn) {
   if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  showTopSyncIndicator('Подготовка архива...');
   fetch('/api/photos/export?year=' + encodeURIComponent(year))
     .then(function(r) {
       if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || ('HTTP ' + r.status)); });
@@ -5963,15 +6027,18 @@ function downloadPhotosZip(year, btn) {
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
       if (btn) { btn.textContent = 'Фото zip'; btn.disabled = false; }
+      finishTopSyncIndicator('Архив готов');
     })
     .catch(function(e) {
       if (btn) { btn.textContent = 'Фото zip'; btn.disabled = false; }
+      failTopSyncIndicator();
       alert('Ошибка выгрузки: ' + e.message);
     });
 }
 
 function downloadExcel(year, btn) {
   if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  showTopSyncIndicator('Подготовка файла...');
   fetch('/api/export?year=' + encodeURIComponent(year))
     .then(function(r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -5987,8 +6054,10 @@ function downloadExcel(year, btn) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       if (btn) { btn.textContent = year; btn.disabled = false; }
+      finishTopSyncIndicator('Файл готов');
     })
     .catch(function(e) {
+      failTopSyncIndicator();
       if (btn) { btn.textContent = year; btn.disabled = false; }
       alert('Ошибка выгрузки: ' + e.message);
     });
@@ -6513,7 +6582,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v446';
+var APP_BUILD = 'pkb-v447';
 var APP_VERSION = '1.08';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -10923,6 +10992,7 @@ function removeQueuedPhoto(tempId) {
 function openCardPhotoScreen() {
   _photoRecord = null;
   _photoReturnScreen = 'screen-card';
+  _photoSelectionGroup = null;
   var photoBody = document.getElementById('card-photo-body');
   if (photoBody) photoBody.innerHTML = '';
   var title = document.getElementById('card-photo-title');
@@ -10992,6 +11062,7 @@ function finishCardPhotoScreen() {
   }
   if (btnDone) btnDone.disabled = true;
   if (btnCancel) btnCancel.disabled = true;
+  showTopSyncIndicator('Сохранение фото...');
   var localPhotos = (cardData._localPhotos || []).slice();
   var pendingDeletes = _photoEditSession ? (_photoEditSession.pendingDeletes || []).slice() : [];
   var deletePromises = pendingDeletes.map(function(filename) {
@@ -11015,9 +11086,11 @@ function finishCardPhotoScreen() {
     if (btnDone) btnDone.disabled = false;
     if (btnCancel) btnCancel.disabled = false;
     if (uploadErrors.length) {
+      failTopSyncIndicator();
       alert('Не удалось загрузить некоторые фото. Проверьте соединение и повторите.');
       return;
     }
+    finishTopSyncIndicator('Фото сохранены');
     returnFromCardPhotoScreen();
   });
 }
@@ -11034,6 +11107,7 @@ function returnFromCardPhotoScreen() {
 }
 function openRecordPhotoScreen(r) {
   if (!r) return;
+  _photoSelectionGroup = null;
   var photoBody = document.getElementById('card-photo-body');
   if (photoBody) photoBody.innerHTML = '';
   var editingPhotos = canModifySavedPhotos();
@@ -11098,6 +11172,9 @@ function closeCardPhotoScreen() {
 function renderCardPhotoScreen() {
   var body = document.getElementById('card-photo-body');
   body.innerHTML = '';
+  body.classList.remove('photo-select-active');
+  var photoScreen = document.getElementById('screen-card-photo');
+  if (photoScreen) photoScreen.classList.remove('photo-select-active');
   var hasChecklist = !!cardData.checklistFilled && (cardBarrierHasChecklist() || !!cardData.checklistViolations);
   if (hasChecklist && cardData.checklistFilled) {
     var violations = cardData.checklistViolations || {};
@@ -11152,6 +11229,13 @@ function renderCardPhotoSection(body, violationIndex, text) {
         '<svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>' +
       '</button>';
     section.appendChild(row);
+    var selectRow = document.createElement('div');
+    selectRow.className = 'photo-select-actions';
+    selectRow.innerHTML =
+      '<button type="button" class="photo-select-btn photo-select-btn-cancel" onclick="cancelPhotoSelection()">Отмена</button>' +
+      '<button type="button" class="photo-select-btn photo-select-btn-delete" onclick="deleteSelectedPhotos()">Удалить</button>' +
+      '<button type="button" class="photo-select-btn photo-select-btn-download" onclick="downloadSelectedPhotos()">Скачать</button>';
+    section.appendChild(selectRow);
   }
   body.appendChild(section);
 }
@@ -11524,6 +11608,7 @@ function addPhotoPreview(violationIndex, filename, num, base64, tempId) {
   }
   var item = document.createElement('div');
   item.className = 'photo-preview-item';
+  item.dataset.violationIndex = violationIndex;
   var src, displayNum;
   if (base64) {
     item.dataset.local = 'true';
@@ -11545,7 +11630,7 @@ function addPhotoPreview(violationIndex, filename, num, base64, tempId) {
   item.innerHTML =
     imageHtml +
     '<div class="photo-preview-num">' + displayNum + '</div>' +
-    '<button type="button" class="photo-preview-delete" onclick="deletePhoto(this,event)">&times;</button>';
+    '<div class="photo-preview-check"><svg viewBox="0 0 24 24"><polyline points="4 12 9 17 20 6"/></svg></div>';
   bindPhotoPreviewEvents(item);
   row.appendChild(item);
 }
@@ -11572,7 +11657,12 @@ function bindPhotoPreviewEvents(item) {
     }
     var dx = Math.abs((e.changedTouches[0].clientX - startX) || 0);
     var dy = Math.abs((e.changedTouches[0].clientY - startY) || 0);
-    if (dx < 10 && dy < 10 && !item.classList.contains('selected')) {
+    if (dx < 10 && dy < 10) {
+      if (_photoSelectionGroup !== null) {
+        // Selection mode active: a quick tap toggles instead of opening the viewer.
+        togglePhotoSelection(item);
+        return;
+      }
       openPhotoViewer(item.dataset.filename || item.querySelector('img').src);
     }
   });
@@ -11595,7 +11685,11 @@ function bindPhotoPreviewEvents(item) {
     }
     var dx = Math.abs((e.clientX - startX) || 0);
     var dy = Math.abs((e.clientY - startY) || 0);
-    if (dx < 10 && dy < 10 && !item.classList.contains('selected')) {
+    if (dx < 10 && dy < 10) {
+      if (_photoSelectionGroup !== null) {
+        togglePhotoSelection(item);
+        return;
+      }
       openPhotoViewer(item.dataset.filename || item.querySelector('img').src);
     }
   });
@@ -11603,61 +11697,149 @@ function bindPhotoPreviewEvents(item) {
   item.addEventListener('contextmenu', function(e) { e.preventDefault(); });
 }
 
+// Множественный выбор фото ограничен одной группой нарушения (violationIndex).
+// Выбранные элементы читаются через querySelectorAll('.selected') внутри
+// #card-photo-body; _photoSelectionGroup хранит индекс текущей выбранной
+// группы (сбрасывается при выборе фото из другой группы).
+var _photoSelectionGroup = null;
+
 function togglePhotoSelection(item) {
   if (!canUsePhotos()) return;
-  if (item.classList.contains('selected')) {
-    item.classList.remove('selected');
-    if (_photoSelectedItem === item) _photoSelectedItem = null;
-  } else {
-    if (_photoSelectedItem) _photoSelectedItem.classList.remove('selected');
+  var groupIndex = item.dataset.violationIndex;
+  if (_photoSelectionGroup !== null && _photoSelectionGroup !== groupIndex) {
+    // Выбор фото из другой группы: сбрасываем предыдущую группу, начинаем новую с этого фото.
+    clearPhotoSelectionVisuals();
+    _photoSelectionGroup = groupIndex;
     item.classList.add('selected');
-    _photoSelectedItem = item;
+    updatePhotoSelectionUI();
+    return;
   }
+  _photoSelectionGroup = groupIndex;
+  item.classList.toggle('selected');
+  var body = document.getElementById('card-photo-body');
+  if (body && !body.querySelector('.photo-preview-item.selected')) {
+    _photoSelectionGroup = null;
+  }
+  updatePhotoSelectionUI();
 }
 
-function deletePhoto(btn, event) {
+function clearPhotoSelectionVisuals() {
+  document.querySelectorAll('#card-photo-body .photo-preview-item.selected').forEach(function(el) {
+    el.classList.remove('selected');
+  });
+}
+
+function updatePhotoSelectionUI() {
+  var body = document.getElementById('card-photo-body');
+  if (!body) return;
+  var active = _photoSelectionGroup !== null;
+  body.classList.toggle('photo-select-active', active);
+  document.getElementById('screen-card-photo').classList.toggle('photo-select-active', active);
+  document.querySelectorAll('.photo-violation-item').forEach(function(section) {
+    section.classList.toggle('photo-selection-owner', active && section.dataset.violationIndex === _photoSelectionGroup);
+  });
+}
+
+function getSelectedPhotoItems() {
+  return Array.prototype.slice.call(document.querySelectorAll('#card-photo-body .photo-preview-item.selected'));
+}
+
+function cancelPhotoSelection() {
+  clearPhotoSelectionVisuals();
+  _photoSelectionGroup = null;
+  updatePhotoSelectionUI();
+}
+
+function deleteSelectedPhotos() {
   if (_photoRecord ? !canModifySavedPhotos() : !canUsePhotos()) return;
-  if (event) event.stopPropagation();
-  var item = btn.closest('.photo-preview-item');
-  if (!item) return;
-  if (item.dataset.local === 'true') {
+  var items = getSelectedPhotoItems();
+  if (!items.length) { cancelPhotoSelection(); return; }
+  if (!confirm(items.length === 1 ? 'Удалить фото?' : 'Удалить выбранные фото (' + items.length + ')?')) return;
+
+  var localItems = items.filter(function(item) { return item.dataset.local === 'true'; });
+  var serverItems = items.filter(function(item) { return item.dataset.local !== 'true' && item.dataset.filename; });
+
+  localItems.forEach(function(item) {
     var tempId = item.dataset.tempId;
     if (cardData._localPhotos) {
       cardData._localPhotos = cardData._localPhotos.filter(function(p) { return p.tempId !== tempId; });
     }
     if (_photoRecord && _photoRecord._localPhotos) {
       _photoRecord._localPhotos = _photoRecord._localPhotos.filter(function(p) { return p.tempId !== tempId; });
-      saveState();
     }
     item.remove();
+  });
+  if (localItems.length) saveState();
+
+  if (!serverItems.length) {
+    cancelPhotoSelection();
     refreshDetailPhotoButtonAfterChange();
     return;
+  }
+  if (!cardData.checkId) { cancelPhotoSelection(); refreshDetailPhotoButtonAfterChange(); return; }
+
+  if (_photoEditSession) {
+    serverItems.forEach(function(item) {
+      _photoEditSession.pendingDeletes.push(item.dataset.filename);
+      item.remove();
+    });
+    cancelPhotoSelection();
+    refreshDetailPhotoButtonAfterChange();
+    return;
+  }
+
+  showTopSyncIndicator('Удаление фото...');
+  Promise.all(serverItems.map(function(item) {
+    var filename = item.dataset.filename;
+    return fetch('/api/photos/delete/' + encodeURIComponent(cardData.checkId) + '/' + encodeURIComponent(filename), { method: 'DELETE' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) { return { item: item, ok: !!data.success, error: data.error }; })
+      .catch(function(err) { return { item: item, ok: false, error: err.message }; });
+  })).then(function(results) {
+    var failed = [];
+    results.forEach(function(res) {
+      if (res.ok) res.item.remove();
+      else failed.push(res);
+    });
+    cancelPhotoSelection();
+    refreshDetailPhotoButtonAfterChange();
+    if (failed.length) {
+      failTopSyncIndicator();
+      alert('Не удалось удалить некоторые фото: ' + failed.map(function(f) { return f.error || 'ошибка'; }).join(', '));
+    } else {
+      finishTopSyncIndicator('Удалено');
+    }
+  });
+}
+
+function photoItemDownloadUrl(item) {
+  if (item.dataset.local === 'true') {
+    var img = item.querySelector('img');
+    return img ? img.src : null;
   }
   var filename = item.dataset.filename;
-  if (!filename || !cardData.checkId) return;
-  if (!confirm('Удалить фото?')) return;
-  if (_photoEditSession) {
-    _photoEditSession.pendingDeletes.push(filename);
-    item.remove();
-    refreshDetailPhotoButtonAfterChange();
-    return;
-  }
-  fetch('/api/photos/delete/' + encodeURIComponent(cardData.checkId) + '/' + encodeURIComponent(filename), {
-    method: 'DELETE'
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    if (data.success) {
-      item.remove();
-      refreshDetailPhotoButtonAfterChange();
-    } else {
-      alert('Ошибка удаления: ' + (data.error || 'неизвестно'));
-    }
-  })
-  .catch(function(err) {
-    console.error('[photo] delete failed:', err);
-    alert('Ошибка удаления фото');
+  if (!filename) return null;
+  if (/\.avif$/i.test(filename)) return '/api/photos/variant/jpeg/' + encodeURIComponent(filename);
+  return '/photos/' + encodeURIComponent(filename);
+}
+
+function downloadSelectedPhotos() {
+  var items = getSelectedPhotoItems();
+  if (!items.length) { cancelPhotoSelection(); return; }
+  items.forEach(function(item, idx) {
+    var url = photoItemDownloadUrl(item);
+    if (!url) return;
+    setTimeout(function() {
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = (item.dataset.filename || ('photo-' + Date.now() + '-' + idx + '.jpg'));
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }, idx * 250);
   });
+  cancelPhotoSelection();
 }
 
 function refreshDetailPhotoButtonAfterChange() {
@@ -11682,7 +11864,7 @@ function openPhotoViewer(src) {
     img.src = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
   }
   document.getElementById('overlay-photo-viewer').classList.add('active');
-  bindZoomablePhoto('photo-viewer-stage', 'photo-viewer-img', 2);
+  bindZoomablePhoto('photo-viewer-stage', 'photo-viewer-img', 4);
 }
 
 function bindZoomablePhoto(stageId, imageId, maxScale) {
