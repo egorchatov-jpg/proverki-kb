@@ -1,6 +1,7 @@
 const { loadSettings, savePasswordHashes, passwordVersionFor } = require('../lib/settings-store');
 const { hashPassword, verifyPassword } = require('../lib/password-hash');
 const { createSession, setSessionCookie, getSession, clearSessionCookie } = require('../lib/auth-session');
+const { flushDbPersist } = require('../lib/github-persist');
 
 function identify(pin) {
   const settings = loadSettings();
@@ -40,5 +41,16 @@ module.exports = async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Invalid credentials' });
   const settings = loadSettings();
   setSessionCookie(res, createSession(user.role, user.orgName, passwordVersionFor(user.role, user.orgName, settings.passwords)), req.secure || req.headers['x-forwarded-proto'] === 'https');
+  // Persist synchronously before responding: sessions live in the same
+  // ephemeral SQLite file as records/photos. Without this, a server
+  // restart shortly after login (deploy, PM2 restart) would silently drop
+  // the session row, and the client's still-valid cookie would start
+  // getting 401s on the next write — looking like a wrong password even
+  // though the password was correct.
+  try {
+    await flushDbPersist();
+  } catch (persistErr) {
+    console.warn('[auth] github persist failed:', persistErr.message);
+  }
   return res.status(200).json({ success: true, user });
 };
