@@ -4954,14 +4954,6 @@ function generateUniquePassword() {
 }
 function getDefaultUsedPasswords() { return []; }
 /** Ensure every current org has a password entry kept in memory (even inspecting orgs). */
-function orgUsesInspectorPassword(o) {
-  return !!(o && o.inspects === true);
-}
-
-function orgShowsInPasswordScreen(o) {
-  return !orgUsesInspectorPassword(o);
-}
-
 // "Проверяющий" (inspects) и "Проверяемый" (show) — независимые флаги;
 // одна организация может быть отмечена в обоих столбцах одновременно.
 function normalizeOrgRoleFlags(org) {
@@ -5416,16 +5408,32 @@ function getInspectingOrgsList() {
     .sort(function(a, b) { return a.localeCompare(b, 'ru'); });
 }
 
+// Организация с чекбоксом "Проверяющий" в настройках "Организации".
+function orgIsInspecting(name) {
+  return (appState.orgs || []).some(function(o) { return o.name === name && o.inspects === true; });
+}
+
 function applyCardSessionFields() {
   if (cardEditRecord) return;
   if (isOrgSession()) {
     var orgName = getActiveOrgSessionName();
+    // "Проверяющий" всегда заблокирован под паролем организации — это её
+    // собственное имя, независимо от чекбокса "Проверяющий" в настройках.
     cardData.method = orgName;
-    cardData.org = orgName;
     setCardVal('method', orgName, false);
-    setCardVal('org', orgName, false);
     setDimmed('method', true);
-    setDimmed('org', true);
+    if (orgIsInspecting(orgName)) {
+      // Своя организация отмечена как "Проверяющий" — "Проверяемый" можно
+      // выбрать из списка организаций с чекбоксом "Проверяемый".
+      setDimmed('org', false);
+      if (!cardData.org) setCardVal('org', 'Выбрать', true);
+    } else {
+      // Не отмечена как "Проверяющий" — "Проверяемый" тоже заблокирован
+      // и равен своей организации.
+      cardData.org = orgName;
+      setCardVal('org', orgName, false);
+      setDimmed('org', true);
+    }
     return;
   }
   setDimmed('method', false);
@@ -6317,7 +6325,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v454';
+var APP_BUILD = 'pkb-v455';
 var APP_VERSION = '1.09';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
@@ -8259,19 +8267,14 @@ function renderPasswordsScreen() {
     if (newAdminPw) { pw.admin = newAdminPw; saveState(); renderPasswordsScreen(); markPasswordsDirty(); }
   }, 'admin'));
 
-  // Проверяющий
-  body.appendChild(makePwRow('Проверяющий', pw.inspector, function() {
-    var newPw = generateUniquePassword();
-    if (newPw) { pw.inspector = newPw; saveState(); renderPasswordsScreen(); markPasswordsDirty(); }
-  }, 'inspector'));
-
-  // Section: Проверяемые организации
+  // Section: Организации — все организации из окна "Организации" (в настройках),
+  // независимо от чекбоксов "Проверяющий"/"Проверяемый", у каждой свой пароль.
   var secTitle = document.createElement('div');
   secTitle.className = 'pw-section-title';
-  secTitle.textContent = 'Проверяемые организации';
+  secTitle.textContent = 'Организации';
   body.appendChild(secTitle);
 
-  var orgs = (appState.orgs || []).filter(orgShowsInPasswordScreen).slice().sort(function(a, b) {
+  var orgs = (appState.orgs || []).slice().sort(function(a, b) {
     return a.name.localeCompare(b.name, 'ru');
   });
   orgs.forEach(function(o) {
@@ -9974,7 +9977,10 @@ function openDrumMethod() {
 }
 
 function openDrumOrg() {
-  if (isOrgSession()) return;
+  // Org-сессия может выбирать "Проверяемый" только если её собственная
+  // организация отмечена в настройках "Организации" чекбоксом "Проверяющий" —
+  // иначе поле заблокировано и всегда равно своей организации.
+  if (isOrgSession() && !orgIsInspecting(getActiveOrgSessionName())) return;
   var orgs = (appState.orgs || []).filter(function(o) { return o.show !== false; })
     .map(function(o) { return o.name; })
     .sort(function(a,b){ return a.localeCompare(b,'ru'); });
@@ -11354,6 +11360,11 @@ function bindPhotoPreviewEvents(item) {
     }, 500);
   }, { passive: true });
   item.addEventListener('touchend', function(e) {
+    e.preventDefault(); // stop the browser from also firing synthetic mousedown/mouseup
+                          // for this same touch — without this, the mouse handlers below
+                          // ran a second toggle right after the touch one, instantly
+                          // undoing the just-made selection (looked like "flicker, then
+                          // deselect" when tapping a second photo in the same group).
     clearTimeout(_photoLongTapTimer);
     if (longTapTriggered) {
       longTapTriggered = false;
