@@ -5020,15 +5020,26 @@ function updatePinDots() {
   }
 }
 
-function checkPin() {
+function checkPin(retriesLeft) {
+  if (retriesLeft == null) retriesLeft = 2;
   var enteredPin = pinValue;
-  function finishAuth(user) {
+  function finishAuth(user, serverUnreachable) {
     if (user) {
       _sessionAccess = { superuser: user.role === 'superuser', admin: user.role === 'superuser' || user.role === 'admin', inspector: user.role !== 'org', orgs: {} };
       if (user.role === 'org' && user.orgName) _sessionAccess.orgs[user.orgName] = true;
       _sessionRole = user.role;
     } else if (!grantPinAccess(enteredPin)) {
-      document.getElementById('pin-error').textContent = 'Неверный пароль';
+      // A real 401 (server explicitly rejected the pin) always means "wrong
+      // password". But a network/server error (5xx, timeout, connection
+      // drop) is NOT proof the password is wrong — the superuser password in
+      // particular can only ever be checked by the server (no local
+      // fallback exists for it, by design). Showing "Неверный пароль" for a
+      // transient server hiccup was misleading users into re-typing a
+      // correct password repeatedly. Retry the request a couple of times
+      // before giving up, and use an honest message when we do.
+      document.getElementById('pin-error').textContent = serverUnreachable
+        ? 'Нет связи с сервером. Проверьте подключение и повторите.'
+        : 'Неверный пароль';
       pinValue = ''; updatePinDots(); setPinInputLocked(false); return;
     }
     var pending = _pinPending;
@@ -5050,13 +5061,31 @@ function checkPin() {
   fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: enteredPin }) })
     .then(function(r) {
       if (r.status === 401) { var e = new Error('invalid-credentials'); e.authFailure = true; throw e; }
-      if (!r.ok) throw new Error('offline-auth');
+      if (!r.ok) throw new Error('server-error');
       return r.json();
     })
     .then(function(data) { finishAuth(data.user); })
     .catch(function(e) {
-      if (e.authFailure) finishAuth(null);
-      else finishAuth(null); // network offline: preserve legacy local PIN fallback
+      if (e.authFailure) {
+        // Server explicitly rejected the pin — this is a real wrong password.
+        finishAuth(null, false);
+        return;
+      }
+      // Anything else (network offline, timeout, transient 5xx) is NOT proof
+      // the password is wrong — it just means we couldn't reach the server.
+      // If the local offline fallback (admin/inspector/org — they do have a
+      // local password copy) already accepts this pin, log in immediately
+      // without waiting on retries. Otherwise this pin might still be a
+      // valid superuser password that the local fallback can never verify
+      // (by design, no copy of it exists on the client) — retry the server
+      // request a couple of times before falling back to an honest
+      // "no connection" message instead of falsely claiming it's wrong.
+      if (grantPinAccess(enteredPin)) { finishAuth(null, true); return; }
+      if (retriesLeft > 0) {
+        setTimeout(function() { checkPin(retriesLeft - 1); }, 600);
+        return;
+      }
+      finishAuth(null, true);
     });
 }
 
@@ -5302,7 +5331,8 @@ function syncSettingsFromServer(callback, opts) {
  * Push current settings TO server.
  * Optional callback(ok) for boot/resume flush.
  */
-function syncSettingsToServer(callback) {
+function syncSettingsToServer(callback, retriesLeft) {
+  if (retriesLeft == null) retriesLeft = 3;
   function done(ok) {
     if (callback) {
       try { callback(!!ok); } catch (_e) {}
@@ -5329,18 +5359,34 @@ function syncSettingsToServer(callback) {
     }, { force: true });
     return;
   }
+  // Snapshot the user's own edits before the request — if the server
+  // rejects this push as stale (another write landed on the server in the
+  // meantime, e.g. a password-hash migration on login or another device),
+  // we must retry with the fresh settingsUpdatedAt WITHOUT discarding these
+  // local edits. Blindly applying the server's payload on 409 (the previous
+  // behavior) silently reverted whatever the user had just changed in this
+  // screen (checkboxes in Организации, etc.) — that was the root cause of
+  // "my checkbox changes disappeared after leaving and re-entering the
+  // screen".
+  var localOrgs = (appState.orgs || []).map(function(o) {
+    return normalizeOrgRoleFlags(Object.assign({}, o));
+  });
+  var localBarriers = appState.barriers || [];
+  var localBarriersConfig = normalizeBarriersConfigForSave();
+  var localBarriersPK = appState.barriersPK || {};
+  var localBarriersCustomPassports = appState.barriersCustomPassports || {};
+  var localPasswords = (function() { var p = Object.assign({}, appState.passwords || getDefaultPasswords()); delete p.superuser; return p; })();
+  var localUsedPasswords = appState.usedPasswords || getDefaultUsedPasswords();
   var settings = {
     methods:       appState._serverMethods || DEFAULT_METHODS,
-    barriersPK:    appState.barriersPK    || {},
-    barriersConfig: normalizeBarriersConfigForSave(),
-    barriersCustomPassports: appState.barriersCustomPassports || {},
-    orgs:          (appState.orgs || []).map(function(o) {
-      return normalizeOrgRoleFlags(Object.assign({}, o));
-    }),
-    barriers:      appState.barriers      || [],
+    barriersPK:    localBarriersPK,
+    barriersConfig: localBarriersConfig,
+    barriersCustomPassports: localBarriersCustomPassports,
+    orgs:          localOrgs,
+    barriers:      localBarriers,
     settingsUpdatedAt: updatedAt,
-    passwords:     (function(){ var p=Object.assign({},appState.passwords||getDefaultPasswords()); delete p.superuser; return p; })(),
-    usedPasswords: appState.usedPasswords || getDefaultUsedPasswords()
+    passwords:     localPasswords,
+    usedPasswords: localUsedPasswords
   };
   fetch('/api/settings', {
     method: 'PUT',
@@ -5355,7 +5401,24 @@ function syncSettingsToServer(callback) {
   .then(function(res) {
     var d = res.body || {};
     if (res.status === 409 || d.rejected) {
-      console.warn('[settings] master rejected stale/default overwrite:', d.reason || res.status);
+      if (d.reason === 'stale_client' && d.settings && d.settings.settingsUpdatedAt && retriesLeft > 0) {
+        // Someone else's write landed first — adopt the fresh base revision
+        // for every OTHER field (so we don't clobber their changes), but
+        // keep re-applying our own local edits on top, then retry the push.
+        console.warn('[settings] stale_client — retrying with fresh base revision, keeping local edits (' + retriesLeft + ' retries left)');
+        applyMasterSettingsPayload(d.settings);
+        appState.orgs = localOrgs;
+        appState.barriers = localBarriers;
+        appState.barriersConfig = localBarriersConfig;
+        appState.barriersPK = localBarriersPK;
+        appState.barriersCustomPassports = localBarriersCustomPassports;
+        appState.passwords = Object.assign({}, appState.passwords, localPasswords);
+        appState.usedPasswords = localUsedPasswords;
+        saveState();
+        syncSettingsToServer(callback, retriesLeft - 1);
+        return;
+      }
+      console.warn('[settings] master rejected write:', d.reason || res.status);
       if (d.settings) applyMasterSettingsPayload(d.settings);
       clearSettingsDirty();
       saveState();
@@ -6325,7 +6388,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v455';
+var APP_BUILD = 'pkb-v456';
 var APP_VERSION = '1.09';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
