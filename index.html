@@ -3219,7 +3219,29 @@ function retryAllQueues() {
   retryUpdateQueue();
 }
 
-// Remove queue items whose fields are already saved in Excel
+// Compare a server field value against a queued/local field value for
+// update-queue bookkeeping. Fields here can be plain strings (method, org,
+// desc, ...) as well as non-string values (checklistFilled: boolean,
+// checklistViolations/checklistQuestionTexts: object|null) once a checklist
+// is attached to the edit — calling String.prototype.trim() directly on
+// those used to throw and silently abort the whole sync pass (see pkb-v457).
+function fieldValuesEqual(a, b) {
+  if (typeof a === 'string' || typeof b === 'string') {
+    return String(a || '').trim() === String(b || '').trim();
+  }
+  if (a == null && b == null) return true;
+  try { return JSON.stringify(a) === JSON.stringify(b); } catch (_e) { return a === b; }
+}
+function fieldValueIsEmpty(v) {
+  if (v == null) return true;
+  if (typeof v === 'string') return v.trim() === '';
+  if (typeof v === 'object') return Object.keys(v).length === 0;
+  return false;
+}
+
+// Remove queue items whose fields are already confirmed saved on the server
+// (exact match only — a differing non-empty server value does NOT count as
+// synced, it means our edit hasn't landed yet).
 function purgeSyncedUpdates(records) {
   var byEntry = {};
   var byFp = {};
@@ -3234,7 +3256,7 @@ function purgeSyncedUpdates(records) {
     }
     if (!rec) return;
     var allOnServer = Object.keys(item.fields).every(function(k) {
-      return (rec[k] || '').trim() === (item.fields[k] || '').trim() && (rec[k] || '').trim() !== '';
+      return !fieldValueIsEmpty(item.fields[k]) && fieldValuesEqual(rec[k], item.fields[k]);
     });
     if (allOnServer) removeFromUpdateQueue(item.dateEntry);
   });
@@ -3257,9 +3279,9 @@ function seedUpdateQueueFromLocalDb(serverRecords) {
     if (!server) return;
     var fields = {};
     UPDATE_FIELD_KEYS.forEach(function(k) {
-      var lv = (local[k] || '').trim();
-      var sv = (server[k] || '').trim();
-      if (lv && !sv) fields[k] = local[k]; // only push when server field is empty
+      if (fieldValueIsEmpty(local[k])) return;
+      if (fieldValuesEqual(local[k], server[k])) return; // already in sync
+      fields[k] = local[k]; // local has a value the server doesn't have (yet)
     });
     if (!Object.keys(fields).length) return;
     var year = local.year || (local.dateCheck ? local.dateCheck.split('.')[2] : String(new Date().getFullYear()));
@@ -3271,7 +3293,12 @@ function seedUpdateQueueFromLocalDb(serverRecords) {
   });
 }
 
-// Apply pending field updates from queue onto server records
+// Apply pending field updates from queue onto server records. An item stays
+// in the queue (and syncUpdateToServer keeps retrying it) until the server
+// value actually matches what we tried to save — a differing-but-non-empty
+// server value used to be treated as "server wins" here, which silently
+// dropped edits (e.g. Проверяющий rename) whenever a background poll landed
+// between the local save and the server durably persisting it (see pkb-v457).
 function applyPendingUpdates(records) {
   var queue = getUpdateQueue();
   if (!queue.length) return records;
@@ -3290,12 +3317,9 @@ function applyPendingUpdates(records) {
     if (!rec) return;
     var allSynced = true;
     Object.keys(item.fields).forEach(function(k) {
-      var serverVal = (rec[k] || '').trim();
-      var queuedVal = (item.fields[k] || '').trim();
-      if (serverVal === queuedVal) return;
-      if (serverVal) return; // Excel already has data — server is source of truth
+      if (fieldValuesEqual(rec[k], item.fields[k])) return; // server already has our value
       allSynced = false;
-      if (queuedVal) rec[k] = item.fields[k];
+      if (!fieldValueIsEmpty(item.fields[k])) rec[k] = item.fields[k]; // keep showing our pending edit locally
     });
     if (allSynced) removeFromUpdateQueue(item.dateEntry);
   });
@@ -6388,7 +6412,7 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v456';
+var APP_BUILD = 'pkb-v457';
 var APP_VERSION = '1.09';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
