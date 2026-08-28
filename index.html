@@ -230,7 +230,6 @@ html, body {
 .proverka-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; overflow: hidden; }
 .barrier-right-name { font-size: 13px; font-weight: 600; color: #1a2035; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0; flex: 1; text-align: right; }
 .pk-tag { background: rgba(192,57,43,0.18); color: var(--red); border-radius: 100px; padding: 1px 8px; font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
-.pk-tag-row { text-align: right; }
 
 
 .lobby-nav {
@@ -4251,7 +4250,8 @@ window.addEventListener('DOMContentLoaded', function() {
   initPassportImageViewer();
   
   var urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.has('nc')) {
+  var openedFromNotification = urlParams.has('nc');
+  if (openedFromNotification) {
     try { sessionStorage.removeItem('pkb-active-screen'); } catch (_) {}
     setTimeout(function() {
       goLobby();
@@ -4288,6 +4288,16 @@ window.addEventListener('DOMContentLoaded', function() {
   initChecklistViolationOverlay();
   bindIosKbOverlayViewport();
   initIosKbOverlayInputFixes();
+  if (openedFromNotification) {
+    // Opening from a push notification tap must show the new violation banner
+    // immediately. Waiting for the settings round-trip first (syncSettingsOnAppOpen)
+    // used to delay the records fetch by a whole extra request, so the red
+    // banner only appeared 1-3s after the lobby was already visible. Fetch
+    // records right away instead of gating them behind settings sync.
+    loadFromServer(function() {
+      refreshActiveRecordLists();
+    }, { forceFull: true });
+  }
   syncSettingsOnAppOpen(function() {
     _settingsReady = true;
     loadFromServer(function() {
@@ -4779,8 +4789,10 @@ function renderLobby() {
             '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Проверяющий: ' + esc(r.method || '') + '</span>' +
             '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
           '</div>' +
-          (r.barrierInPK === 'Да' ? '<div class="violation-card-header-line pk-tag-row"><span class="pk-tag">в ПК</span></div>' : '') +
-          '<div class="violation-card-header-line">Проверяемый: ' + esc(r.org || '') + '</div>' +
+          '<div class="violation-card-header-line proverka-row">' +
+            '<span>Проверяемый: ' + esc(r.org || '') + '</span>' +
+            (r.barrierInPK === 'Да' ? '<span class="pk-tag">в ПК</span>' : '') +
+          '</div>' +
           '<div class="violation-card-header-line clip">Объект: ' + esc(r.obj || '') + '</div>' +
         '</div>' +
         '<div class="violation-card-body">' + formatRecordDescHtml(r) + '</div>';
@@ -6409,8 +6421,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v458';
-var APP_VERSION = '1.10';
+var APP_BUILD = 'pkb-v459';
+var APP_VERSION = '1.11';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
@@ -8660,8 +8672,10 @@ function openSokbEdit(r) {
           '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Проверяющий: ' + esc(r.method || '') + '</span>' +
           '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
         '</div>' +
-        (r.barrierInPK === 'Да' ? '<div class="violation-card-header-line pk-tag-row"><span class="pk-tag">в ПК</span></div>' : '') +
-        '<div class="violation-card-header-line">Проверяемый: ' + esc(r.org || '') + '</div>' +
+        '<div class="violation-card-header-line proverka-row">' +
+          '<span>Проверяемый: ' + esc(r.org || '') + '</span>' +
+          (r.barrierInPK === 'Да' ? '<span class="pk-tag">в ПК</span>' : '') +
+        '</div>' +
         '<div class="violation-card-header-line clip">Объект: ' + esc(r.obj || '') + '</div>' +
       '</div>' +
       (formatRecordDescPlain(r) ? '<div class="violation-card-body">' + formatRecordDescHtml(r) + '</div>' : '') +
@@ -9285,8 +9299,10 @@ function openCorrectiveEdit(r) {
           '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Проверяющий: ' + esc(r.method || '') + '</span>' +
           '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
         '</div>' +
-        (r.barrierInPK === 'Да' ? '<div class="violation-card-header-line pk-tag-row"><span class="pk-tag">в ПК</span></div>' : '') +
-        '<div class="violation-card-header-line">Проверяемый: ' + esc(r.org || '') + '</div>' +
+        '<div class="violation-card-header-line proverka-row">' +
+          '<span>Проверяемый: ' + esc(r.org || '') + '</span>' +
+          (r.barrierInPK === 'Да' ? '<span class="pk-tag">в ПК</span>' : '') +
+        '</div>' +
         '<div class="violation-card-header-line clip">Объект: ' + esc(r.obj || '') + '</div>' +
       '</div>' +
       (formatRecordDescPlain(r) ? '<div class="violation-card-body">' + formatRecordDescHtml(r) + '</div>' : '') +
