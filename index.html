@@ -228,9 +228,9 @@ html, body {
 .violation-card-header-line.clip { overflow: hidden; white-space: nowrap; }
 .violation-card-body { padding: 10px 14px; font-size: 13px; color: #1a2035; line-height: 1.5; background: rgba(192,57,43,0.08); }
 .proverka-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; overflow: hidden; }
-.barrier-right { display: flex; align-items: center; gap: 5px; min-width: 0; flex: 1; justify-content: flex-end; overflow: hidden; }
-.barrier-right-name { font-size: 13px; font-weight: 600; color: #1a2035; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.barrier-right-name { font-size: 13px; font-weight: 600; color: #1a2035; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0; flex: 1; text-align: right; }
 .pk-tag { background: rgba(192,57,43,0.18); color: var(--red); border-radius: 100px; padding: 1px 8px; font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+.pk-tag-row { text-align: right; }
 
 
 .lobby-nav {
@@ -1261,7 +1261,6 @@ html, body {
 }
 .detail-placeholder { color: #aaa; }
 .detail-photo-btn-disabled { opacity: 0.45; pointer-events: none; }
-.detail-photo-btn-pending { visibility: hidden; }
 .export-format-body { justify-content: flex-start; }
 .export-format-row { display: flex; gap: 10px; width: 100%; }
 .export-format-btn {
@@ -4778,11 +4777,9 @@ function renderLobby() {
           '</div>' +
           '<div class="violation-card-header-line proverka-row">' +
             '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Проверяющий: ' + esc(r.method || '') + '</span>' +
-            '<span class="barrier-right">' +
-              '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
-              (r.barrierInPK === 'Да' ? '<span class="pk-tag">в ПК</span>' : '') +
-            '</span>' +
+            '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
           '</div>' +
+          (r.barrierInPK === 'Да' ? '<div class="violation-card-header-line pk-tag-row"><span class="pk-tag">в ПК</span></div>' : '') +
           '<div class="violation-card-header-line">Проверяемый: ' + esc(r.org || '') + '</div>' +
           '<div class="violation-card-header-line clip">Объект: ' + esc(r.obj || '') + '</div>' +
         '</div>' +
@@ -6412,8 +6409,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v457';
-var APP_VERSION = '1.09';
+var APP_BUILD = 'pkb-v458';
+var APP_VERSION = '1.10';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
@@ -8661,11 +8658,9 @@ function openSokbEdit(r) {
         '</div>' +
         '<div class="violation-card-header-line proverka-row">' +
           '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Проверяющий: ' + esc(r.method || '') + '</span>' +
-          '<span class="barrier-right">' +
-            '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
-            (r.barrierInPK === 'Да' ? '<span class="pk-tag">в ПК</span>' : '') +
-          '</span>' +
+          '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
         '</div>' +
+        (r.barrierInPK === 'Да' ? '<div class="violation-card-header-line pk-tag-row"><span class="pk-tag">в ПК</span></div>' : '') +
         '<div class="violation-card-header-line">Проверяемый: ' + esc(r.org || '') + '</div>' +
         '<div class="violation-card-header-line clip">Объект: ' + esc(r.obj || '') + '</div>' +
       '</div>' +
@@ -9288,11 +9283,9 @@ function openCorrectiveEdit(r) {
         '</div>' +
         '<div class="violation-card-header-line proverka-row">' +
           '<span' + (r.method === 'ОСИР' ? ' style="color:var(--red)"' : '') + '>Проверяющий: ' + esc(r.method || '') + '</span>' +
-          '<span class="barrier-right">' +
-            '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
-            (r.barrierInPK === 'Да' ? '<span class="pk-tag">в ПК</span>' : '') +
-          '</span>' +
+          '<span class="barrier-right-name">Барьер: ' + esc(r.barrier || '') + '</span>' +
         '</div>' +
+        (r.barrierInPK === 'Да' ? '<div class="violation-card-header-line pk-tag-row"><span class="pk-tag">в ПК</span></div>' : '') +
         '<div class="violation-card-header-line">Проверяемый: ' + esc(r.org || '') + '</div>' +
         '<div class="violation-card-header-line clip">Объект: ' + esc(r.obj || '') + '</div>' +
       '</div>' +
@@ -9810,7 +9803,7 @@ function openDetail(r, source) {
     row('Барьер работоспособен', worksVal, r.works === 'Нет' ? 'detail-val-works-no' : '', editRecord) +
     '<div class="detail-row detail-photo-row">' +
       '<div class="detail-label field-label-spacer">Фотографии нарушений</div>' +
-      '<button type="button" id="detail-photo-btn" class="card-checklist-btn detail-photo-btn-pending"' + (!isNonWorking ? ' hidden' : '') + ' style="visibility:hidden">Фото</button>' +
+      '<button type="button" id="detail-photo-btn" class="card-checklist-btn"' + (!isNonWorking ? ' hidden' : '') + '>' + esc(initialPhotoBtnLabel(r)) + '</button>' +
     '</div>' +
     (showViolationDesc ? block('Описание нарушений', formatRecordDescHtml(r), editRecord) : '') +
     corrBlock +
@@ -9818,7 +9811,45 @@ function openDetail(r, source) {
   document.getElementById('detail-scroll').scrollTop = 0;
   showScreen('screen-detail');
   requestAnimationFrame(syncDetailFieldLabelWidths);
+  // Render the photo button instantly from data we already have (record list
+  // response now carries photoCount), then refresh in the background —
+  // no more waiting on a network round-trip before the button appears.
+  applyDetailPhotoButtonState(r, isNonWorking, recordHasKnownPhotos(r));
   updateDetailPhotoButton(r, isNonWorking);
+}
+
+// True/false when we already know from the loaded record data; undefined
+// when we genuinely don't know yet (never synced photoCount for this record).
+function recordHasKnownPhotos(record) {
+  if (record && record._localPhotos && record._localPhotos.length) return true;
+  if (record && typeof record.photoCount === 'number') return record.photoCount > 0;
+  if (!record || !record.checkId) return false;
+  return undefined;
+}
+
+function initialPhotoBtnLabel(record) {
+  var known = recordHasKnownPhotos(record);
+  return known ? 'Фото' : 'Добавить фото';
+}
+
+function applyDetailPhotoButtonState(record, isNonWorking, hasPhotos) {
+  var btn = document.getElementById('detail-photo-btn');
+  if (!btn) return;
+  if (!isNonWorking) {
+    btn.hidden = true;
+    return;
+  }
+  if (hasPhotos === undefined) {
+    // Unknown yet — show as "add photo" (safe default) rather than hiding
+    // the button and making the user wait for it to appear.
+    hasPhotos = false;
+  }
+  btn.textContent = hasPhotos ? 'Фото' : 'Добавить фото';
+  var canChange = canModifySavedPhotos();
+  btn.hidden = !hasPhotos && !canChange;
+  btn.classList.toggle('detail-photo-btn-disabled', !canChange && !hasPhotos);
+  btn.disabled = !canChange && !hasPhotos;
+  btn.onclick = canViewPhotos() ? function() { photoButtonClick(detailRecordForEdit); } : null;
 }
 
 function updateDetailPhotoButton(record, isNonWorking) {
@@ -9826,18 +9857,10 @@ function updateDetailPhotoButton(record, isNonWorking) {
     var btn = document.getElementById('detail-photo-btn');
     if (!btn) return;
     function apply(hasPhotos) {
-      btn.textContent = hasPhotos ? 'Фото' : 'Добавить фото';
-      var canChange = canModifySavedPhotos();
-      btn.hidden = !hasPhotos && !canChange;
-      btn.classList.remove('detail-photo-btn-pending');
-      btn.style.visibility = 'visible';
-      btn.classList.toggle('detail-photo-btn-disabled', !canChange && !hasPhotos);
-      btn.disabled = !canChange && !hasPhotos;
-      btn.onclick = canViewPhotos() ? function() { photoButtonClick(detailRecordForEdit); } : null;
+      applyDetailPhotoButtonState(record, isNonWorking, hasPhotos);
     }
     if (!isNonWorking) {
       btn.hidden = true;
-      btn.style.visibility = 'visible';
       return;
     }
     if (record && record._localPhotos && record._localPhotos.length) {
