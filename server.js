@@ -72,9 +72,25 @@ app.use(express.json({ limit: '12mb' }));
 let bootstrapReady = false;
 let bootstrapInfo = null;
 
+// IMPORTANT: this endpoint always answers 200 while the Node process itself
+// is alive and accepting connections — it must never reflect "the database
+// isn't fully restored yet" as an HTTP error status. Timeweb App Platform
+// (PM2-supervised container) polls this route as its container health
+// check; when it previously returned 503 during the few seconds/minutes
+// right after a fresh deploy — while bootstrapGithubPersist() was still
+// pulling the SQLite snapshot from GitHub — Timeweb treated the container
+// as unhealthy and killed/restarted it. That restart wiped the ephemeral
+// /tmp disk and restarted the GitHub pull from scratch, which (if it took
+// longer than Timeweb's health-check grace period) never got a chance to
+// finish — an unbounded restart loop that left the app running against a
+// permanently empty database (confirmed in production logs: "[persist]
+// force wipe + pull into: ..." repeating every few minutes). Whether the
+// database is actually populated yet is now reported as data in the JSON
+// body (`ok` / `recordCount`), for monitoring/debugging — never as the HTTP
+// status code.
 app.get('/health', function(_req, res) {
   if (!bootstrapReady) {
-    return res.status(503).json({
+    return res.status(200).json({
       ok: false,
       bootstrapping: true,
       build: readAppBuildTag(),
@@ -100,7 +116,7 @@ app.get('/health', function(_req, res) {
   if (isGithubPersistEnabled()) payload.githubPersist = true;
   if (bootstrapInfo) payload.bootstrap = bootstrapInfo;
   if (!db.ok) payload.error = db.error;
-  res.status(db.ok && (payload.recordCount || 0) > 0 ? 200 : 503).json(payload);
+  res.status(200).json(payload);
 });
 
 app.post('/api/reload-db', async function(req, res) {
