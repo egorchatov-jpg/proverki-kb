@@ -4371,7 +4371,13 @@ function loadState() {
             return normalizeOrgRoleFlags({ name: o.name, show: o.show !== false, inspects: o.inspects === true });
           });
         }
-        ensureDefaultInspectingOrgs(appState.orgs);
+        // Do NOT call ensureDefaultInspectingOrgs() here — it used to
+        // unconditionally re-add "СПД"/"Техресурс" whenever they were
+        // missing from the saved list, which silently resurrected them
+        // right after an admin deliberately deleted one via the
+        // "Организации" settings screen (checkbox + "-" button). The
+        // default org seeding below (buildDefaultOrgState) already covers
+        // brand-new installs with no saved orgs at all.
       } else {
         appState.orgs = buildDefaultOrgState();
       }
@@ -5302,7 +5308,9 @@ function applyMasterSettingsPayload(data) {
     appState.orgs = serverOrgs.map(function(o) {
       return normalizeOrgRoleFlags(Object.assign({}, typeof o === 'string' ? { name: o, show: true, inspects: false } : o));
     });
-    ensureDefaultInspectingOrgs(appState.orgs);
+    // Do NOT call ensureDefaultInspectingOrgs() here (see loadState() comment
+    // above) — the server payload is the source of truth once orgs exist;
+    // re-adding "СПД"/"Техресурс" here resurrected them after deletion.
   }
   if (data.barriers && data.barriers.length) appState.barriers = data.barriers;
   if (data.barriersConfig) {
@@ -6428,8 +6436,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v460';
-var APP_VERSION = '1.12';
+var APP_BUILD = 'pkb-v461';
+var APP_VERSION = '1.13';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
