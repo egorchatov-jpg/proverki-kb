@@ -124,17 +124,24 @@ module.exports = async (req, res) => {
       const rows = db.prepare(
         "SELECT filename, violation_index, uploaded_at FROM photos WHERE check_id = ? ORDER BY id"
       ).all(checkId);
-      const photosDir = getPhotosDir();
-      const validRows = rows.filter(function(row) {
-        return /^[^\\/]+$/.test(row.filename) && fs.existsSync(path.join(photosDir, row.filename));
+      // Return every DB row as-is — the database is the source of truth for
+      // which photos exist, not the local (ephemeral) disk. Timeweb's disk is
+      // wiped on every redeploy and repopulated asynchronously from the
+      // GitHub photos backup (see bootstrapGithubPersist ->
+      // pullMissingPhotosFromGithub); if a client hit this endpoint before
+      // that pull finished, the file would briefly be missing locally even
+      // though it still exists in the DB and on GitHub. The previous code
+      // treated that as "orphaned" and permanently deleted the DB row on the
+      // spot — with no way back, since the row (the only link from a check
+      // to its photo) was gone even though the file itself was safe on
+      // GitHub. This was the root cause of photos disappearing from checks
+      // after a redeploy. Only a filename-safety check remains here; actual
+      // missing-file handling happens at serve time (variant endpoint below)
+      // where a single fetch failure doesn't destroy any data.
+      const safeRows = rows.filter(function(row) {
+        return /^[^\\/]+$/.test(row.filename);
       });
-      if (validRows.length !== rows.length) {
-        const remove = db.prepare('DELETE FROM photos WHERE check_id = ? AND filename = ?');
-        rows.forEach(function(row) {
-          if (validRows.indexOf(row) < 0) remove.run(checkId, row.filename);
-        });
-      }
-      return res.status(200).json({ photos: validRows });
+      return res.status(200).json({ photos: safeRows });
     }
 
     if (matchVariant && req.method === 'GET') {
@@ -142,6 +149,15 @@ module.exports = async (req, res) => {
       const filename = decodeURIComponent(matchVariant[2]);
       if (!/^[^\\/]+\.avif$/i.test(filename)) return res.status(400).end();
       const sourcePath = path.join(getPhotosDir(), filename);
+      if (!fs.existsSync(sourcePath)) {
+        // File missing locally (e.g. GitHub photo-pull on this fresh
+        // deploy hasn't reached it yet) — try to recover it on the spot
+        // instead of 404ing forever. Non-fatal if it also fails.
+        try {
+          const { pullSinglePhotoFromGithub } = require('../lib/github-persist');
+          await pullSinglePhotoFromGithub(filename, getPhotosDir());
+        } catch (_e) {}
+      }
       if (!fs.existsSync(sourcePath)) return res.status(404).end();
       const output = await sharp(sourcePath)[format]().toBuffer();
       res.setHeader('Content-Type', format === 'webp' ? 'image/webp' : 'image/jpeg');

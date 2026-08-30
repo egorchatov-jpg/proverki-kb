@@ -221,6 +221,25 @@ app.use(express.static(ROOT, {
 app.use('/photos', function(req, res, next) {
   const { getDbPath } = require('./lib/db');
   const photosDir = require('path').join(require('path').dirname(getDbPath()), 'photos');
+  const fs = require('fs');
+  const reqPath = decodeURIComponent(req.path.replace(/^\//, ''));
+  const localPath = require('path').join(photosDir, reqPath);
+  if (!fs.existsSync(localPath) && /^[^\\/]+$/.test(reqPath)) {
+    // Missing on the ephemeral local disk (e.g. right after a redeploy,
+    // before the bootstrap GitHub photo-pull finished) — try to recover it
+    // on the spot instead of 404ing. Non-fatal if it also fails; the client
+    // has a <picture> fallback to /api/photos/variant/* either way.
+    const { pullSinglePhotoFromGithub } = require('./lib/github-persist');
+    pullSinglePhotoFromGithub(reqPath, photosDir).catch(function() {}).then(function() {
+      require('express').static(photosDir, {
+        index: false,
+        setHeaders: function(res) {
+          res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+        },
+      })(req, res, next);
+    });
+    return;
+  }
   require('express').static(photosDir, {
     index: false,
     setHeaders: function(res) {
