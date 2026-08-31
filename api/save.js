@@ -3,7 +3,7 @@ const { saveChecklistForRecord } = require('../lib/checklists-lib');
 const { loadSettings } = require('../lib/settings-store');
 const { insertRecord } = require('../lib/records-store');
 const { getDb } = require('../lib/db');
-const { flushDbPersist } = require('../lib/github-persist');
+const { flushDbPersist, isEnabled: isGithubPersistEnabled } = require('../lib/github-persist');
 const { assertWritesAllowed } = require('../lib/write-gate');
 const { requireSession } = require('../lib/auth-session');
 
@@ -53,13 +53,33 @@ module.exports = async (req, res) => {
       });
     }
 
-    if (!saveResult.duplicate) {
-      // Persist synchronously before responding — see api/update.js for why.
+    // Persist synchronously before responding — see api/update.js for why.
+    // CRITICAL: if the GitHub push fails, we must NOT tell the client the
+    // record is saved. The local SQLite lives on Timeweb's ephemeral disk;
+    // the only durable copy is on GitHub. If we ack success here while the
+    // push failed, the client drops the record from its retry queue and the
+    // data is permanently lost on the next redeploy/force-pull. This exact
+    // chain caused the silent loss of all 29.08.2026 checks during the
+    // expired-GITHUB_TOKEN incident (see docs/current-task.md pkb-v465).
+    // Runs for duplicates too: a record re-sent by the client retry queue may
+    // already exist in the ephemeral local DB but still not be on GitHub, so
+    // it must not be acked until the DB snapshot containing it is pushed.
+    if (isGithubPersistEnabled()) {
       try {
-        await flushDbPersist();
+        const persistResult = await flushDbPersist();
+        if (!persistResult || persistResult.pushed !== true) {
+          console.warn('[save] github persist did not confirm push:', JSON.stringify(persistResult));
+          return res.status(503).json({
+            success: false, retryable: true, error: 'persist_failed',
+            reason: (persistResult && persistResult.reason) || 'not_pushed',
+          });
+        }
       } catch (persistErr) {
         console.warn('[save] github persist failed:', persistErr.message);
+        return res.status(503).json({ success: false, retryable: true, error: 'persist_failed', reason: persistErr.message });
       }
+    }
+    if (!saveResult.duplicate) {
       sendRecordsChangedPush(senderEndpoint || null).catch(function(e) {
         console.warn('[save] silent sync push failed:', e.message);
       });

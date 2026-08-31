@@ -1,7 +1,7 @@
 const { saveChecklistForRecord, assertChecklistWritable } = require('../lib/checklists-lib');
 const { updateRecord } = require('../lib/records-store');
 const { getDb } = require('../lib/db');
-const { flushDbPersist } = require('../lib/github-persist');
+const { flushDbPersist, isEnabled: isGithubPersistEnabled } = require('../lib/github-persist');
 const { sendRecordsChangedPush } = require('../lib/push-notify');
 const { assertWritesAllowed } = require('../lib/write-gate');
 const { requireSession } = require('../lib/auth-session');
@@ -65,11 +65,25 @@ module.exports = async (req, res) => {
 
     // Persist synchronously before responding: Timeweb's disk is ephemeral
     // and a redeploy right after this response (before a debounced push
-    // completes) would otherwise silently drop the update.
-    try {
-      await flushDbPersist();
-    } catch (persistErr) {
-      console.warn('[update] github persist failed:', persistErr.message);
+    // completes) would otherwise silently drop the update. CRITICAL: if the
+    // GitHub push fails, do NOT ack success — the client must keep the update
+    // in its queue, otherwise the edit exists only in the ephemeral local
+    // SQLite and is permanently lost on the next redeploy/force-pull (same
+    // chain as the silent loss of the 29.08.2026 checks, see pkb-v465).
+    if (isGithubPersistEnabled()) {
+      try {
+        const persistResult = await flushDbPersist();
+        if (!persistResult || persistResult.pushed !== true) {
+          console.warn('[update] github persist did not confirm push:', JSON.stringify(persistResult));
+          return res.status(503).json({
+            success: false, retryable: true, error: 'persist_failed',
+            reason: (persistResult && persistResult.reason) || 'not_pushed',
+          });
+        }
+      } catch (persistErr) {
+        console.warn('[update] github persist failed:', persistErr.message);
+        return res.status(503).json({ success: false, retryable: true, error: 'persist_failed', reason: persistErr.message });
+      }
     }
     sendRecordsChangedPush(senderEndpoint || null).catch(function(e) {
       console.warn('[update] silent sync push failed:', e.message);
