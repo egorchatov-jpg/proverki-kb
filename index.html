@@ -985,6 +985,21 @@ html, body {
   font-size: 11px; font-weight: 700; color: var(--text2); line-height: 1;
 }
 .th-col-btn.active .th-filter-count { color: inherit; }
+/* Проверки барьера (из оценки фокусных наборов): компактная шапка — текст
+   названий столбцов прижат к низу строки, без пустой полосы под ним. */
+#screen-osirq-checks .list-filter-head .find-table thead th {
+  height: auto;
+  vertical-align: bottom;
+}
+#screen-osirq-checks .th-col-btn {
+  height: auto;
+  min-height: 34px;
+  justify-content: flex-end;
+  padding: 2px 4px 6px;
+}
+#screen-osirq-checks .th-col-btn > span {
+  min-height: 0;
+}
 #screen-corrective-list .th-col-btn.active { color: var(--navy); }
 
 .find-bottom {
@@ -1787,6 +1802,204 @@ html, body {
 .pw-revert-btn { background: var(--gray-btn); }
 .pw-update-btn:active, .pw-revert-btn:active { opacity: 0.75; }
 .pw-update-btn svg, .pw-revert-btn svg { display: block; }
+
+/* ===== SCREEN: СТАТИСТИКА ===== */
+#screen-statistics { background: var(--bg); }
+.statistics-scroll {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding: 16px; width: 100%; box-sizing: border-box;
+}
+.statistics-inner {
+  width: 100%; max-width: 100%;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.statistics-top-row {
+  display: flex; gap: 10px; width: 100%;
+}
+.statistics-year-btn,
+.statistics-section-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 53px;
+  color: #fff;
+  font-size: 15px; font-weight: 700;
+  border: none; border-radius: var(--btn-radius); cursor: pointer;
+  box-shadow: var(--btn-shadow); transition: opacity 0.15s;
+  padding: 0 4px;
+}
+.statistics-year-btn {
+  background: var(--orange);
+}
+.statistics-section-btn {
+  background: var(--navy);
+}
+.statistics-year-btn:active,
+.statistics-section-btn:active { opacity: 0.78; }
+/* Плашка ОСИР — голубой фон, как у navy-оверлеев (напр. «Статус мероприятия»). */
+.statistics-osir-card {
+  background: #eaf0fb;
+  border-radius: var(--card-radius);
+  border: 1px solid rgba(27,58,107,0.15);
+  padding: 14px 12px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.statistics-osir-header {
+  font-size: 15px; font-weight: 700; color: #1a2035;
+  text-align: center; line-height: 1.3;
+}
+/* Таблица без границ: 6 столбцов x 4 строки. Колонка 1 — по самой длинной
+   надписи «Достигло н. цели»; столбцы 2-6 — по ширине значения «999 (100%)».
+   Ширина текста-образца задана через span.osir-measure (невидим, только для
+   размеров), чтобы реальные значения вида «999 (100%)» не переносились. */
+.statistics-osir-grid {
+  display: grid;
+  grid-template-columns: auto repeat(5, var(--osir-col-w, 76px));
+  column-gap: 4px;
+  row-gap: 6px;
+  align-items: center;
+}
+.osir-measure {
+  position: absolute; left: -9999px; top: -9999px;
+  visibility: hidden; white-space: nowrap;
+  font-size: 13px; font-weight: 700;
+}
+.osir-cell {
+  font-size: 13px; font-weight: 600;
+  color: #1a2035;
+  white-space: nowrap;
+  line-height: 1.2;
+  min-height: 18px;
+  display: flex; align-items: center;
+}
+.osir-lbl {
+  justify-content: flex-start;
+  text-align: left;
+}
+.osir-val {
+  justify-content: flex-start;
+  text-align: left;
+  font-weight: 700;
+  color: #1a2035;
+}
+/* Капсульные кнопки-заголовки колонок */
+.osir-pill {
+  display: flex; align-items: center; justify-content: center;
+  width: calc(100% - 6px);         /* отступ по 3px слева и справа от границ колонки */
+  margin: 0 3px;
+  height: 28px;
+  border: none; border-radius: 999px;
+  font-size: 13px; font-weight: 700;
+  cursor: pointer; box-shadow: none;
+  white-space: nowrap; padding: 0 4px;
+  box-sizing: border-box;
+  transition: opacity 0.15s;
+}
+.osir-pill:active { opacity: 0.78; }
+.osir-pill--navy   { background: var(--navy); color: #fff; }
+.osir-pill--orange { background: var(--orange); color: #fff; }
+.statistics-footer {
+  padding: 12px 14px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  flex-shrink: 0;
+  background: var(--bg);
+  display: flex; justify-content: center;
+}
+/* Кнопка «Назад» — та же ширина, что в окне «Проверки» (find-bottom-btn):
+   базовый .screen-back-btn уже использует calc((100% - 20px) / 3). */
+
+/* ===== SCREEN: БАРЬЕРЫ В ПК (из статистики) ===== */
+#screen-barriers-in-pk { background: var(--bg); }
+.bpk-in-pk-title {
+  font-size: 16px; font-weight: 700; color: #1a2035; text-align: center;
+  padding: 20px 16px 10px; flex-shrink: 0; line-height: 1.4;
+}
+.bpk-in-pk-list-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; }
+.bpk-in-pk-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+.bpk-in-pk-table thead th {
+  padding: 0; height: 48px; box-sizing: border-box; vertical-align: middle;
+  font-size: 11px; font-weight: 700; color: var(--text2);
+  border-bottom: var(--cell-border-width) solid var(--border);
+  text-align: center; line-height: 1.3; overflow: hidden;
+  position: sticky; top: 0; z-index: 2; background: var(--bg);
+}
+.bpk-in-pk-table tbody tr { height: 31px; }
+.bpk-in-pk-table td {
+  height: 30px; box-sizing: border-box; padding: 8px 4px; font-size: 12px; line-height: 14px;
+  color: #1a2035; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  border-bottom: var(--cell-border-width) solid var(--border);
+}
+.bpk-in-pk-td-num { text-align: right; }
+.bpk-in-pk-td-barrier { text-align: left; }
+.bpk-in-pk-td-center { text-align: center; }
+.bpk-in-pk-footer {
+  display: flex; justify-content: center;
+  padding: 12px 14px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+/* ===== SCREEN: ОЦЕНКА ФОКУСНЫХ НАБОРОВ БАРЬЕРОВ (по кварталу) ===== */
+#screen-osir-quarter { background: var(--bg); }
+.osirq-title {
+  font-size: 16px; font-weight: 700; color: #1a2035; text-align: center;
+  padding: 20px 16px 10px; flex-shrink: 0; line-height: 1.4;
+}
+.osirq-title-year {
+  color: var(--orange);
+}
+.osirq-wrap { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; min-height: 0; }
+.osirq-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+.osirq-table thead th {
+  padding: 0 2px 8px;
+  box-sizing: border-box;
+  vertical-align: bottom;
+  text-align: center;
+  border-bottom: var(--cell-border-width) solid var(--border);
+  position: sticky; top: 0; z-index: 2; background: var(--bg);
+}
+.osirq-hd {
+  display: inline-block;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: pre;
+  font-size: 10px; font-weight: 700; color: var(--text2);
+  line-height: 1.15;
+}
+.osirq-hd-multi {
+  display: inline-flex;
+  align-items: flex-end;
+  column-gap: 1px;
+}
+.osirq-flat-th {
+  font-size: 11px; font-weight: 700; color: var(--text2);
+  line-height: 1.2;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.osirq-table tbody tr.osirq-row-orange { background: rgba(228, 154, 96, 0.16); }
+.osirq-table tbody tr.osirq-row-red { background: rgba(192,57,43,0.18); }
+.osirq-table td {
+  padding: 8px 4px; font-size: 12px; line-height: 14px;
+  color: #1a2035; vertical-align: middle;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  border-bottom: var(--cell-border-width) solid var(--border);
+}
+.osirq-td-num { text-align: right; }
+.osirq-td-barrier { text-align: left; }
+.osirq-td-center { text-align: center; }
+.osirq-td-pct { text-align: left; }
+.osirq-table td.osirq-td-marg { text-align: center; font-weight: 700; }
+.osirq-table td.osirq-td-marg-pos { color: var(--green); }
+.osirq-table td.osirq-td-marg-neg { color: var(--red); }
+.osirq-footer {
+  display: flex; justify-content: center;
+  padding: 12px 14px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  flex-shrink: 0;
+  background: var(--bg);
+}
 
 /* ===== SCREEN: МЕТОДЫ ПРОВЕРОК ===== */
 .methods-table-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; }
@@ -2833,6 +3046,194 @@ html, body {
   </div>
 </div>
 
+<!-- ===== SCREEN: СТАТИСТИКА ===== -->
+<div class="screen" id="screen-statistics">
+  <div class="statistics-scroll">
+    <div class="statistics-inner">
+      <!-- Верхний ряд: выбор года + разделы -->
+      <div class="statistics-top-row">
+        <button class="statistics-year-btn" id="statistics-year-btn" onclick="openStatisticsYearOverlay()">
+          <span id="statistics-year-label">2026</span>
+        </button>
+        <button class="statistics-section-btn" onclick="openBarriersInPK()">Барьеры ПК</button>
+        <button class="statistics-section-btn" onclick="openZapasPruchnosti()">Запас прочности</button>
+      </div>
+
+      <!-- Плашка "Оценка ОСИР работоспособности фокусных наборов барьеров" -->
+      <div class="statistics-osir-card">
+        <div class="statistics-osir-header">Оценка фокусных наборов барьеров</div>
+
+        <!-- Таблица (без границ): 6 столбцов x 4 строки -->
+        <div class="statistics-osir-grid" id="statistics-osir-grid">
+          <!-- Строка 1 — капсульные кнопки -->
+          <button class="osir-pill osir-pill--navy" data-quarter="osir" onclick="openOsirOrgOverlay()">ОСИР</button>
+          <button class="osir-pill osir-pill--navy" data-quarter="q1" onclick="openOsirQuarter('q1')">1 кв</button>
+          <button class="osir-pill osir-pill--navy" data-quarter="q2" onclick="openOsirQuarter('q2')">2 кв</button>
+          <button class="osir-pill osir-pill--navy" data-quarter="q3" onclick="openOsirQuarter('q3')">3 кв</button>
+          <button class="osir-pill osir-pill--navy" data-quarter="q4" onclick="openOsirQuarter('q4')">4 кв</button>
+          <button class="osir-pill osir-pill--orange" data-quarter="total" onclick="openOsirQuarter('total')">ИТОГО</button>
+          <!-- Строка 2 — "Оценено" -->
+          <div class="osir-cell osir-lbl">Оценено</div>
+          <div class="osir-cell osir-val" data-row="evaluated" data-quarter="q1">-</div>
+          <div class="osir-cell osir-val" data-row="evaluated" data-quarter="q2">-</div>
+          <div class="osir-cell osir-val" data-row="evaluated" data-quarter="q3">-</div>
+          <div class="osir-cell osir-val" data-row="evaluated" data-quarter="q4">-</div>
+          <div class="osir-cell osir-val" data-row="evaluated" data-quarter="total">-</div>
+          <!-- Строка 3 — "Достигло цели" -->
+          <div class="osir-cell osir-lbl">Достигло цели</div>
+          <div class="osir-cell osir-val" data-row="achieved" data-quarter="q1">-</div>
+          <div class="osir-cell osir-val" data-row="achieved" data-quarter="q2">-</div>
+          <div class="osir-cell osir-val" data-row="achieved" data-quarter="q3">-</div>
+          <div class="osir-cell osir-val" data-row="achieved" data-quarter="q4">-</div>
+          <div class="osir-cell osir-val" data-row="achieved" data-quarter="total">-</div>
+          <!-- Строка 4 — "Достигло н. цели" -->
+          <div class="osir-cell osir-lbl">Достигло н. цели</div>
+          <div class="osir-cell osir-val" data-row="notAchieved" data-quarter="q1">-</div>
+          <div class="osir-cell osir-val" data-row="notAchieved" data-quarter="q2">-</div>
+          <div class="osir-cell osir-val" data-row="notAchieved" data-quarter="q3">-</div>
+          <div class="osir-cell osir-val" data-row="notAchieved" data-quarter="q4">-</div>
+          <div class="osir-cell osir-val" data-row="notAchieved" data-quarter="total">-</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="statistics-footer">
+    <button class="screen-back-btn" onclick="backFromStatistics()">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: БАРЬЕРЫ В ПК (список из статистики) ===== -->
+<div class="screen" id="screen-barriers-in-pk">
+  <div class="bpk-in-pk-title">Барьеры каркаса безопасности<br>включенные в производственный контракт <span id="bpk-in-pk-title-year"></span></div>
+  <div class="bpk-in-pk-list-wrap">
+    <table class="bpk-in-pk-table">
+      <colgroup>
+        <col class="bpk-in-pk-col-num">
+        <col class="bpk-in-pk-col-barrier">
+        <col class="bpk-in-pk-col-applicable">
+        <col class="bpk-in-pk-col-goal">
+        <col class="bpk-in-pk-col-stretch">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>№</th>
+          <th>Барьер</th>
+          <th>Применимо<br>в КС</th>
+          <th>Цель<br>%</th>
+          <th>Н. цель<br>%</th>
+        </tr>
+      </thead>
+      <tbody id="bpk-in-pk-tbody"></tbody>
+    </table>
+  </div>
+  <div class="bpk-in-pk-footer">
+    <button class="screen-back-btn" onclick="backFromBarriersInPK()">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: ОЦЕНКА ФОКУСНЫХ НАБОРОВ БАРЬЕРОВ (по кварталу) ===== -->
+<div class="screen" id="screen-osir-quarter">
+  <div class="osirq-title">Оценка фокусных наборов барьеров<br><span id="osirq-title-line2"></span></div>
+  <div class="osirq-wrap">
+    <table class="osirq-table">
+      <colgroup>
+        <col class="osirq-col-num">
+        <col class="osirq-col-barrier">
+        <col class="osirq-col-goal">
+        <col class="osirq-col-stretch">
+        <col class="osirq-col-eval">
+        <col class="osirq-col-work">
+        <col class="osirq-col-pct">
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="osirq-flat-th">№</th>
+          <th class="osirq-flat-th">Барьер</th>
+          <th><span class="osirq-hd">Цель, %</span></th>
+          <th><span class="osirq-hd">Н. цель, %</span></th>
+          <th><span class="osirq-hd-multi"><span class="osirq-hd">Оценено</span><span class="osirq-hd">барьеров</span></span></th>
+          <th><span class="osirq-hd-multi"><span class="osirq-hd">Работоспособные</span><span class="osirq-hd">барьеры</span></span></th>
+          <th><span class="osirq-hd-multi"><span class="osirq-hd">Работоспособность</span><span class="osirq-hd">барьеров</span></span></th>
+        </tr>
+      </thead>
+      <tbody id="osirq-tbody"></tbody>
+    </table>
+  </div>
+  <div class="osirq-footer">
+    <button class="screen-back-btn" onclick="backFromOsirQuarter()">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN: ПРОВЕРКИ БАРЬЕРА В ПЕРИОД (из оценки фокусных наборов) ===== -->
+<div class="screen" id="screen-osirq-checks">
+  <div class="list-filter-head">
+    <table class="find-table find-filter-table">
+      <colgroup>
+        <col style="width:22%"><col style="width:28%"><col style="width:28%"><col style="width:22%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th><button class="th-col-btn" type="button"><span>Дата<br>проверки</span></button></th>
+          <th><button class="th-col-btn" type="button"><span>Проверяющий</span></button></th>
+          <th><button class="th-col-btn" type="button"><span>Проверяемый</span></button></th>
+          <th><button class="th-col-btn" type="button"><span>Барьер</span></button></th>
+        </tr>
+      </thead>
+    </table>
+  </div>
+  <div class="find-list-wrap">
+    <table class="find-table find-body-table">
+      <colgroup>
+        <col style="width:22%"><col style="width:28%"><col style="width:28%"><col style="width:22%">
+      </colgroup>
+      <tbody id="osirq-checks-tbody"></tbody>
+    </table>
+  </div>
+  <div class="find-bottom">
+    <div class="find-count" id="osirq-checks-count">0<br>проверок</div>
+    <button class="find-bottom-btn find-btn-cancel" onclick="backFromOsirqChecks()">Назад</button>
+    <div class="find-violation-count" id="osirq-checks-violation-count">0<br>нарушений</div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: ЗАПАС ПРОЧНОСТИ (по году) ===== -->
+<div class="screen" id="screen-osirq-zapas">
+  <div class="osirq-title">Запас прочности барьеров, применимых в КС<br>и включенных в производственный контракт</div>
+  <div class="osirq-wrap">
+    <table class="osirq-table">
+      <colgroup>
+        <col class="osirq-col-num">
+        <col class="osirq-col-barrier">
+        <col class="osirq-col-goal">
+        <col class="osirq-col-stretch">
+        <col class="osirq-col-eval">
+        <col class="osirq-col-work">
+        <col class="osirq-col-pct">
+        <col class="osirq-col-mgoal">
+        <col class="osirq-col-mstretch">
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="osirq-flat-th">№</th>
+          <th class="osirq-flat-th">Барьер</th>
+          <th><span class="osirq-hd">Цель, %</span></th>
+          <th><span class="osirq-hd">Н. цель, %</span></th>
+          <th><span class="osirq-hd-multi"><span class="osirq-hd">Оценено</span><span class="osirq-hd">барьеров</span></span></th>
+          <th><span class="osirq-hd-multi"><span class="osirq-hd">Работоспособные</span><span class="osirq-hd">барьеры</span></span></th>
+          <th><span class="osirq-hd-multi"><span class="osirq-hd">Работоспособность</span><span class="osirq-hd">барьеров</span></span></th>
+          <th><span class="osirq-hd-multi"><span class="osirq-hd">Запас оценок</span><span class="osirq-hd">до цели</span></span></th>
+          <th><span class="osirq-hd-multi"><span class="osirq-hd">Запас оценок</span><span class="osirq-hd">до н. цели</span></span></th>
+        </tr>
+      </thead>
+      <tbody id="osirq-zapas-tbody"></tbody>
+    </table>
+  </div>
+  <div class="osirq-footer">
+    <button class="screen-back-btn" onclick="backFromOsirqZapas()">Назад</button>
+  </div>
+</div>
+
 <!-- ===== OVERLAY: ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ ПРОВЕРКИ ===== -->
 <div class="overlay" id="overlay-delete-record">
   <div class="overlay-box">
@@ -3691,7 +4092,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-export-format', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-card-photo', 'screen-card-camera', 'screen-card-camera-preview', 'screen-barriers-years', 'screen-barriers-list', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios', 'screen-install-android'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-export-format', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-card-photo', 'screen-card-camera', 'screen-card-camera-preview', 'screen-barriers-years', 'screen-barriers-list', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios', 'screen-install-android', 'screen-statistics', 'screen-barriers-in-pk', 'screen-osir-quarter', 'screen-osirq-checks', 'screen-osirq-zapas'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -4005,11 +4406,12 @@ var drums = {};
 // Narrow detail card on Windows desktop
 if (/Windows/.test(navigator.userAgent)) document.documentElement.classList.add('is-win');
 
-var detailSource = 'find'; // 'find' | 'lobby' | 'corrective' | 'sokb'
+var detailSource = 'find'; // 'find' | 'lobby' | 'corrective' | 'sokb' | 'osirqChecks'
 function closeDetail() {
   if (detailSource === 'lobby') showScreen('screen-lobby');
   else if (detailSource === 'corrective') showScreen('screen-corrective-list');
   else if (detailSource === 'sokb') showScreen('screen-sokb-list');
+  else if (detailSource === 'osirqChecks') showScreen('screen-osirq-checks');
   else showScreen('screen-find');
 }
 
@@ -4501,9 +4903,619 @@ function openProverki() {
 function openMeropr() {
   gateAccess('session', function() { showScreen('screen-meropr-menu'); });
 }
+// ===== СТАТИСТИКА =====
+var _statisticsYear = new Date().getFullYear();
+var _statisticsCurrentQuarter = 'osir';
+
 function openStat() {
-  gateAccess('session', function() { alert('Раздел «Статистика» — в разработке'); });
+  gateAccess('session', function() {
+    _statisticsYear = new Date().getFullYear();
+    _statisticsCurrentQuarter = 'osir';
+    updateStatisticsYearButton();
+    renderStatisticsData();
+    showScreen('screen-statistics');
+  });
 }
+
+function updateStatisticsYearButton() {
+  var btn = document.getElementById('statistics-year-label');
+  if (btn) btn.textContent = _statisticsYear;
+}
+
+function openStatisticsYearOverlay() {
+  var years = getAvailableYears().map(function(y) { return String(y); });
+  if (!years.length) return;
+  openDrumOverlay('Выберите год', [
+    { id: 'year', items: years, value: String(_statisticsYear), minWidth: 120 }
+  ], function(dr) {
+    var year = parseInt(dr['year'].getValue(), 10);
+    if (isNaN(year)) return;
+    _statisticsYear = year;
+    updateStatisticsYearButton();
+    renderStatisticsData();
+  });
+}
+
+function getAvailableYears() {
+  var years = {};
+  appState.db.forEach(function(rec) {
+    var dateCheck = rec.dateCheck || rec.date_check || '';
+    if (dateCheck) {
+      var year = parseInt(dateCheck.split('.')[2], 10);
+      if (!isNaN(year)) years[year] = true;
+    }
+  });
+  var result = Object.keys(years).map(function(y) { return parseInt(y, 10); }).sort(function(a, b) { return a - b; });
+  if (result.length === 0) result.push(new Date().getFullYear());
+  return result;
+}
+
+function switchOsirTab(btn, quarter) {
+  var pills = document.querySelectorAll('.osir-pill');
+  pills.forEach(function(p) { p.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  _statisticsCurrentQuarter = quarter;
+  renderStatisticsData();
+}
+
+// Образец текста, задающий ширину числовых колонок («999 (100%)»). Сам текст
+// нигде не выводится — только замеряется, чтобы значения не переносились.
+function measureOsirColWidth() {
+  var probe = document.getElementById('osir-measure-probe');
+  if (!probe) {
+    probe = document.createElement('span');
+    probe.id = 'osir-measure-probe';
+    probe.className = 'osir-measure';
+    probe.textContent = '999 (100%)';
+    document.body.appendChild(probe);
+  }
+  return probe.offsetWidth;
+}
+
+function renderStatisticsData() {
+  var grid = document.getElementById('statistics-osir-grid');
+  if (!grid) return;
+  // Ширина числовых колонок = фактической ширине текста «999 (100%)»
+  // при текущем шрифте ячеек; колонки 2-6 единообразны.
+  var w = measureOsirColWidth();
+  if (w > 0) grid.style.setProperty('--osir-col-w', (w + 2) + 'px');
+
+  var quarters = ['q1', 'q2', 'q3', 'q4', 'total'];
+  var rows = [
+    { row: 'evaluated',   key: 'evaluated' },
+    { row: 'achieved',    key: 'achievedGoal' },
+    { row: 'notAchieved', key: 'notAchievedGoal' },
+  ];
+  quarters.forEach(function(q) {
+    var data = calculateStatisticsForQuarter(_statisticsYear, q);
+    rows.forEach(function(rdef) {
+      var cell = grid.querySelector('.osir-val[data-quarter="' + q + '"][data-row="' + rdef.row + '"]');
+      if (!cell) return;
+      var v = data && data[rdef.key];
+      cell.textContent = (v == null || v === '') ? '-' : v;
+    });
+  });
+}
+
+function calculateStatisticsForQuarter(year, quarter) {
+  var org = osirPillValue() || 'ОСИР';
+  var rows = osirqPeriodRows(year, quarter, org);
+  var evaluated = rows.length;
+  if (!evaluated) return { evaluated: '-', achievedGoal: '-', notAchievedGoal: '-' };
+  // Заливка «orange» (между целью и напряжённой целью) + без заливки (достигло
+  // напряжённой цели) = «Достигло цели»; без заливки = «Достигло н. цели».
+  var achievedGoal = rows.filter(function(rw) { return rw.fill !== 'red'; }).length;
+  var notAchievedGoal = rows.filter(function(rw) { return rw.fill === ''; }).length;
+  function fmt(n) {
+    var p = Math.round(n * 100 / evaluated);
+    return n + ' (' + p + '%)';
+  }
+  return {
+    evaluated: String(evaluated),
+    achievedGoal: fmt(achievedGoal),
+    notAchievedGoal: fmt(notAchievedGoal)
+  };
+}
+
+function openBarriersInPK() {
+  renderBarriersInPKTable();
+  showScreen('screen-barriers-in-pk');
+}
+
+function backFromBarriersInPK() {
+  showScreen('screen-statistics');
+}
+
+function measureBpkInPKText(text) {
+  var probe = document.getElementById('bpk-in-pk-measure-probe');
+  if (!probe) {
+    probe = document.createElement('span');
+    probe.id = 'bpk-in-pk-measure-probe';
+    probe.style.cssText = 'position:absolute;left:-9999px;top:-9999px;visibility:hidden;white-space:nowrap;font-size:12px;font-weight:700;';
+    document.body.appendChild(probe);
+  }
+  probe.textContent = text;
+  return probe.offsetWidth;
+}
+
+function renderBarriersInPKTable() {
+  var year = String(_statisticsYear);
+  var list = getBarriersForYear(year).filter(function(b) { return !!b.inPK; });
+  var tbody = document.getElementById('bpk-in-pk-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  var titleYear = document.getElementById('bpk-in-pk-title-year');
+  if (titleYear) titleYear.textContent = year;
+
+  var colNum = document.querySelector('#screen-barriers-in-pk col.bpk-in-pk-col-num');
+  var colApplicable = document.querySelector('#screen-barriers-in-pk col.bpk-in-pk-col-applicable');
+  var colGoal = document.querySelector('#screen-barriers-in-pk col.bpk-in-pk-col-goal');
+  var colStretch = document.querySelector('#screen-barriers-in-pk col.bpk-in-pk-col-stretch');
+  var wNum = measureBpkInPKText('999') + 8;
+  var wApplicable = measureBpkInPKText('Применимо') + 8;
+  var wGoal = measureBpkInPKText('99999999') + 8;
+  var wStretch = measureBpkInPKText('99999999') + 8;
+  if (colNum) colNum.style.width = wNum + 'px';
+  if (colApplicable) colApplicable.style.width = wApplicable + 'px';
+  if (colGoal) colGoal.style.width = wGoal + 'px';
+  if (colStretch) colStretch.style.width = wStretch + 'px';
+
+  list.forEach(function(b, idx) {
+    var tr = document.createElement('tr');
+    var applicable = (!!b.inPK && b.show !== false) ? 'Да' : '';
+    tr.innerHTML =
+      '<td class="bpk-in-pk-td-num">' + (idx + 1) + '</td>' +
+      '<td class="bpk-in-pk-td-barrier">' + esc(b.name || '') + '</td>' +
+      '<td class="bpk-in-pk-td-center">' + applicable + '</td>' +
+      '<td class="bpk-in-pk-td-center">' + esc(barrierGoalPctValue(b)) + '</td>' +
+      '<td class="bpk-in-pk-td-center">' + esc(barrierStretchGoalPctValue(b)) + '</td>';
+    tbody.appendChild(tr);
+    findPassportBarrierForName(b.name).then(function(match) {
+      if (match) {
+        tr.style.cursor = 'pointer';
+        tr.onclick = function() { openBarrierChecklistFromBarriersInPK(b.name); };
+      }
+    });
+  });
+}
+
+function openBarrierChecklistFromBarriersInPK(barrierName) {
+  if (!barrierName) return;
+  findPassportBarrierForName(barrierName).then(function(match) {
+    if (!match) return;
+    _passportChecklistReturnScreen = 'screen-barriers-in-pk';
+    _passportActive = { data: match.data, year: _statisticsYear, label: '' };
+    _passportChecklistIdx = match.barrierIdx;
+    if (!showScreen('screen-passport-checklist')) return;
+    renderPassportChecklistScreen(match.barrier);
+  });
+}
+
+function openZapasPruchnosti() {
+  renderOsirqZapasScreen();
+  showScreen('screen-osirq-zapas');
+}
+
+function backFromOsirqZapas() {
+  showScreen('screen-statistics');
+}
+
+// Запас в столбцах 8/9. Считаем в терминах отображаемого процента (округление до
+// целого, как в столбце 7 и как в цветовой логике строк): цель g считается
+// достигнутой, когда Math.round(100*работоспособные/оценено) >= g.
+// Отрицательный запас = сколько подряд УСПЕШНЫХ проверок нужно, чтобы дойти до цели.
+// Положительный запас = сколько подряд проверок с нарушениями можно допустить,
+//   не опустившись ниже цели.
+// Возвращает число (n<0 — нехватка, n>0 — запас, 0 — на границе) либо null, если цели нет.
+function osirqMarginValue(W, E, goal) {
+  if (goal == null || goal === '' || isNaN(parseFloat(String(goal).replace(',', '.')))) return null;
+  if (E <= 0) return 0; // проверок не было
+  var g = parseFloat(String(goal).replace(',', '.'));
+  if (!(g > 0) || g > 100) return null;
+  var thr = g - 0.5; // порог точного % для округлённого отображения >= g
+  // Нужно успешных: (W+N)/(E+N)*100 >= thr  =>  N >= ((thr)*E - 100W)/(100 - thr)
+  var needNum = thr * E - 100 * W;
+  var needDen = 100 - thr;
+  var need = 0;
+  if (needNum > 1e-9) need = Math.max(0, Math.ceil(needNum / needDen - 1e-9));
+  if (need > 0) return -need;
+  // Допустимо с нарушениями: W/(E+F)*100 >= thr  =>  F <= 100W/thr - E
+  var slack = Math.floor(100 * W / thr - E + 1e-9);
+  if (slack > 0) return slack;
+  return 0;
+}
+
+function osirqMarginText(W, E, goal) {
+  var v = osirqMarginValue(W, E, goal);
+  if (v === null || !isFinite(v)) return { text: '', cls: '' };
+  if (v < 0) return { text: String(v), cls: ' osirq-td-marg-neg' };
+  if (v > 0) return { text: '+' + v, cls: ' osirq-td-marg-pos' };
+  return { text: '0', cls: '' };
+}
+
+function renderOsirqZapasScreen() {
+  var year = _statisticsYear;
+  var org = osirPillValue() || 'ОСИР';
+
+  var tbody = document.getElementById('osirq-zapas-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  var colNum = document.querySelector('#screen-osirq-zapas col.osirq-col-num');
+  var colGoal = document.querySelector('#screen-osirq-zapas col.osirq-col-goal');
+  var colStretch = document.querySelector('#screen-osirq-zapas col.osirq-col-stretch');
+  var colEval = document.querySelector('#screen-osirq-zapas col.osirq-col-eval');
+  var colWork = document.querySelector('#screen-osirq-zapas col.osirq-col-work');
+  var colPct = document.querySelector('#screen-osirq-zapas col.osirq-col-pct');
+  var colMGoal = document.querySelector('#screen-osirq-zapas col.osirq-col-mgoal');
+  var colMStretch = document.querySelector('#screen-osirq-zapas col.osirq-col-mstretch');
+  var wNum = osirqMeasureText('999') + 8;
+  var wVal = osirqMeasureText('99999') + 8;
+  if (colNum) colNum.style.width = wNum + 'px';
+  if (colGoal) colGoal.style.width = wVal + 'px';
+  if (colStretch) colStretch.style.width = wVal + 'px';
+  if (colEval) colEval.style.width = wVal + 'px';
+  if (colWork) colWork.style.width = wVal + 'px';
+  if (colPct) colPct.style.width = wVal + 'px';
+  if (colMGoal) colMGoal.style.width = wVal + 'px';
+  if (colMStretch) colMStretch.style.width = wVal + 'px';
+
+  // Статистика за весь год (как ИТОГО).
+  var checked = osirqPeriodRows(year, 'total', org);
+  var cfg = getBarriersForYear(year) || [];
+  // Барьеры производственного контракта, применимые в КС (окно «Барьеры в ПК»).
+  var contractApplicable = cfg.filter(function(b) { return !!b.inPK && b.show !== false; });
+
+  function rowMatches(aName, bName) {
+    if (!aName || !bName) return false;
+    if (normalizeBarrierKey(aName) === normalizeBarrierKey(bName)) return true;
+    return osirqBarrierMatchesConfigName(aName, bName);
+  }
+
+  var rows = [];
+  var usedCfg = [];
+  checked.forEach(function(rw) {
+    rows.push({
+      barrier: rw.barrier,
+      evaluated: rw.evaluated,
+      working: rw.working,
+      pct: rw.pct,
+      goalVal: rw.goalVal,
+      stretchVal: rw.stretchVal
+    });
+    for (var i = 0; i < contractApplicable.length; i++) {
+      if (!usedCfg[i] && rowMatches(rw.barrier, contractApplicable[i].name)) usedCfg[i] = true;
+    }
+  });
+
+  contractApplicable.forEach(function(b, idx) {
+    if (usedCfg[idx]) return;
+    rows.push({
+      barrier: b.name,
+      evaluated: 0,
+      working: 0,
+      pct: 100,
+      goalVal: barrierGoalPctValue(b),
+      stretchVal: barrierStretchGoalPctValue(b)
+    });
+  });
+
+  rows.sort(function(a, b) {
+    var oa = osirqConfigOrderIndex(year, a.barrier);
+    var ob = osirqConfigOrderIndex(year, b.barrier);
+    if (oa !== ob) return oa - ob;
+    return a.barrier < b.barrier ? -1 : (a.barrier > b.barrier ? 1 : 0);
+  });
+
+  rows.forEach(function(rw, idx) {
+    var pct = rw.pct;
+    var goalNum = parseFloat(String(rw.goalVal).replace(',', '.'));
+    var stretchNum = parseFloat(String(rw.stretchVal).replace(',', '.'));
+    var fill = '';
+    if (!isNaN(goalNum)) {
+      if (pct < goalNum) {
+        fill = ' osirq-row-red';
+      } else if (!isNaN(stretchNum) && pct >= goalNum && pct < stretchNum) {
+        fill = ' osirq-row-orange';
+      }
+    }
+    var mg = osirqMarginText(rw.working, rw.evaluated, rw.goalVal);
+    var ms = osirqMarginText(rw.working, rw.evaluated, rw.stretchVal);
+    var tr = document.createElement('tr');
+    tr.className = fill;
+    tr.innerHTML =
+      '<td class="osirq-td-num">' + (idx + 1) + '</td>' +
+      '<td class="osirq-td-barrier">' + esc(rw.barrier) + '</td>' +
+      '<td class="osirq-td-center">' + esc(rw.goalVal) + '</td>' +
+      '<td class="osirq-td-center">' + esc(rw.stretchVal) + '</td>' +
+      '<td class="osirq-td-center">' + rw.evaluated + '</td>' +
+      '<td class="osirq-td-center">' + rw.working + '</td>' +
+      '<td class="osirq-td-pct">' + pct + '%</td>' +
+      '<td class="osirq-td-marg' + mg.cls + '">' + mg.text + '</td>' +
+      '<td class="osirq-td-marg' + ms.cls + '">' + ms.text + '</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function backFromStatistics() {
+  showScreen('screen-lobby');
+}
+
+// ===== ОЦЕНКА ФОКУСНЫХ НАБОРОВ БАРЬЕРОВ (по кварталу) =====
+var _osirQuarter = 'q1';
+var _statisticsOsirOrg = '';
+
+function osirPillEl() {
+  return document.querySelector('.osir-pill[data-quarter="osir"]');
+}
+
+function osirPillValue() {
+  if (_statisticsOsirOrg) return _statisticsOsirOrg;
+  var p = osirPillEl();
+  return p ? String(p.textContent || '').trim() : 'ОСИР';
+}
+
+function setOsirPillValue(val) {
+  val = String(val || '').trim();
+  if (!val) return;
+  _statisticsOsirOrg = val;
+  var p = osirPillEl();
+  if (p) p.textContent = val;
+}
+
+// Проверяющие организации, у которых есть проверки в выбранном году.
+function osirOrgOptionsForYear(year) {
+  var seen = {};
+  (appState.db || []).forEach(function(r) {
+    if (!r) return;
+    var dc = normalizeDateStr(r.dateCheck);
+    if (!dc) return;
+    var parts = dc.split('.');
+    if (parts.length !== 3) return;
+    if (parseInt(parts[2], 10) !== year) return;
+    var m = String(r.method || '').trim();
+    if (!m) return;
+    seen[m] = true;
+  });
+  var list = Object.keys(seen).sort(function(a, b) { return a.localeCompare(b, 'ru'); });
+  return list;
+}
+
+function openOsirOrgOverlay() {
+  var year = _statisticsYear;
+  var orgs = osirOrgOptionsForYear(year);
+  if (!orgs.length) { alert('В ' + year + ' году нет проверок по организациям'); return; }
+  var current = osirPillValue();
+  if (orgs.indexOf(current) < 0) current = orgs[0];
+  openDrumOverlay('Выберите проверяющую организацию', [
+    { id: 'osirOrg', items: orgs, value: current, fullWidth: true, widthFactor: 0.9, leftAlign: true }
+  ], function(d) {
+    var val = d['osirOrg'].getValue();
+    if (!val) return;
+    setOsirPillValue(val);
+    renderStatisticsData();
+  });
+}
+
+function osirQuarterLabel(q) {
+  if (q === 'total') return 'ИТОГО ';
+  var n = { q1: '1', q2: '2', q3: '3', q4: '4' }[q];
+  return n ? (n + ' квартал ') : '';
+}
+
+function openOsirQuarter(quarter) {
+  _osirQuarter = quarter || 'q1';
+  renderOsirQuarterScreen();
+  showScreen('screen-osir-quarter');
+}
+
+function backFromOsirQuarter() {
+  showScreen('screen-statistics');
+}
+
+function osirQuarterMonths(quarter) {
+  if (quarter === 'q1') return [1, 2, 3];
+  if (quarter === 'q2') return [4, 5, 6];
+  if (quarter === 'q3') return [7, 8, 9];
+  if (quarter === 'q4') return [10, 11, 12];
+  return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; // total
+}
+
+function osirqRoundPct(work, total) {
+  if (!total) return 0;
+  var p = Math.round(work * 100 / total);
+  return Math.max(0, Math.min(100, p));
+}
+
+function osirqBarrierMatchesConfigName(barrier, cfgName) {
+  if (!barrier || !cfgName) return false;
+  if (barrier === cfgName) return true;
+  if (normalizeBarrierKey(barrier) === normalizeBarrierKey(cfgName)) return true;
+  var s = stripPkBarrierVariantSuffix(barrier);
+  if (s !== String(barrier || '').trim()) {
+    if (normalizeBarrierKey(s) === normalizeBarrierKey(cfgName)) return true;
+    if (normalizeBarrierKey(s + '.') === normalizeBarrierKey(cfgName)) return true;
+  }
+  return false;
+}
+
+function osirqConfigForBarrier(year, barrier) {
+  var list = getBarriersForYear(year) || [];
+  for (var i = 0; i < list.length; i++) {
+    if (osirqBarrierMatchesConfigName(barrier, list[i].name)) return list[i];
+  }
+  return null;
+}
+
+function osirqConfigOrderIndex(year, barrier) {
+  var list = getBarriersForYear(year) || [];
+  for (var i = 0; i < list.length; i++) {
+    if (osirqBarrierMatchesConfigName(barrier, list[i].name)) return i;
+  }
+  return list.length;
+}
+
+// Строки «оценки фокусных наборов» для периода: те же строки, что выводятся в окне квартала.
+function osirqPeriodRows(year, quarter, org) {
+  var months = {};
+  osirQuarterMonths(quarter).forEach(function(m) { months[m] = true; });
+  var stats = {};
+  (appState.db || []).forEach(function(r) {
+    if (!r) return;
+    var dc = normalizeDateStr(r.dateCheck);
+    if (!dc) return;
+    var parts = dc.split('.');
+    if (parts.length !== 3) return;
+    if (parseInt(parts[2], 10) !== year) return;
+    if (!months[parseInt(parts[1], 10)]) return;
+    if (String(r.method || '').trim() !== org) return;
+    var barrier = String(r.barrier || '').trim();
+    if (!barrier) return;
+    if (!stats[barrier]) stats[barrier] = { evaluated: 0, working: 0 };
+    stats[barrier].evaluated++;
+    if (r.works === 'Да') stats[barrier].working++;
+  });
+  var names = Object.keys(stats);
+  names.sort(function(a, b) {
+    var oa = osirqConfigOrderIndex(year, a);
+    var ob = osirqConfigOrderIndex(year, b);
+    if (oa !== ob) return oa - ob;
+    return a < b ? -1 : (a > b ? 1 : 0);
+  });
+  return names.map(function(barrier) {
+    var st = stats[barrier];
+    var pct = osirqRoundPct(st.working, st.evaluated);
+    var cfg = osirqConfigForBarrier(year, barrier);
+    var goalVal = cfg ? barrierGoalPctValue(cfg) : '';
+    var stretchVal = cfg ? barrierStretchGoalPctValue(cfg) : '';
+    var goalNum = parseFloat(String(goalVal).replace(',', '.'));
+    var stretchNum = parseFloat(String(stretchVal).replace(',', '.'));
+    var fill = '';
+    if (!isNaN(goalNum)) {
+      if (pct < goalNum) {
+        fill = 'red';
+      } else if (!isNaN(stretchNum) && pct >= goalNum && pct < stretchNum) {
+        fill = 'orange';
+      }
+    }
+    return { barrier: barrier, evaluated: st.evaluated, working: st.working, pct: pct, goalVal: goalVal, stretchVal: stretchVal, fill: fill };
+  });
+}
+
+function osirqMeasureText(text) {
+  var probe = document.getElementById('osirq-measure-probe');
+  if (!probe) {
+    probe = document.createElement('span');
+    probe.id = 'osirq-measure-probe';
+    probe.style.cssText = 'position:absolute;left:-9999px;top:-9999px;visibility:hidden;white-space:nowrap;font-size:12px;font-weight:700;';
+    document.body.appendChild(probe);
+  }
+  probe.textContent = text;
+  return probe.offsetWidth;
+}
+
+function renderOsirQuarterScreen() {
+  var year = _statisticsYear;
+  var quarter = _osirQuarter;
+  var org = osirPillValue() || 'ОСИР';
+
+  var titleEl = document.getElementById('osirq-title-line2');
+  if (titleEl) titleEl.textContent = osirQuarterLabel(quarter) + year;
+
+  var tbody = document.getElementById('osirq-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  // Column widths: col1 = "999", cols 3-7 = "9999", col2 (barrier) takes the rest.
+  var colNum = document.querySelector('#screen-osir-quarter col.osirq-col-num');
+  var colGoal = document.querySelector('#screen-osir-quarter col.osirq-col-goal');
+  var colStretch = document.querySelector('#screen-osir-quarter col.osirq-col-stretch');
+  var colEval = document.querySelector('#screen-osir-quarter col.osirq-col-eval');
+  var colWork = document.querySelector('#screen-osir-quarter col.osirq-col-work');
+  var colPct = document.querySelector('#screen-osir-quarter col.osirq-col-pct');
+  var wNum = osirqMeasureText('999') + 8;
+  var wVal = osirqMeasureText('99999') + 8;
+  if (colNum) colNum.style.width = wNum + 'px';
+  if (colGoal) colGoal.style.width = wVal + 'px';
+  if (colStretch) colStretch.style.width = wVal + 'px';
+  if (colEval) colEval.style.width = wVal + 'px';
+  if (colWork) colWork.style.width = wVal + 'px';
+  if (colPct) colPct.style.width = wVal + 'px';
+
+  var rows = osirqPeriodRows(year, quarter, org);
+  rows.forEach(function(rw, idx) {
+    var fillCls = rw.fill === 'red' ? ' osirq-row-red' : (rw.fill === 'orange' ? ' osirq-row-orange' : '');
+    var tr = document.createElement('tr');
+    tr.className = fillCls;
+    tr.innerHTML =
+      '<td class="osirq-td-num">' + (idx + 1) + '</td>' +
+      '<td class="osirq-td-barrier">' + esc(rw.barrier) + '</td>' +
+      '<td class="osirq-td-center">' + esc(rw.goalVal) + '</td>' +
+      '<td class="osirq-td-center">' + esc(rw.stretchVal) + '</td>' +
+      '<td class="osirq-td-center">' + rw.evaluated + '</td>' +
+      '<td class="osirq-td-center">' + rw.working + '</td>' +
+      '<td class="osirq-td-pct">' + rw.pct + '%</td>';
+    tr.style.cursor = 'pointer';
+    tr.onclick = (function(bname) {
+      return function() { openOsirqChecks(bname); };
+    })(rw.barrier);
+    tbody.appendChild(tr);
+  });
+}
+
+// Список проверок барьера за период (открывается из таблицы оценки фокусных наборов).
+function osirqChecksRecords(barrier) {
+  var year = _statisticsYear;
+  var quarter = _osirQuarter;
+  var org = osirPillValue() || 'ОСИР';
+  var months = {};
+  osirQuarterMonths(quarter).forEach(function(m) { months[m] = true; });
+  var out = [];
+  (appState.db || []).forEach(function(r) {
+    if (!r) return;
+    var dc = normalizeDateStr(r.dateCheck);
+    if (!dc) return;
+    var parts = dc.split('.');
+    if (parts.length !== 3) return;
+    if (parseInt(parts[2], 10) !== year) return;
+    if (!months[parseInt(parts[1], 10)]) return;
+    if (String(r.method || '').trim() !== org) return;
+    if (String(r.barrier || '').trim() !== String(barrier || '').trim()) return;
+    out.push(r);
+  });
+  return sortByDateCheckAsc(out);
+}
+
+function openOsirqChecks(barrier) {
+  var records = osirqChecksRecords(barrier);
+  var tbody = document.getElementById('osirq-checks-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  var viol = 0;
+  records.forEach(function(r) {
+    var tr = document.createElement('tr');
+    if (r.works === 'Нет') { tr.className = 'has-violation'; viol++; }
+    tr.innerHTML =
+      '<td>' + esc(r.dateCheck || '') + '</td>' +
+      '<td>' + esc(r.method || '') + '</td>' +
+      '<td>' + esc(r.org || '') + '</td>' +
+      '<td>' + esc(r.barrier || '') + '</td>';
+    tr.onclick = (function(rec) {
+      return function() { openDetail(rec, 'osirqChecks'); };
+    })(r);
+    tbody.appendChild(tr);
+  });
+  var countEl = document.getElementById('osirq-checks-count');
+  if (countEl) countEl.innerHTML = pluralProverka(records.length);
+  var violEl = document.getElementById('osirq-checks-violation-count');
+  if (violEl) violEl.innerHTML = viol + '<br>' + pluralNarushenie(viol);
+  showScreen('screen-osirq-checks');
+}
+
+function backFromOsirqChecks() {
+  showScreen('screen-osir-quarter');
+}
+
 function openSettings() {
   gateAccess('settings', function() {
     syncSettingsFromServer(function() { showScreen('screen-settings'); }, { force: !isSettingsDirty() });
@@ -6436,8 +7448,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v466';
-var APP_VERSION = '1.18';
+var APP_BUILD = 'pkb-v467';
+var APP_VERSION = '1.19';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
@@ -6453,6 +7465,7 @@ try {
 } catch (_e) {}
 var _passportActive = null;
 var _passportChecklistIdx = null;
+var _passportChecklistReturnScreen = 'screen-passport-detail';
 var _passportChecklistResizeBound = false;
 var _passportAppendixReturnScreen = 'screen-passport-detail';
 
@@ -6623,6 +7636,7 @@ function openPassportChecklist(barrierIdx) {
   var b = (_passportActive.data.barriers || [])[barrierIdx];
   if (!b) return;
   _passportChecklistIdx = barrierIdx;
+  _passportChecklistReturnScreen = 'screen-passport-detail';
   if (!showScreen('screen-passport-checklist')) {
     alert('Экран чек-листа недоступен. Полностью закройте и откройте приложение.');
     return;
@@ -6677,7 +7691,7 @@ function renderPassportChecklistScreen(barrier) {
 }
 
 function backFromPassportChecklist() {
-  showScreen('screen-passport-detail');
+  showScreen(_passportChecklistReturnScreen || 'screen-passport-detail');
 }
 
 function openPassportMub(barrierIdx) {
