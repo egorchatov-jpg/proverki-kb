@@ -1846,26 +1846,10 @@ html, body {
   display: flex; flex-direction: column; gap: 12px;
   width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden;
 }
-.statistics-osir-head-row {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; width: 100%;
-}
 .statistics-osir-header {
   font-size: calc(var(--osir-fs) * 15 / 13); font-weight: 700; color: #1a2035;
-  text-align: left; line-height: 1.3; flex: 1 1 auto; min-width: 0;
+  text-align: center; line-height: 1.3;
 }
-.osir-scope-btn {
-  flex: 0 0 auto;
-  background: var(--navy); color: #fff;
-  border: none; border-radius: 999px; cursor: pointer;
-  font-size: var(--osir-fs, 13px); font-weight: 700;
-  white-space: nowrap; padding: 0; text-align: center;
-  height: 28px; line-height: 28px;
-  box-sizing: border-box;
-  transition: opacity 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-.osir-scope-btn:active { opacity: 0.78; }
 /* Таблица без границ: 6 столбцов x 4 строки. Колонка 1 — по самой длинной
    надписи «Достигло н. цели»; столбцы 2-6 — по ширине значения «999 (100%)».
    Ширина текста-образца задана через span.osir-measure (невидим, только для
@@ -3081,10 +3065,7 @@ html, body {
 
       <!-- Плашка "Оценка ОСИР работоспособности фокусных наборов барьеров" -->
       <div class="statistics-osir-card">
-        <div class="statistics-osir-head-row">
-          <div class="statistics-osir-header">Оценка фокусных наборов барьеров</div>
-          <button class="osir-scope-btn" id="osir-scope-btn" onclick="toggleOsirScope()">ПК</button>
-        </div>
+        <div class="statistics-osir-header">Оценка фокусных наборов барьеров ПК</div>
 
         <!-- Таблица (без границ): 6 столбцов x 4 строки -->
         <div class="statistics-osir-grid" id="statistics-osir-grid">
@@ -3128,7 +3109,7 @@ html, body {
 
 <!-- ===== SCREEN: БАРЬЕРЫ В ПК (список из статистики) ===== -->
 <div class="screen" id="screen-barriers-in-pk">
-  <div class="bpk-in-pk-title">Барьеры каркаса безопасности<br>включенные в производственный контракт <span id="bpk-in-pk-title-year"></span></div>
+  <div class="bpk-in-pk-title">Барьеры каркаса безопасности<br>включенные в ПК <span id="bpk-in-pk-title-year"></span></div>
   <div class="bpk-in-pk-list-wrap">
     <table class="bpk-in-pk-table">
       <colgroup>
@@ -3143,8 +3124,8 @@ html, body {
           <th>№</th>
           <th>Барьер</th>
           <th>Применимо<br>в КС</th>
-          <th>Цель<br>%</th>
-          <th>Н. цель<br>%</th>
+          <th>Цель</th>
+          <th>Н. цель</th>
         </tr>
       </thead>
       <tbody id="bpk-in-pk-tbody"></tbody>
@@ -3173,8 +3154,8 @@ html, body {
         <tr>
           <th class="osirq-flat-th">№</th>
           <th class="osirq-flat-th">Барьер</th>
-          <th><span class="osirq-hd">Цель, %</span></th>
-          <th><span class="osirq-hd">Н. цель, %</span></th>
+          <th><span class="osirq-hd">Цель</span></th>
+          <th><span class="osirq-hd">Н. цель</span></th>
           <th><span class="osirq-hd-multi"><span class="osirq-hd">Оценено</span><span class="osirq-hd">барьеров</span></span></th>
           <th><span class="osirq-hd-multi"><span class="osirq-hd">Работоспособные</span><span class="osirq-hd">барьеры</span></span></th>
           <th><span class="osirq-hd-multi"><span class="osirq-hd">Работоспособность</span><span class="osirq-hd">барьеров</span></span></th>
@@ -3222,7 +3203,7 @@ html, body {
 
 <!-- ===== SCREEN: ЗАПАС ПРОЧНОСТИ (по году) ===== -->
 <div class="screen" id="screen-osirq-zapas">
-  <div class="osirq-title">Запас прочности барьеров, применимых в КС<br>и включенных в производственный контракт</div>
+  <div class="osirq-title">Запас прочности барьеров, применимых в КС<br>и включенных в ПК <span id="osirq-zapas-title-year"></span></div>
   <div class="osirq-wrap">
     <table class="osirq-table">
       <colgroup>
@@ -3240,8 +3221,8 @@ html, body {
         <tr>
           <th class="osirq-flat-th">№</th>
           <th class="osirq-flat-th">Барьер</th>
-          <th><span class="osirq-hd">Цель, %</span></th>
-          <th><span class="osirq-hd">Н. цель, %</span></th>
+          <th><span class="osirq-hd">Цель</span></th>
+          <th><span class="osirq-hd">Н. цель</span></th>
           <th><span class="osirq-hd-multi"><span class="osirq-hd">Оценено</span><span class="osirq-hd">барьеров</span></span></th>
           <th><span class="osirq-hd-multi"><span class="osirq-hd">Работоспособные</span><span class="osirq-hd">барьеры</span></span></th>
           <th><span class="osirq-hd-multi"><span class="osirq-hd">Работоспособность</span><span class="osirq-hd">барьеров</span></span></th>
@@ -4997,7 +4978,6 @@ function measureOsirColWidth() {
 }
 
 function renderStatisticsData() {
-  updateOsirScopeButton();
   var grid = document.getElementById('statistics-osir-grid');
   if (!grid) return;
   var card = grid.closest('.statistics-osir-card');
@@ -5114,8 +5094,8 @@ function renderBarriersInPKTable() {
       '<td class="bpk-in-pk-td-num">' + (idx + 1) + '</td>' +
       '<td class="bpk-in-pk-td-barrier">' + esc(b.name || '') + '</td>' +
       '<td class="bpk-in-pk-td-center">' + applicable + '</td>' +
-      '<td class="bpk-in-pk-td-center">' + esc(barrierGoalPctValue(b)) + '</td>' +
-      '<td class="bpk-in-pk-td-center">' + esc(barrierStretchGoalPctValue(b)) + '</td>';
+      '<td class="bpk-in-pk-td-center">' + esc(osirqPctVal(barrierGoalPctValue(b))) + '</td>' +
+      '<td class="bpk-in-pk-td-center">' + esc(osirqPctVal(barrierStretchGoalPctValue(b))) + '</td>';
     tbody.appendChild(tr);
     findPassportBarrierForName(b.name).then(function(match) {
       if (match) {
@@ -5183,6 +5163,9 @@ function osirqMarginText(W, E, goal) {
 function renderOsirqZapasScreen() {
   var year = _statisticsYear;
   var org = osirPillValue() || 'ОСИР';
+
+  var zapasTitleYear = document.getElementById('osirq-zapas-title-year');
+  if (zapasTitleYear) zapasTitleYear.textContent = year;
 
   var tbody = document.getElementById('osirq-zapas-tbody');
   if (!tbody) return;
@@ -5273,8 +5256,8 @@ function renderOsirqZapasScreen() {
     tr.innerHTML =
       '<td class="osirq-td-num">' + (idx + 1) + '</td>' +
       '<td class="osirq-td-barrier">' + esc(rw.barrier) + '</td>' +
-      '<td class="osirq-td-center">' + esc(rw.goalVal) + '</td>' +
-      '<td class="osirq-td-center">' + esc(rw.stretchVal) + '</td>' +
+      '<td class="osirq-td-center">' + esc(osirqPctVal(rw.goalVal)) + '</td>' +
+      '<td class="osirq-td-center">' + esc(osirqPctVal(rw.stretchVal)) + '</td>' +
       '<td class="osirq-td-center">' + rw.evaluated + '</td>' +
       '<td class="osirq-td-center">' + rw.working + '</td>' +
       '<td class="osirq-td-pct">' + pct + '%</td>' +
@@ -5291,44 +5274,9 @@ function backFromStatistics() {
 // ===== ОЦЕНКА ФОКУСНЫХ НАБОРОВ БАРЬЕРОВ (по кварталу) =====
 var _osirQuarter = 'q1';
 var _statisticsOsirOrg = '';
-// 'ПК' — только барьеры производственного контракта; 'Все' — все проверенные барьеры.
-var _statisticsOsirScope = 'ПК';
 
-function osirScopeBtnEl() {
-  return document.getElementById('osir-scope-btn');
-}
-
-function measureOsirScopeWidth() {
-  var probe = document.getElementById('osir-scope-measure');
-  if (!probe) {
-    probe = document.createElement('span');
-    probe.id = 'osir-scope-measure';
-    probe.className = 'osir-measure';
-    probe.textContent = '99999';
-    document.body.appendChild(probe);
-  }
-  probe.textContent = '99999';
-  return probe.offsetWidth;
-}
-
-function updateOsirScopeButton() {
-  var btn = osirScopeBtnEl();
-  if (!btn) return;
-  btn.textContent = _statisticsOsirScope;
-  // Ширина кнопки = длине текста «99999» при текущем шрифте плашки (в em, чтобы масштабировалась).
-  var px = measureOsirScopeWidth();
-  if (px > 0) btn.style.width = (px / 13) + 'em';
-}
-
-function toggleOsirScope() {
-  _statisticsOsirScope = (_statisticsOsirScope === 'ПК') ? 'Все' : 'ПК';
-  updateOsirScopeButton();
-  renderStatisticsData();
-}
-
-// Барьер входит в выборку при текущем режиме («ПК» — только контрактные барьеры).
+// Барьер входит в выборку только если он в производственном контракте (ПК).
 function osirqScopeAllows(year, barrier) {
-  if (_statisticsOsirScope !== 'ПК') return true;
   var cfg = osirqConfigForBarrier(year, barrier);
   return !!(cfg && cfg.inPK === true);
 }
@@ -5504,6 +5452,13 @@ function osirqMeasureText(text) {
   return probe.offsetWidth;
 }
 
+// Значение цели/н.цели с процентом: «100» → «100%», пусто → ''.
+function osirqPctVal(v) {
+  v = String(v == null ? '' : v).trim();
+  if (v === '') return '';
+  return v + '%';
+}
+
 function renderOsirQuarterScreen() {
   var year = _statisticsYear;
   var quarter = _osirQuarter;
@@ -5540,8 +5495,8 @@ function renderOsirQuarterScreen() {
     tr.innerHTML =
       '<td class="osirq-td-num">' + (idx + 1) + '</td>' +
       '<td class="osirq-td-barrier">' + esc(rw.barrier) + '</td>' +
-      '<td class="osirq-td-center">' + esc(rw.goalVal) + '</td>' +
-      '<td class="osirq-td-center">' + esc(rw.stretchVal) + '</td>' +
+      '<td class="osirq-td-center">' + esc(osirqPctVal(rw.goalVal)) + '</td>' +
+      '<td class="osirq-td-center">' + esc(osirqPctVal(rw.stretchVal)) + '</td>' +
       '<td class="osirq-td-center">' + rw.evaluated + '</td>' +
       '<td class="osirq-td-center">' + rw.working + '</td>' +
       '<td class="osirq-td-pct">' + rw.pct + '%</td>';
@@ -7538,8 +7493,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v468';
-var APP_VERSION = '1.20';
+var APP_BUILD = 'pkb-v469';
+var APP_VERSION = '1.21';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
