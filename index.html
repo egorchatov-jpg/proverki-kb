@@ -1838,38 +1838,58 @@ html, body {
 .statistics-section-btn:active { opacity: 0.78; }
 /* Плашка ОСИР — голубой фон, как у navy-оверлеев (напр. «Статус мероприятия»). */
 .statistics-osir-card {
+  --osir-fs: 13px;              /* базовый шрифт плашки; JS уменьшает, если не влезает */
   background: #eaf0fb;
   border-radius: var(--card-radius);
   border: 1px solid rgba(27,58,107,0.15);
   padding: 14px 12px;
   display: flex; flex-direction: column; gap: 12px;
+  width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden;
+}
+.statistics-osir-head-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; width: 100%;
 }
 .statistics-osir-header {
-  font-size: 15px; font-weight: 700; color: #1a2035;
-  text-align: center; line-height: 1.3;
+  font-size: calc(var(--osir-fs) * 15 / 13); font-weight: 700; color: #1a2035;
+  text-align: left; line-height: 1.3; flex: 1 1 auto; min-width: 0;
 }
+.osir-scope-btn {
+  flex: 0 0 auto;
+  background: var(--navy); color: #fff;
+  border: none; border-radius: 999px; cursor: pointer;
+  font-size: var(--osir-fs, 13px); font-weight: 700;
+  white-space: nowrap; padding: 0; text-align: center;
+  height: 28px; line-height: 28px;
+  box-sizing: border-box;
+  transition: opacity 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.osir-scope-btn:active { opacity: 0.78; }
 /* Таблица без границ: 6 столбцов x 4 строки. Колонка 1 — по самой длинной
    надписи «Достигло н. цели»; столбцы 2-6 — по ширине значения «999 (100%)».
    Ширина текста-образца задана через span.osir-measure (невидим, только для
-   размеров), чтобы реальные значения вида «999 (100%)» не переносились. */
+   размеров), чтобы реальные значения вида «999 (100%)» не переносились.
+   Все размеры в em — шрифт плашки меняется в fitOsirCard(). */
 .statistics-osir-grid {
   display: grid;
-  grid-template-columns: auto repeat(5, var(--osir-col-w, 76px));
-  column-gap: 4px;
-  row-gap: 6px;
+  grid-template-columns: auto repeat(5, var(--osir-col-em, 5.9em));
+  column-gap: 0.3em;
+  row-gap: 0.45em;
   align-items: center;
+  font-size: var(--osir-fs, 13px);
 }
 .osir-measure {
   position: absolute; left: -9999px; top: -9999px;
   visibility: hidden; white-space: nowrap;
-  font-size: 13px; font-weight: 700;
+  font-size: var(--osir-fs, 13px); font-weight: 700;
 }
 .osir-cell {
-  font-size: 13px; font-weight: 600;
+  font-size: 1em; font-weight: 600;
   color: #1a2035;
   white-space: nowrap;
   line-height: 1.2;
-  min-height: 18px;
+  min-height: 1.4em;
   display: flex; align-items: center;
 }
 .osir-lbl {
@@ -1885,13 +1905,13 @@ html, body {
 /* Капсульные кнопки-заголовки колонок */
 .osir-pill {
   display: flex; align-items: center; justify-content: center;
-  width: calc(100% - 6px);         /* отступ по 3px слева и справа от границ колонки */
-  margin: 0 3px;
-  height: 28px;
+  width: calc(100% - 0.4em);     /* отступ по ~0.2em слева и справа от границ колонки */
+  margin: 0 0.2em;
+  height: 2.15em;
   border: none; border-radius: 999px;
-  font-size: 13px; font-weight: 700;
+  font-size: 1em; font-weight: 700;
   cursor: pointer; box-shadow: none;
-  white-space: nowrap; padding: 0 4px;
+  white-space: nowrap; padding: 0 0.3em;
   box-sizing: border-box;
   transition: opacity 0.15s;
 }
@@ -3061,7 +3081,10 @@ html, body {
 
       <!-- Плашка "Оценка ОСИР работоспособности фокусных наборов барьеров" -->
       <div class="statistics-osir-card">
-        <div class="statistics-osir-header">Оценка фокусных наборов барьеров</div>
+        <div class="statistics-osir-head-row">
+          <div class="statistics-osir-header">Оценка фокусных наборов барьеров</div>
+          <button class="osir-scope-btn" id="osir-scope-btn" onclick="toggleOsirScope()">ПК</button>
+        </div>
 
         <!-- Таблица (без границ): 6 столбцов x 4 строки -->
         <div class="statistics-osir-grid" id="statistics-osir-grid">
@@ -4885,6 +4908,7 @@ function showScreen(id) {
   el.classList.add('active');
   syncScreenInert();
   if (prev && prev.id === 'screen-pin' && id !== 'screen-pin') setPinInputLocked(false);
+  if (id === 'screen-statistics') requestAnimationFrame(function() { fitOsirCard(); });
   var scrollEl = el.querySelector('.passport-detail-scroll, .passport-mub-scroll, .passport-appendix-scroll, .passport-checklist-scroll, .settings-screen-body');
   if (scrollEl) scrollEl.scrollTop = 0;
   return true;
@@ -4973,12 +4997,17 @@ function measureOsirColWidth() {
 }
 
 function renderStatisticsData() {
+  updateOsirScopeButton();
   var grid = document.getElementById('statistics-osir-grid');
   if (!grid) return;
+  var card = grid.closest('.statistics-osir-card');
+  var basePx = 13;
+  // Сброс до базового шрифта перед измерением.
+  if (card) card.style.setProperty('--osir-fs', basePx + 'px');
   // Ширина числовых колонок = фактической ширине текста «999 (100%)»
-  // при текущем шрифте ячеек; колонки 2-6 единообразны.
+  // при текущем шрифте ячеек; колонки 2-6 единообразны (в em, чтобы масштабировались).
   var w = measureOsirColWidth();
-  if (w > 0) grid.style.setProperty('--osir-col-w', (w + 2) + 'px');
+  if (w > 0) grid.style.setProperty('--osir-col-em', ((w + 2) / basePx) + 'em');
 
   var quarters = ['q1', 'q2', 'q3', 'q4', 'total'];
   var rows = [
@@ -4995,6 +5024,24 @@ function renderStatisticsData() {
       cell.textContent = (v == null || v === '') ? '-' : v;
     });
   });
+  fitOsirCard();
+}
+
+// Уменьшает шрифт плашки так, чтобы все её колонки/надписи помещались в доступную ширину.
+function fitOsirCard() {
+  var card = document.querySelector('.statistics-osir-card');
+  var grid = document.getElementById('statistics-osir-grid');
+  if (!card || !grid) return;
+  var basePx = 13;
+  var avail = card.clientWidth - 24; // отступы padding: 12+12
+  if (avail <= 0) return;
+  var current = parseFloat(card.style.getPropertyValue('--osir-fs')) || basePx;
+  if (current < basePx - 0.001) card.style.setProperty('--osir-fs', basePx + 'px'); // вернуть базовый перед замером
+  var scale = avail / (grid.scrollWidth || avail);
+  if (!isFinite(scale) || scale <= 0) scale = 1;
+  if (scale > 1) scale = 1;
+  if (scale < 0.55) scale = 0.55; // не меньше ~55%, иначе уже лучше скроллить
+  card.style.setProperty('--osir-fs', (basePx * scale) + 'px');
 }
 
 function calculateStatisticsForQuarter(year, quarter) {
@@ -5244,6 +5291,47 @@ function backFromStatistics() {
 // ===== ОЦЕНКА ФОКУСНЫХ НАБОРОВ БАРЬЕРОВ (по кварталу) =====
 var _osirQuarter = 'q1';
 var _statisticsOsirOrg = '';
+// 'ПК' — только барьеры производственного контракта; 'Все' — все проверенные барьеры.
+var _statisticsOsirScope = 'ПК';
+
+function osirScopeBtnEl() {
+  return document.getElementById('osir-scope-btn');
+}
+
+function measureOsirScopeWidth() {
+  var probe = document.getElementById('osir-scope-measure');
+  if (!probe) {
+    probe = document.createElement('span');
+    probe.id = 'osir-scope-measure';
+    probe.className = 'osir-measure';
+    probe.textContent = '99999';
+    document.body.appendChild(probe);
+  }
+  probe.textContent = '99999';
+  return probe.offsetWidth;
+}
+
+function updateOsirScopeButton() {
+  var btn = osirScopeBtnEl();
+  if (!btn) return;
+  btn.textContent = _statisticsOsirScope;
+  // Ширина кнопки = длине текста «99999» при текущем шрифте плашки (в em, чтобы масштабировалась).
+  var px = measureOsirScopeWidth();
+  if (px > 0) btn.style.width = (px / 13) + 'em';
+}
+
+function toggleOsirScope() {
+  _statisticsOsirScope = (_statisticsOsirScope === 'ПК') ? 'Все' : 'ПК';
+  updateOsirScopeButton();
+  renderStatisticsData();
+}
+
+// Барьер входит в выборку при текущем режиме («ПК» — только контрактные барьеры).
+function osirqScopeAllows(year, barrier) {
+  if (_statisticsOsirScope !== 'ПК') return true;
+  var cfg = osirqConfigForBarrier(year, barrier);
+  return !!(cfg && cfg.inPK === true);
+}
 
 function osirPillEl() {
   return document.querySelector('.osir-pill[data-quarter="osir"]');
@@ -5375,7 +5463,9 @@ function osirqPeriodRows(year, quarter, org) {
     stats[barrier].evaluated++;
     if (r.works === 'Да') stats[barrier].working++;
   });
-  var names = Object.keys(stats);
+  var names = Object.keys(stats).filter(function(b) {
+    return osirqScopeAllows(year, b);
+  });
   names.sort(function(a, b) {
     var oa = osirqConfigOrderIndex(year, a);
     var ob = osirqConfigOrderIndex(year, b);
@@ -7448,8 +7538,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v467';
-var APP_VERSION = '1.19';
+var APP_BUILD = 'pkb-v468';
+var APP_VERSION = '1.20';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
@@ -10779,6 +10869,8 @@ window.addEventListener('resize', function() {
     if (cardScreen && cardScreen.classList.contains('active')) syncCardFieldLabelWidths();
     var bpkList = document.getElementById('screen-barriers-list');
     if (bpkList && bpkList.classList.contains('active')) syncBpkBarrierButtonWidths();
+    var statScreen = document.getElementById('screen-statistics');
+    if (statScreen && statScreen.classList.contains('active')) fitOsirCard();
   }, 150);
 });
 
