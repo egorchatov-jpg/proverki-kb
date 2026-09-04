@@ -1935,8 +1935,10 @@ html, body {
   background: var(--orange); color: #fff;
   border: none; border-radius: 999px; cursor: pointer;
   font-size: 1em; font-weight: 700;
-  white-space: nowrap; padding: 0 0.6em; height: 2.1em;
+  white-space: nowrap; padding: 0 0.3em; text-align: center;
+  width: var(--osir-col-em); height: 2.1em; line-height: 2.1em;
   box-sizing: border-box;
+  transition: opacity 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
 .org-scope-pill:active { opacity: 0.78; }
@@ -1950,7 +1952,7 @@ html, body {
   text-align: center; white-space: nowrap; padding: 4px 0;
 }
 .org-bar-cell {
-  display: flex; align-items: center; gap: 8px; padding: 4px 0; min-width: 0;
+  display: flex; align-items: center; gap: 8px; padding: 4px 0; min-width: 0; height: 100%;
 }
 .org-bar {
   flex: 0 1 auto; min-width: 0; height: 50%;
@@ -5066,7 +5068,10 @@ function renderStatisticsData() {
   // Ширина числовых колонок = фактической ширине текста «999 (100%)»
   // при текущем шрифте ячеек; колонки 2-6 единообразны (в em, чтобы масштабировались).
   var w = measureOsirColWidth();
-  if (w > 0) grid.style.setProperty('--osir-col-em', ((w + 2) / basePx) + 'em');
+  if (w > 0) {
+    grid.style.setProperty('--osir-col-em', ((w + 2) / basePx) + 'em');
+    document.documentElement.style.setProperty('--osir-col-em', ((w + 2) / basePx) + 'em');
+  }
 
   var quarters = ['q1', 'q2', 'q3', 'q4', 'total'];
   var rows = [
@@ -5510,7 +5515,7 @@ function renderStatisticsOrgCard() {
     barCell.className = 'org-bar-cell';
     var bar = document.createElement('div');
     bar.className = 'org-bar';
-    if (pct > 0) bar.style.width = 'calc(' + pct + '% - 30px)';
+    if (pct > 0) bar.style.width = pct + '%';
     else bar.style.width = '0';
     var val = document.createElement('div');
     val.className = 'org-bar-val';
@@ -7687,8 +7692,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v473';
-var APP_VERSION = '1.25';
+var APP_BUILD = 'pkb-v474';
+var APP_VERSION = '1.26';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
