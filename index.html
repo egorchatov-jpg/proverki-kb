@@ -1925,7 +1925,7 @@ html, body {
 }
 .statistics-org-grid {
   display: grid;
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: var(--osir-col-em) auto 1fr;
   column-gap: 10px; row-gap: 8px;
   align-items: center;
 }
@@ -1961,6 +1961,7 @@ html, body {
 .org-bar-val {
   flex: 0 0 auto; font-size: 1em; font-weight: 700; color: #1a2035; white-space: nowrap;
 }
+.org-row { display: contents; }
 .statistics-footer {
   padding: 12px 14px;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
@@ -7692,8 +7693,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v474';
-var APP_VERSION = '1.26';
+var APP_BUILD = 'pkb-v475';
+var APP_VERSION = '1.27';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
