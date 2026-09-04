@@ -5198,16 +5198,17 @@ function renderOsirqZapasScreen() {
   var colPct = document.querySelector('#screen-osirq-zapas col.osirq-col-pct');
   var colMGoal = document.querySelector('#screen-osirq-zapas col.osirq-col-mgoal');
   var colMStretch = document.querySelector('#screen-osirq-zapas col.osirq-col-mstretch');
-  var wNum = osirqMeasureText('999') + 8;
-  var wVal = osirqMeasureText('99999') + 8;
-  if (colNum) colNum.style.width = wNum + 'px';
-  if (colGoal) colGoal.style.width = wVal + 'px';
-  if (colStretch) colStretch.style.width = wVal + 'px';
-  if (colEval) colEval.style.width = wVal + 'px';
-  if (colWork) colWork.style.width = wVal + 'px';
-  if (colPct) colPct.style.width = wVal + 'px';
-  if (colMGoal) colMGoal.style.width = wVal + 'px';
-  if (colMStretch) colMStretch.style.width = wVal + 'px';
+var wNum = osirqMeasureText('999') + 8;
+   var wVal = osirqMeasureText('99999') + 8;
+   var wValAdj = wVal * 0.95;
+   if (colNum) colNum.style.width = wNum + 'px';
+   if (colGoal) colGoal.style.width = wValAdj + 'px';
+   if (colStretch) colStretch.style.width = wValAdj + 'px';
+   if (colEval) colEval.style.width = wValAdj + 'px';
+   if (colWork) colWork.style.width = wValAdj + 'px';
+   if (colPct) colPct.style.width = wValAdj + 'px';
+   if (colMGoal) colMGoal.style.width = wValAdj + 'px';
+   if (colMStretch) colMStretch.style.width = wValAdj + 'px';
 
   // Статистика за весь год (как ИТОГО).
   var checked = osirqPeriodRows(year, 'total', org);
@@ -7512,8 +7513,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v470';
-var APP_VERSION = '1.22';
+var APP_BUILD = 'pkb-v471';
+var APP_VERSION = '1.23';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
