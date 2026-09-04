@@ -1822,8 +1822,13 @@ html, body {
   flex: 1 1 0;
   min-width: 0;
   height: 53px;
+  max-height: 53px;
+  overflow: hidden;
   color: #fff;
   font-size: 15px; font-weight: 700;
+  line-height: 53px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   border: none; border-radius: var(--btn-radius); cursor: pointer;
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
   padding: 0 4px;
@@ -3847,23 +3852,33 @@ function syncToServer(record, onSuccess, onComplete) {
 }
 
 // --- Merge: server records + offline queue (two-way sync) ---
+// Очередные записи сопоставляются с серверными ТОЛЬКО по точному ключу
+// (dateEntry / checkId), а не по отпечатку dateCheck|method|org|obj|barrier|desc:
+// несколько легитимных проверок одного барьера в один день на одном объекте без
+// описания имеют одинаковый отпечаток, и прежняя отпечаточная сверка молча
+// выбрасывала ещё не синхронизированные проверки из очереди (или «склеивала» их
+// с уже сохранённой первой проверкой), из-за чего они исчезали при следующем
+// фоновом опросе. Отпечаток остаётся fallback-ом только для записей очереди
+// без dateEntry (очень старые клиенты).
 function mergeWithQueue(serverRecords) {
   var queue = getSyncQueue();
   if (!queue.length) return serverRecords;
-  // Build fingerprint map from server data (dateCheck+org+barrier+method)
-  var fps = {};
-  var serverByFp = {};
   var serverByEntry = {};
+  var serverByFp = {}; // fallback: только для элементов очереди без dateEntry
   serverRecords.forEach(function(r) {
-    var fp = [r.dateCheck, r.method, r.org, r.obj, r.barrier, r.desc].join('|');
-    fps[fp] = true;
-    serverByFp[fp] = r;
     if (r.dateEntry) serverByEntry[String(r.dateEntry)] = r;
+    var fp = [r.dateCheck, r.method, r.org, r.obj, r.barrier, r.desc].join('|');
+    if (!serverByFp[fp]) serverByFp[fp] = r;
   });
   // Records already on server — remove from queue to prevent duplicate re-sync
   queue.forEach(function(r) {
-    var fp = [r.dateCheck, r.method, r.org, r.obj, r.barrier, r.desc].join('|');
-    var serverRecord = (r.dateEntry && serverByEntry[String(r.dateEntry)]) || serverByFp[fp];
+    var serverRecord = null;
+    if (r.dateEntry) serverRecord = serverByEntry[String(r.dateEntry)];
+    if (!serverRecord) {
+      // Fallback для старых элементов очереди без dateEntry: отпечаток
+      var fp = [r.dateCheck, r.method, r.org, r.obj, r.barrier, r.desc].join('|');
+      serverRecord = serverByFp[fp] || null;
+    }
     if (serverRecord) {
       // The old client may have kept a local copy without the server checkId.
       // Copy the server identity before dropping the queue item.
@@ -3879,9 +3894,13 @@ function mergeWithQueue(serverRecords) {
       removeFromSyncQueue(r.id);
     }
   });
-  // Only append genuinely unsynced records
+  // Only append genuinely unsynced records: элемент очереди считается
+  // не сохранённым, только если на сервере нет записи с тем же dateEntry
+  // (или тем же отпечатком для элементов без dateEntry).
   var unsynced = queue.filter(function(r) {
-    return !fps[[r.dateCheck, r.method, r.org, r.obj, r.barrier, r.desc].join('|')];
+    if (r.dateEntry) return !serverByEntry[String(r.dateEntry)];
+    var fp = [r.dateCheck, r.method, r.org, r.obj, r.barrier, r.desc].join('|');
+    return !serverByFp[fp];
   });
   var merged = serverRecords.concat(unsynced).filter(function(r) { return r.dateCheck && r.dateCheck.trim(); });
   merged.forEach(function(r) { if (r.dateCheck) r.dateCheck = normalizeDateStr(r.dateCheck); });
@@ -4889,7 +4908,7 @@ function showScreen(id) {
   el.classList.add('active');
   syncScreenInert();
   if (prev && prev.id === 'screen-pin' && id !== 'screen-pin') setPinInputLocked(false);
-  if (id === 'screen-statistics') requestAnimationFrame(function() { fitOsirCard(); });
+  if (id === 'screen-statistics') { renderStatisticsData(); requestAnimationFrame(function() { fitOsirCard(); }); }
   var scrollEl = el.querySelector('.passport-detail-scroll, .passport-mub-scroll, .passport-appendix-scroll, .passport-checklist-scroll, .settings-screen-body');
   if (scrollEl) scrollEl.scrollTop = 0;
   return true;
@@ -7493,8 +7512,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v469';
-var APP_VERSION = '1.21';
+var APP_BUILD = 'pkb-v470';
+var APP_VERSION = '1.22';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
