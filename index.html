@@ -1907,6 +1907,58 @@ html, body {
 .osir-pill:active { opacity: 0.78; }
 .osir-pill--navy   { background: var(--navy); color: #fff; }
 .osir-pill--orange { background: var(--orange); color: #fff; }
+
+/* ===== Плашка: Работоспособность барьеров ПК в организациях ===== */
+.statistics-org-card {
+  --org-fs: 13px;
+  background: #eaf0fb;
+  border-radius: var(--card-radius);
+  border: 1px solid rgba(27,58,107,0.15);
+  padding: 14px 12px;
+  display: flex; flex-direction: column; gap: 12px;
+  width: 100%; max-width: 100%; box-sizing: border-box;
+  font-size: var(--org-fs, 13px);
+}
+.statistics-org-header {
+  font-size: calc(var(--org-fs) * 15 / 13); font-weight: 700; color: #1a2035;
+  text-align: center; line-height: 1.3;
+}
+.statistics-org-grid {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  column-gap: 10px; row-gap: 8px;
+  align-items: center;
+}
+/* Капсула «Все барьеры» */
+.org-scope-pill {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--orange); color: #fff;
+  border: none; border-radius: 999px; cursor: pointer;
+  font-size: 1em; font-weight: 700;
+  white-space: nowrap; padding: 0 0.6em; height: 2.1em;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+.org-scope-pill:active { opacity: 0.78; }
+.org-row { display: contents; }
+.org-name {
+  font-size: 1em; font-weight: 600; color: #1a2035;
+  text-align: left; line-height: 1.2; padding: 4px 0;
+}
+.org-count {
+  font-size: 1em; font-weight: 600; color: #1a2035;
+  text-align: center; white-space: nowrap; padding: 4px 0;
+}
+.org-bar-cell {
+  display: flex; align-items: center; gap: 8px; padding: 4px 0; min-width: 0;
+}
+.org-bar {
+  flex: 0 1 auto; min-width: 0; height: 50%;
+  background: var(--gray-btn); border-radius: 3px;
+}
+.org-bar-val {
+  flex: 0 0 auto; font-size: 1em; font-weight: 700; color: #1a2035; white-space: nowrap;
+}
 .statistics-footer {
   padding: 12px 14px;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
@@ -3075,7 +3127,7 @@ html, body {
         <!-- Таблица (без границ): 6 столбцов x 4 строки -->
         <div class="statistics-osir-grid" id="statistics-osir-grid">
           <!-- Строка 1 — капсульные кнопки -->
-          <button class="osir-pill osir-pill--navy" data-quarter="osir" onclick="openOsirOrgOverlay()">ОСИР</button>
+          <button class="osir-pill osir-pill--orange" data-quarter="osir" onclick="openOsirOrgOverlay()">ОСИР</button>
           <button class="osir-pill osir-pill--navy" data-quarter="q1" onclick="openOsirQuarter('q1')">1 кв</button>
           <button class="osir-pill osir-pill--navy" data-quarter="q2" onclick="openOsirQuarter('q2')">2 кв</button>
           <button class="osir-pill osir-pill--navy" data-quarter="q3" onclick="openOsirQuarter('q3')">3 кв</button>
@@ -3102,6 +3154,14 @@ html, body {
           <div class="osir-cell osir-val" data-row="notAchieved" data-quarter="q3">-</div>
           <div class="osir-cell osir-val" data-row="notAchieved" data-quarter="q4">-</div>
           <div class="osir-cell osir-val" data-row="notAchieved" data-quarter="total">-</div>
+        </div>
+      </div>
+
+      <!-- Плашка: Работоспособность барьеров ПК в организациях -->
+      <div class="statistics-org-card" id="statistics-org-card">
+        <div class="statistics-org-header">Работоспособность барьеров ПК в организациях</div>
+        <div class="statistics-org-grid" id="statistics-org-grid">
+          <button class="org-scope-pill" id="org-scope-pill" onclick="openOsirBarrierScopeOverlay()">Все барьеры</button>
         </div>
       </div>
     </div>
@@ -5024,6 +5084,7 @@ function renderStatisticsData() {
     });
   });
   fitOsirCard();
+  renderStatisticsOrgCard();
 }
 
 // Уменьшает шрифт плашки так, чтобы все её колонки/надписи помещались в доступную ширину.
@@ -5350,6 +5411,119 @@ function openOsirOrgOverlay() {
     if (!val) return;
     setOsirPillValue(val);
     renderStatisticsData();
+  });
+}
+
+// ===== Работоспособность барьеров ПК в организациях =====
+// Фильтр барабана: 'Все барьеры' или конкретный барьер ПК, оценённый ОСИР в году.
+var _organizationBarrierScope = 'Все барьеры';
+
+function osirOrgCardBarrierOptions() {
+  var year = _statisticsYear;
+  var org = osirPillValue() || 'ОСИР';
+  var seen = {};
+  (appState.db || []).forEach(function(r) {
+    if (!r) return;
+    var dc = normalizeDateStr(r.dateCheck);
+    if (!dc) return;
+    var parts = dc.split('.');
+    if (parts.length !== 3) return;
+    if (parseInt(parts[2], 10) !== year) return;
+    if (String(r.method || '').trim() !== org) return;
+    var b = String(r.barrier || '').trim();
+    if (!b) return;
+    if (!osirqScopeAllows(year, b)) return; // только барьеры ПК
+    seen[b] = true;
+  });
+  var list = Object.keys(seen).sort(function(a, b) { return a.localeCompare(b, 'ru'); });
+  // «Все барьеры» всегда первым
+  return ['Все барьеры'].concat(list);
+}
+
+function openOsirBarrierScopeOverlay() {
+  var items = osirOrgCardBarrierOptions();
+  if (items.length <= 1) return;
+  var current = _organizationBarrierScope;
+  if (items.indexOf(current) < 0) current = items[0];
+  openDrumOverlay('Выберите барьер', [
+    { id: 'orgScope', items: items, value: current, fullWidth: true, widthFactor: 0.9, leftAlign: true }
+  ], function(d) {
+    var val = d['orgScope'].getValue();
+    if (!val) return;
+    _organizationBarrierScope = val;
+    renderStatisticsOrgCard();
+  });
+}
+
+function renderStatisticsOrgCard() {
+  var grid = document.getElementById('statistics-org-grid');
+  var pill = document.getElementById('org-scope-pill');
+  if (!grid) return;
+  var year = _statisticsYear;
+  var org = osirPillValue() || 'ОСИР';
+  var scope = _organizationBarrierScope;
+
+  if (pill) pill.textContent = scope;
+
+  // Агрегируем по организациям: сколько барьеров ПК оценено/работоспособно.
+  var stats = {}; // key: org
+  (appState.db || []).forEach(function(r) {
+    if (!r) return;
+    var dc = normalizeDateStr(r.dateCheck);
+    if (!dc) return;
+    var parts = dc.split('.');
+    if (parts.length !== 3) return;
+    if (parseInt(parts[2], 10) !== year) return;
+    if (String(r.method || '').trim() !== org) return;
+    var b = String(r.barrier || '').trim();
+    if (!b) return;
+    if (!osirqScopeAllows(year, b)) return; // только барьеры ПК
+    if (scope !== 'Все барьеры' && b !== scope) return;
+    var o = String(r.org || '').trim();
+    if (!o) return;
+    if (!stats[o]) stats[o] = { total: 0, work: 0 };
+    stats[o].total++;
+    if (r.works === 'Да') stats[o].work++;
+  });
+
+  var orgNames = Object.keys(stats).sort(function(a, b) { return a.localeCompare(b, 'ru'); });
+
+  // Очищаем строки, оставляем первую капсулу «Все барьеры».
+  grid.querySelectorAll('.org-row').forEach(function(el) { el.remove(); });
+
+  orgNames.forEach(function(name) {
+    var st = stats[name];
+    var pct = st.total ? Math.round(st.work * 100 / st.total) : 0;
+
+    var row = document.createElement('div');
+    row.className = 'org-row';
+
+    var nameEl = document.createElement('div');
+    nameEl.className = 'org-name';
+    nameEl.textContent = name;
+
+    var countEl = document.createElement('div');
+    countEl.className = 'org-count';
+    countEl.textContent = st.work + ' из ' + st.total;
+
+    var barCell = document.createElement('div');
+    barCell.className = 'org-bar-cell';
+    var bar = document.createElement('div');
+    bar.className = 'org-bar';
+    if (pct > 0) bar.style.width = 'calc(' + pct + '% - 30px)';
+    else bar.style.width = '0';
+    var val = document.createElement('div');
+    val.className = 'org-bar-val';
+    val.textContent = pct + '%';
+
+    barCell.appendChild(bar);
+    barCell.appendChild(val);
+
+    row.appendChild(nameEl);
+    row.appendChild(countEl);
+    row.appendChild(barCell);
+
+    grid.appendChild(row);
   });
 }
 
@@ -7513,8 +7687,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v472';
-var APP_VERSION = '1.24';
+var APP_BUILD = 'pkb-v473';
+var APP_VERSION = '1.25';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
