@@ -1936,14 +1936,14 @@ html, body {
   border: none; border-radius: 999px; cursor: pointer;
   font-size: 1em; font-weight: 700;
   white-space: nowrap; padding: 0 0.3em; text-align: center;
-  width: var(--osir-col-em); height: 2.1em; line-height: 2.1em;
+  width: var(--osir-col-em);
+  grid-column: 1 / -1;
   box-sizing: border-box;
   transition: opacity 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
 .org-scope-pill:active { opacity: 0.78; }
-.org-row { display: contents; }
-.org-name {
+.org-row { display: contents; }.org-name {
   font-size: 1em; font-weight: 600; color: #1a2035;
   text-align: left; line-height: 1.2; padding: 4px 0;
 }
@@ -7693,8 +7693,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v475';
-var APP_VERSION = '1.27';
+var APP_BUILD = 'pkb-v476';
+var APP_VERSION = '1.28';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
