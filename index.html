@@ -1875,6 +1875,12 @@ html, body {
   align-items: center;
   font-size: var(--osir-fs, 13px);
 }
+/* JS (stretchOsirGridColumns) переопределяет grid-template-columns в fr —
+   пропорционально естественной ширине столбцов, чтобы плашка заполняла
+   ширину экрана, не раздувая первую колонку. */
+.statistics-osir-grid.js-stretched {
+  justify-content: stretch;
+}
 .osir-measure {
   position: absolute; left: -9999px; top: -9999px;
   visibility: hidden; white-space: nowrap;
@@ -5161,6 +5167,12 @@ function renderStatisticsData() {
 // ширину. Переменная --osir-fs выставляется на общем контейнере .statistics-inner,
 // поэтому верхняя плашка ОСИР и нижняя «Работоспособность барьеров ПК в
 // организациях» всегда используют один и тот же размер шрифта.
+// Порядок критичен: замер естественной ширины делается при «нативной» раскладке
+// (grid-template-columns сброшена в CSS), иначе scrollWidth равен ширине
+// контейнера и шрифт не ужимается. Растяжение в fr применяется уже после
+// установки шрифта и только если остаётся свободное место.
+var _osirNaturalTemplate = 'auto repeat(5, var(--osir-col-em, 5.9em))';
+
 function fitOsirCard() {
   var card = document.querySelector('.statistics-osir-card');
   var grid = document.getElementById('statistics-osir-grid');
@@ -5169,13 +5181,45 @@ function fitOsirCard() {
   var basePx = 13;
   var avail = card.clientWidth - 24; // отступы padding: 12+12
   if (avail <= 0) return;
+  // Сброс к нативной раскладке перед замером (убираем инлайновую fr-таблицу).
+  grid.style.gridTemplateColumns = _osirNaturalTemplate;
   var current = parseFloat(host.style.getPropertyValue('--osir-fs')) || basePx;
   if (current < basePx - 0.001) host.style.setProperty('--osir-fs', basePx + 'px'); // вернуть базовый перед замером
-  var scale = avail / (grid.scrollWidth || avail);
+  var naturalW = grid.scrollWidth || avail;
+  var scale = avail / naturalW;
   if (!isFinite(scale) || scale <= 0) scale = 1;
   if (scale > 1) scale = 1;
   if (scale < 0.55) scale = 0.55; // не меньше ~55%, иначе уже лучше скроллить
   host.style.setProperty('--osir-fs', (basePx * scale) + 'px');
+  stretchOsirGridColumns(grid, card, avail);
+}
+
+// Колонки растягиваются ПРОПОРЦИОНАЛЬНО их «естественной» ширине, когда после
+// подбора шрифта остаётся свободное место. Без этого весь излишек ширины уходил
+// в единственную auto-колонку, и капсула «ОСИР» на широких экранах становилась
+// очень широкой. Если места не хватает даже после ужимания шрифта, раскладка
+// остаётся нативной (col1 не раздувается).
+function stretchOsirGridColumns(grid, card, avail) {
+  if (!grid) return;
+  // Естественная ширина первой колонки = максимум из содержимого колонки 1
+  // (подписи строк «Оценено»/«Достигло цели»/«Достигло н. цели» и капсула «ОСИР»).
+  var col1 = 0;
+  var cells1 = grid.querySelectorAll('.osir-cell.osir-lbl, .osir-pill[data-quarter="osir"]');
+  for (var i = 0; i < cells1.length; i++) {
+    col1 = Math.max(col1, cells1[i].offsetWidth || 0);
+  }
+  // Естественная ширина числовой колонки = текущая ширина колонки значений.
+  var numCell = grid.querySelector('.osir-cell.osir-val[data-quarter="q1"]');
+  var colN = numCell ? numCell.offsetWidth : 0;
+  if (col1 <= 0 || colN <= 0) return;
+
+  // Нативная раскладка после установки шрифта: сколько нужно места по факту.
+  grid.style.gridTemplateColumns = _osirNaturalTemplate;
+  var need = grid.scrollWidth || 0;
+  if (need > 0 && need > avail + 1) return; // не влезает даже сейчас — не растягиваем
+
+  var ratio = (col1 / colN).toFixed(3);
+  grid.style.gridTemplateColumns = ratio + 'fr 1fr 1fr 1fr 1fr 1fr';
 }
 
 function calculateStatisticsForQuarter(year, quarter) {
@@ -7846,8 +7890,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v482';
-var APP_VERSION = '1.34';
+var APP_BUILD = 'pkb-v483';
+var APP_VERSION = '1.35';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
