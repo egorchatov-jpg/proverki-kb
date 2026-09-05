@@ -1814,6 +1814,7 @@ html, body {
   padding: 16px; width: 100%; box-sizing: border-box;
 }
 .statistics-inner {
+  --osir-fs: 13px;              /* базовый шрифт обеих плашек; JS уменьшает по ширине экрана */
   width: 100%; max-width: 100%;
   display: flex; flex-direction: column; gap: 12px;
 }
@@ -1829,12 +1830,16 @@ html, body {
   overflow: hidden;
   color: #fff;
   font-size: 15px; font-weight: 700;
-  line-height: 53px;
+  line-height: 1.25;
+  white-space: normal;
+  text-align: center;
+  display: flex; align-items: center; justify-content: center;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   border: none; border-radius: var(--btn-radius); cursor: pointer;
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
   padding: 0 4px;
+  box-sizing: border-box;
 }
 .statistics-year-btn {
   background: var(--orange);
@@ -1846,7 +1851,6 @@ html, body {
 .statistics-section-btn:active { opacity: 0.78; }
 /* Плашка ОСИР — голубой фон, как у navy-оверлеев (напр. «Статус мероприятия»). */
 .statistics-osir-card {
-  --osir-fs: 13px;              /* базовый шрифт плашки; JS уменьшает, если не влезает */
   background: #eaf0fb;
   border-radius: var(--card-radius);
   border: 1px solid rgba(27,58,107,0.15);
@@ -1916,17 +1920,16 @@ html, body {
 
 /* ===== Плашка: Работоспособность барьеров ПК в организациях ===== */
 .statistics-org-card {
-  --org-fs: 13px;
   background: #eaf0fb;
   border-radius: var(--card-radius);
   border: 1px solid rgba(27,58,107,0.15);
   padding: 14px 12px;
   display: flex; flex-direction: column; gap: 12px;
   width: 100%; max-width: 100%; box-sizing: border-box;
-  font-size: var(--org-fs, 13px);
+  font-size: var(--osir-fs, 13px);
 }
 .statistics-org-header {
-  font-size: calc(var(--org-fs) * 15 / 13); font-weight: 700; color: #1a2035;
+  font-size: calc(var(--osir-fs) * 15 / 13); font-weight: 700; color: #1a2035;
   text-align: center; line-height: 1.3;
 }
 .statistics-org-grid {
@@ -5122,10 +5125,11 @@ function measureOsirColWidth() {
 function renderStatisticsData() {
   var grid = document.getElementById('statistics-osir-grid');
   if (!grid) return;
-  var card = grid.closest('.statistics-osir-card');
+  var host = grid.closest('.statistics-inner') || grid.closest('.statistics-osir-card');
   var basePx = 13;
-  // Сброс до базового шрифта перед измерением.
-  if (card) card.style.setProperty('--osir-fs', basePx + 'px');
+  // Сброс до базового шрифта перед измерением (на общем контейнере, чтобы
+  // обе плашки — ОСИР и «Работоспособность…» — масштабировались одинаково).
+  if (host) host.style.setProperty('--osir-fs', basePx + 'px');
   // Ширина числовых колонок = фактической ширине текста «999 (100%)»
   // при текущем шрифте ячеек; колонки 2-6 единообразны (в em, чтобы масштабировались).
   var w = measureOsirColWidth();
@@ -5153,21 +5157,25 @@ function renderStatisticsData() {
   renderStatisticsOrgCard();
 }
 
-// Уменьшает шрифт плашки так, чтобы все её колонки/надписи помещались в доступную ширину.
+// Уменьшает шрифт плашек так, чтобы все их колонки/надписи помещались в доступную
+// ширину. Переменная --osir-fs выставляется на общем контейнере .statistics-inner,
+// поэтому верхняя плашка ОСИР и нижняя «Работоспособность барьеров ПК в
+// организациях» всегда используют один и тот же размер шрифта.
 function fitOsirCard() {
   var card = document.querySelector('.statistics-osir-card');
   var grid = document.getElementById('statistics-osir-grid');
   if (!card || !grid) return;
+  var host = grid.closest('.statistics-inner') || card;
   var basePx = 13;
   var avail = card.clientWidth - 24; // отступы padding: 12+12
   if (avail <= 0) return;
-  var current = parseFloat(card.style.getPropertyValue('--osir-fs')) || basePx;
-  if (current < basePx - 0.001) card.style.setProperty('--osir-fs', basePx + 'px'); // вернуть базовый перед замером
+  var current = parseFloat(host.style.getPropertyValue('--osir-fs')) || basePx;
+  if (current < basePx - 0.001) host.style.setProperty('--osir-fs', basePx + 'px'); // вернуть базовый перед замером
   var scale = avail / (grid.scrollWidth || avail);
   if (!isFinite(scale) || scale <= 0) scale = 1;
   if (scale > 1) scale = 1;
   if (scale < 0.55) scale = 0.55; // не меньше ~55%, иначе уже лучше скроллить
-  card.style.setProperty('--osir-fs', (basePx * scale) + 'px');
+  host.style.setProperty('--osir-fs', (basePx * scale) + 'px');
 }
 
 function calculateStatisticsForQuarter(year, quarter) {
@@ -7838,8 +7846,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v481';
-var APP_VERSION = '1.33';
+var APP_BUILD = 'pkb-v482';
+var APP_VERSION = '1.34';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;

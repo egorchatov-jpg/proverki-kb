@@ -317,7 +317,7 @@ async function bootstrapData() {
     .catch(function(e) { console.warn('[backups] startup snapshot failed:', e.message); });
 }
 
-if (process.env.ENABLE_BACKUP_CRON !== '0') {
+if (!isLocalDev() && process.env.ENABLE_BACKUP_CRON !== '0') {
   cron.schedule('0 0 * * *', function() {
     createBackupFromLive(new Date())
       .then(function(r) { console.log('[cron] backup:', r.label || r.id, r.skipped ? '(skip)' : ''); })
