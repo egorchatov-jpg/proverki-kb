@@ -1873,14 +1873,12 @@ html, body {
   column-gap: 0.3em;
   row-gap: 0.45em;
   align-items: center;
+  justify-content: start;        /* при нативной раскладке auto-колонка не растягивается */
   font-size: var(--osir-fs, 13px);
 }
 /* JS (stretchOsirGridColumns) переопределяет grid-template-columns в fr —
    пропорционально естественной ширине столбцов, чтобы плашка заполняла
    ширину экрана, не раздувая первую колонку. */
-.statistics-osir-grid.js-stretched {
-  justify-content: stretch;
-}
 .osir-measure {
   position: absolute; left: -9999px; top: -9999px;
   visibility: hidden; white-space: nowrap;
@@ -5201,24 +5199,19 @@ function fitOsirCard() {
 // остаётся нативной (col1 не раздувается).
 function stretchOsirGridColumns(grid, card, avail) {
   if (!grid) return;
-  // Естественная ширина первой колонки = максимум из содержимого колонки 1
-  // (подписи строк «Оценено»/«Достигло цели»/«Достигло н. цели» и капсула «ОСИР»).
-  var col1 = 0;
-  var cells1 = grid.querySelectorAll('.osir-cell.osir-lbl, .osir-pill[data-quarter="osir"]');
-  for (var i = 0; i < cells1.length; i++) {
-    col1 = Math.max(col1, cells1[i].offsetWidth || 0);
+  // Ширина первой колонки берётся по самой длинной подписи («Достигло н. цели»),
+  // числовые колонки — по образцу «999 (100%)». Оба замера делаем на одном
+  // эталонном шрифте, поэтому соотношение fr не зависит ни от текущей раскладки,
+  // ни от масштаба шрифта. fr распределяет ВСЮ ширину контейнера пропорционально
+  // этим долям — первый столбец не раздувается, остальные растут так же.
+  var labelW = 0;
+  var LABELS = ['Оценено', 'Достигло цели', 'Достигло н. цели'];
+  for (var i = 0; i < LABELS.length; i++) {
+    labelW = Math.max(labelW, measureBpkInPKText(LABELS[i]) || 0);
   }
-  // Естественная ширина числовой колонки = текущая ширина колонки значений.
-  var numCell = grid.querySelector('.osir-cell.osir-val[data-quarter="q1"]');
-  var colN = numCell ? numCell.offsetWidth : 0;
-  if (col1 <= 0 || colN <= 0) return;
-
-  // Нативная раскладка после установки шрифта: сколько нужно места по факту.
-  grid.style.gridTemplateColumns = _osirNaturalTemplate;
-  var need = grid.scrollWidth || 0;
-  if (need > 0 && need > avail + 1) return; // не влезает даже сейчас — не растягиваем
-
-  var ratio = (col1 / colN).toFixed(3);
+  var sampleW = measureOsirColWidth() || 0; // «999 (100%)» при том же базовом шрифте
+  if (labelW <= 0 || sampleW <= 0) return;
+  var ratio = (labelW / sampleW).toFixed(3);
   grid.style.gridTemplateColumns = ratio + 'fr 1fr 1fr 1fr 1fr 1fr';
 }
 
@@ -7910,8 +7903,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v485';
-var APP_VERSION = '1.37';
+var APP_BUILD = 'pkb-v486';
+var APP_VERSION = '1.38';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
@@ -11242,7 +11235,7 @@ window.addEventListener('resize', function() {
     var bpkList = document.getElementById('screen-barriers-list');
     if (bpkList && bpkList.classList.contains('active')) syncBpkBarrierButtonWidths();
     var statScreen = document.getElementById('screen-statistics');
-    if (statScreen && statScreen.classList.contains('active')) fitOsirCard();
+    if (statScreen && statScreen.classList.contains('active')) { renderStatisticsData(); }
   }, 150);
 });
 
