@@ -1893,7 +1893,7 @@ html, body {
 }
 /* Капсульные кнопки-заголовки колонок */
 .osir-pill {
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: flex-start;
   width: calc(100% - 0.4em);     /* отступ по ~0.2em слева и справа от границ колонки */
   margin: 0 0.2em;
   height: 2.15em;
@@ -1901,6 +1901,7 @@ html, body {
   font-size: 1em; font-weight: 700;
   cursor: pointer; box-shadow: none;
   white-space: nowrap; padding: 0 0.3em;
+  text-align: left;
   box-sizing: border-box;
   transition: opacity 0.15s;
 }
@@ -7702,8 +7703,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v478';
-var APP_VERSION = '1.30';
+var APP_BUILD = 'pkb-v479';
+var APP_VERSION = '1.31';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
