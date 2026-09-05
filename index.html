@@ -1930,7 +1930,9 @@ html, body {
   align-items: center;
 }
 /* Капсула «Все барьеры» — те же метрики, что у .osir-pill в верхней плашке.
-   Ширина/высота/шрифт как у капсулы «ОСИР» (JS ставит ту же px-ширину).
+   Занимает всю первую строку сетки (grid-column: 1 / -1), чтобы строки
+   организаций начинались со второй строки и не «втекали» в первую строку
+   рядом с капсулой. Ширину ставит JS = ширине капсулы «ОСИР».
    Текст выровнен по левому краю. */
 .org-scope-pill {
   display: flex; align-items: center; justify-content: flex-start;
@@ -1939,13 +1941,14 @@ html, body {
   font-size: 1em; font-weight: 700;
   white-space: nowrap; padding: 0 0.3em; text-align: left;
   box-sizing: border-box;
-  width: auto;
-  height: 2.15em; line-height: 2.15em;
+  width: auto; height: 2.15em; line-height: 2.15em;
+  grid-column: 1 / -1; justify-self: start;
   transition: opacity 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
 .org-scope-pill:active { opacity: 0.78; }
-.org-row { display: contents; }.org-name {
+.org-row { display: contents; }
+.org-name {
   font-size: 1em; font-weight: 600; color: #1a2035;
   text-align: left; line-height: 1.2; padding: 4px 0;
 }
@@ -1963,7 +1966,6 @@ html, body {
 .org-bar-val {
   flex: 0 0 auto; font-size: 1em; font-weight: 700; color: #1a2035; white-space: nowrap;
 }
-.org-row { display: contents; }
 .statistics-footer {
   padding: 12px 14px;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
@@ -7700,8 +7702,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v477';
-var APP_VERSION = '1.29';
+var APP_BUILD = 'pkb-v478';
+var APP_VERSION = '1.30';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
