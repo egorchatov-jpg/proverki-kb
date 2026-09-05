@@ -1893,7 +1893,7 @@ html, body {
 }
 /* Капсульные кнопки-заголовки колонок */
 .osir-pill {
-  display: flex; align-items: center; justify-content: flex-start;
+  display: flex; align-items: center;
   width: calc(100% - 0.4em);     /* отступ по ~0.2em слева и справа от границ колонки */
   margin: 0 0.2em;
   height: 2.15em;
@@ -1901,10 +1901,12 @@ html, body {
   font-size: 1em; font-weight: 700;
   cursor: pointer; box-shadow: none;
   white-space: nowrap; padding: 0 0.3em;
-  text-align: left;
   box-sizing: border-box;
   transition: opacity 0.15s;
 }
+/* «1 кв»…«ИТОГО» — по центру; «ОСИР» (и отдельная капсула «Все барьеры») — слева */
+.osir-pill:not([data-quarter="osir"]) { justify-content: center; text-align: center; }
+.osir-pill[data-quarter="osir"] { justify-content: flex-start; text-align: left; }
 .osir-pill:active { opacity: 0.78; }
 .osir-pill--navy   { background: var(--navy); color: #fff; }
 .osir-pill--orange { background: var(--orange); color: #fff; }
@@ -1922,13 +1924,14 @@ html, body {
 }
 .statistics-org-header {
   font-size: calc(var(--org-fs) * 15 / 13); font-weight: 700; color: #1a2035;
-  text-align: left; line-height: 1.3;
+  text-align: center; line-height: 1.3;
 }
 .statistics-org-grid {
   display: grid;
-  grid-template-columns: auto auto 1fr;
-  column-gap: 10px; row-gap: 8px;
+  grid-template-columns: var(--osir-label-col, auto) auto 1fr;
+  column-gap: 0.3em; row-gap: 0.45em;
   align-items: center;
+  font-size: var(--osir-fs, 13px);
 }
 /* Капсула «Все барьеры» — те же метрики, что у .osir-pill в верхней плашке.
    Занимает всю первую строку сетки (grid-column: 1 / -1), чтобы строки
@@ -1952,6 +1955,7 @@ html, body {
 .org-name {
   font-size: 1em; font-weight: 600; color: #1a2035;
   text-align: left; line-height: 1.2; padding: 4px 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .org-count {
   font-size: 1em; font-weight: 600; color: #1a2035;
@@ -5480,6 +5484,15 @@ function renderStatisticsOrgCard() {
     var osirPillBtn = document.querySelector('.osir-pill[data-quarter="osir"]');
     if (osirPillBtn) pill.style.width = osirPillBtn.offsetWidth + 'px';
   }
+  // Первая колонка нижней плашки = фактической ширине первой колонки верхней
+  // (измеряем после масштабирования шрифта, чтобы вторая колонка совпала
+  // с колонкой «1 кв»).
+  var osirFirstLbl = grid.closest('.statistics-inner') &&
+    grid.closest('.statistics-inner').querySelector('.statistics-osir-grid .osir-lbl');
+  if (osirFirstLbl) {
+    var firstW = osirFirstLbl.offsetWidth;
+    if (firstW > 0) grid.style.setProperty('--osir-label-col', firstW + 'px');
+  }
 
   // Агрегируем по организациям: сколько барьеров ПК оценено/работоспособно.
   var stats = {}; // key: org
@@ -5502,7 +5515,12 @@ function renderStatisticsOrgCard() {
     if (r.works === 'Да') stats[o].work++;
   });
 
-  var orgNames = Object.keys(stats).sort(function(a, b) { return a.localeCompare(b, 'ru'); });
+  var orgNames = Object.keys(stats).sort(function(a, b) {
+    var pa = stats[a].total ? Math.round(stats[a].work * 100 / stats[a].total) : 0;
+    var pb = stats[b].total ? Math.round(stats[b].work * 100 / stats[b].total) : 0;
+    if (pb !== pa) return pb - pa;               // сверху вниз: 100% → 0%
+    return a.localeCompare(b, 'ru');             // при равных % — по алфавиту
+  });
 
   // Очищаем строки, оставляем первую капсулу «Все барьеры».
   grid.querySelectorAll('.org-row').forEach(function(el) { el.remove(); });
@@ -7703,8 +7721,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v479';
-var APP_VERSION = '1.31';
+var APP_BUILD = 'pkb-v480';
+var APP_VERSION = '1.32';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
