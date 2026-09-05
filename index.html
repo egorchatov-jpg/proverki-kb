@@ -1987,7 +1987,7 @@ html, body {
   display: flex; align-items: center; gap: 8px; padding: 4px 0; min-width: 0; height: 100%;
 }
 .org-bar {
-  flex: 0 1 auto; min-width: 0; height: 50%;
+  flex: 0 0 auto; height: 50%;
   background: var(--gray-btn); border-radius: 3px;
 }
 .org-bar-val {
@@ -5656,8 +5656,11 @@ function renderStatisticsOrgCard() {
     barCell.className = 'org-bar-cell';
     var bar = document.createElement('div');
     bar.className = 'org-bar';
-    if (pct > 0) bar.style.width = pct + '%';
-    else bar.style.width = '0';
+    // Ширина полоски задаётся после отрисовки строк (см. ниже): база = расстояние
+    // от левого края ячейки шкалы до левой границы «ИТОГО» верхней плашки,
+    // полоска = база * pct/100, поэтому на 100% упирается ровно в ту границу,
+    // а цифра % стоит правее. Пока ставим заглушку-маркер.
+    bar.setAttribute('data-pct', String(pct));
     var val = document.createElement('div');
     val.className = 'org-bar-val';
     val.textContent = pct + '%';
@@ -5671,6 +5674,23 @@ function renderStatisticsOrgCard() {
 
     grid.appendChild(row);
   });
+
+  // Пересчитываем ширины полосок после отрисовки: база = расстояние от левого
+  // края ячейки шкалы (3-й столбец нижней плашки) до левой границы капсулы
+  // «ИТОГО» верхней плашки. Полоска = база * pct/100: при 100% упирается ровно
+  // в эту границу, а цифра % стоит правее и не участвует в ширине.
+  var firstBarCell = grid.querySelector('.org-row .org-bar-cell');
+  var osirGrid2 = document.querySelector('.statistics-osir-grid');
+  var totalPill2 = document.querySelector('.osir-pill[data-quarter="total"]');
+  if (firstBarCell && osirGrid2 && totalPill2) {
+    var barLeft = firstBarCell.getBoundingClientRect().left;
+    var totalLeft2 = totalPill2.getBoundingClientRect().left;
+    var base = Math.max(0, totalLeft2 - barLeft);
+    grid.querySelectorAll('.org-row .org-bar').forEach(function(b) {
+      var pct = parseFloat(b.getAttribute('data-pct')) || 0;
+      b.style.width = (pct > 0 && base > 0) ? ((pct / 100) * base) + 'px' : (pct > 0 ? pct + '%' : '0');
+    });
+  }
 }
 
 function osirQuarterLabel(q) {
@@ -7890,8 +7910,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v483';
-var APP_VERSION = '1.35';
+var APP_BUILD = 'pkb-v484';
+var APP_VERSION = '1.36';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
