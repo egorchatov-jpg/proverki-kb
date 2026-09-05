@@ -1921,24 +1921,26 @@ html, body {
 }
 .statistics-org-header {
   font-size: calc(var(--org-fs) * 15 / 13); font-weight: 700; color: #1a2035;
-  text-align: center; line-height: 1.3;
+  text-align: left; line-height: 1.3;
 }
 .statistics-org-grid {
   display: grid;
-  grid-template-columns: var(--osir-col-em) auto 1fr;
+  grid-template-columns: auto auto 1fr;
   column-gap: 10px; row-gap: 8px;
   align-items: center;
 }
-/* Капсула «Все барьеры» */
+/* Капсула «Все барьеры» — те же метрики, что у .osir-pill в верхней плашке.
+   Ширина/высота/шрифт как у капсулы «ОСИР» (JS ставит ту же px-ширину).
+   Текст выровнен по левому краю. */
 .org-scope-pill {
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: flex-start;
   background: var(--orange); color: #fff;
   border: none; border-radius: 999px; cursor: pointer;
   font-size: 1em; font-weight: 700;
-  white-space: nowrap; padding: 0 0.3em; text-align: center;
-  width: var(--osir-col-em);
-  grid-column: 1 / -1;
+  white-space: nowrap; padding: 0 0.3em; text-align: left;
   box-sizing: border-box;
+  width: auto;
+  height: 2.15em; line-height: 2.15em;
   transition: opacity 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
@@ -5469,7 +5471,12 @@ function renderStatisticsOrgCard() {
   var org = osirPillValue() || 'ОСИР';
   var scope = _organizationBarrierScope;
 
-  if (pill) pill.textContent = scope;
+  if (pill) {
+    pill.textContent = scope;
+    // Ширина капсулы = ширине капсулы «ОСИР» верхней плашки (одинаковый шрифт).
+    var osirPillBtn = document.querySelector('.osir-pill[data-quarter="osir"]');
+    if (osirPillBtn) pill.style.width = osirPillBtn.offsetWidth + 'px';
+  }
 
   // Агрегируем по организациям: сколько барьеров ПК оценено/работоспособно.
   var stats = {}; // key: org
@@ -7693,8 +7700,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v476';
-var APP_VERSION = '1.28';
+var APP_BUILD = 'pkb-v477';
+var APP_VERSION = '1.29';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
