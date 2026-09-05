@@ -985,19 +985,22 @@ html, body {
   font-size: 11px; font-weight: 700; color: var(--text2); line-height: 1;
 }
 .th-col-btn.active .th-filter-count { color: inherit; }
-/* Проверки барьера (из оценки фокусных наборов): компактная шапка — текст
+/* Проверки барьера/организации (из статистики): компактная шапка — текст
    названий столбцов прижат к низу строки, без пустой полосы под ним. */
-#screen-osirq-checks .list-filter-head .find-table thead th {
+#screen-osirq-checks .list-filter-head .find-table thead th,
+#screen-org-checks .list-filter-head .find-table thead th {
   height: auto;
   vertical-align: bottom;
 }
-#screen-osirq-checks .th-col-btn {
+#screen-osirq-checks .th-col-btn,
+#screen-org-checks .th-col-btn {
   height: auto;
   min-height: 34px;
   justify-content: flex-end;
   padding: 2px 4px 6px;
 }
-#screen-osirq-checks .th-col-btn > span {
+#screen-osirq-checks .th-col-btn > span,
+#screen-org-checks .th-col-btn > span {
   min-height: 0;
 }
 #screen-corrective-list .th-col-btn.active { color: var(--navy); }
@@ -1952,11 +1955,21 @@ html, body {
 }
 .org-scope-pill:active { opacity: 0.78; }
 .org-row { display: contents; }
-.org-name {
-  font-size: 1em; font-weight: 600; color: #1a2035;
-  text-align: left; line-height: 1.2; padding: 4px 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+.org-name-btn {
+  display: flex; align-items: center; justify-content: flex-start;
+  background: var(--navy); color: #fff;
+  border: none; border-radius: 999px; cursor: pointer;
+  font-size: 1em; font-weight: 700;
+  white-space: nowrap; padding: 0 0.3em; text-align: left;
+  box-sizing: border-box;
+  width: auto; height: 2.15em; line-height: 2.15em;
+  min-width: 0; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis;
+  justify-self: start;
+  transition: opacity 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
+.org-name-btn:active { opacity: 0.78; }
 .org-count {
   font-size: 1em; font-weight: 600; color: #1a2035;
   text-align: center; white-space: nowrap; padding: 4px 0;
@@ -2015,6 +2028,10 @@ html, body {
 
 /* ===== SCREEN: ОЦЕНКА ФОКУСНЫХ НАБОРОВ БАРЬЕРОВ (по кварталу) ===== */
 #screen-osir-quarter { background: var(--bg); }
+.org-checks-title {
+  font-size: 15px; font-weight: 700; color: #1a2035;
+  text-align: center; padding: 18px 16px 10px; flex-shrink: 0; line-height: 1.4;
+}
 .osirq-title {
   font-size: 16px; font-weight: 700; color: #1a2035; text-align: center;
   padding: 20px 16px 10px; flex-shrink: 0; line-height: 1.4;
@@ -3278,6 +3295,39 @@ html, body {
   </div>
 </div>
 
+<!-- ===== SCREEN: ПРОВЕРКИ ОРГАНИЗАЦИИ (из плашки работоспособности) ===== -->
+<div class="screen" id="screen-org-checks">
+  <div class="org-checks-title" id="org-checks-title"></div>
+  <div class="list-filter-head">
+    <table class="find-table find-filter-table">
+      <colgroup>
+        <col style="width:22%"><col style="width:28%"><col style="width:28%"><col style="width:22%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th><button class="th-col-btn" type="button"><span>Дата<br>проверки</span></button></th>
+          <th><button class="th-col-btn" type="button"><span>Проверяющий</span></button></th>
+          <th><button class="th-col-btn" type="button"><span>Проверяемый</span></button></th>
+          <th><button class="th-col-btn" type="button"><span>Барьер</span></button></th>
+        </tr>
+      </thead>
+    </table>
+  </div>
+  <div class="find-list-wrap">
+    <table class="find-table find-body-table">
+      <colgroup>
+        <col style="width:22%"><col style="width:28%"><col style="width:28%"><col style="width:22%">
+      </colgroup>
+      <tbody id="org-checks-tbody"></tbody>
+    </table>
+  </div>
+  <div class="find-bottom">
+    <div class="find-count" id="org-checks-count">0<br>проверок</div>
+    <button class="find-bottom-btn find-btn-cancel" onclick="backFromOrgChecks()">Назад</button>
+    <div class="find-violation-count" id="org-checks-violation-count">0<br>нарушений</div>
+  </div>
+</div>
+
 <!-- ===== SCREEN: ЗАПАС ПРОЧНОСТИ (по году) ===== -->
 <div class="screen" id="screen-osirq-zapas">
   <div class="osirq-title">Запас прочности барьеров, применимых в КС<br>и включенных в ПК <span id="osirq-zapas-title-year"></span></div>
@@ -4187,7 +4237,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-export-format', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-card-photo', 'screen-card-camera', 'screen-card-camera-preview', 'screen-barriers-years', 'screen-barriers-list', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios', 'screen-install-android', 'screen-statistics', 'screen-barriers-in-pk', 'screen-osir-quarter', 'screen-osirq-checks', 'screen-osirq-zapas'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-export-format', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-card-photo', 'screen-card-camera', 'screen-card-camera-preview', 'screen-barriers-years', 'screen-barriers-list', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios', 'screen-install-android', 'screen-statistics', 'screen-barriers-in-pk', 'screen-osir-quarter', 'screen-osirq-checks', 'screen-org-checks', 'screen-osirq-zapas'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -4501,12 +4551,13 @@ var drums = {};
 // Narrow detail card on Windows desktop
 if (/Windows/.test(navigator.userAgent)) document.documentElement.classList.add('is-win');
 
-var detailSource = 'find'; // 'find' | 'lobby' | 'corrective' | 'sokb' | 'osirqChecks'
+var detailSource = 'find'; // 'find' | 'lobby' | 'corrective' | 'sokb' | 'osirqChecks' | 'orgChecks'
 function closeDetail() {
   if (detailSource === 'lobby') showScreen('screen-lobby');
   else if (detailSource === 'corrective') showScreen('screen-corrective-list');
   else if (detailSource === 'sokb') showScreen('screen-sokb-list');
   else if (detailSource === 'osirqChecks') showScreen('screen-osirq-checks');
+  else if (detailSource === 'orgChecks') showScreen('screen-org-checks');
   else showScreen('screen-find');
 }
 
@@ -5478,11 +5529,15 @@ function renderStatisticsOrgCard() {
   var org = osirPillValue() || 'ОСИР';
   var scope = _organizationBarrierScope;
 
+  var scopePillWidth = 0;
   if (pill) {
     pill.textContent = scope;
     // Ширина капсулы = ширине капсулы «ОСИР» верхней плашки (одинаковый шрифт).
     var osirPillBtn = document.querySelector('.osir-pill[data-quarter="osir"]');
-    if (osirPillBtn) pill.style.width = osirPillBtn.offsetWidth + 'px';
+    if (osirPillBtn) {
+      pill.style.width = osirPillBtn.offsetWidth + 'px';
+      scopePillWidth = osirPillBtn.offsetWidth;
+    }
   }
   // Первая колонка нижней плашки = фактической ширине первой колонки верхней
   // (измеряем после масштабирования шрифта, чтобы вторая колонка совпала
@@ -5532,9 +5587,14 @@ function renderStatisticsOrgCard() {
     var row = document.createElement('div');
     row.className = 'org-row';
 
-    var nameEl = document.createElement('div');
-    nameEl.className = 'org-name';
+    var nameEl = document.createElement('button');
+    nameEl.type = 'button';
+    nameEl.className = 'org-name-btn';
     nameEl.textContent = name;
+    if (scopePillWidth > 0) nameEl.style.width = scopePillWidth + 'px';
+    nameEl.onclick = (function(orgName) {
+      return function() { openOrgChecks(orgName); };
+    })(name);
 
     var countEl = document.createElement('div');
     countEl.className = 'org-count';
@@ -5787,6 +5847,63 @@ function openOsirqChecks(barrier) {
 
 function backFromOsirqChecks() {
   showScreen('screen-osir-quarter');
+}
+
+// Открывает список проверок организации за выбранный год (из плашки «Работоспособность…»).
+// Показываются те же проверки, что учитываются в счётчике «XXX из YYY» по организации.
+function orgChecksRecords(orgName) {
+  var year = _statisticsYear;
+  var osirOrg = osirPillValue() || 'ОСИР';
+  var scope = _organizationBarrierScope;
+  var out = [];
+  (appState.db || []).forEach(function(r) {
+    if (!r) return;
+    var dc = normalizeDateStr(r.dateCheck);
+    if (!dc) return;
+    var parts = dc.split('.');
+    if (parts.length !== 3) return;
+    if (parseInt(parts[2], 10) !== year) return;
+    if (String(r.method || '').trim() !== osirOrg) return;
+    var b = String(r.barrier || '').trim();
+    if (!b) return;
+    if (!osirqScopeAllows(year, b)) return; // только барьеры ПК
+    if (scope !== 'Все барьеры' && b !== scope) return;
+    if (String(r.org || '').trim() !== String(orgName || '').trim()) return;
+    out.push(r);
+  });
+  return sortByDateCheckAsc(out);
+}
+
+function openOrgChecks(orgName) {
+  var records = orgChecksRecords(orgName);
+  var titleEl = document.getElementById('org-checks-title');
+  if (titleEl) titleEl.textContent = 'Проверки по организации: ' + (orgName || '');
+  var tbody = document.getElementById('org-checks-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  var viol = 0;
+  records.forEach(function(r) {
+    var tr = document.createElement('tr');
+    if (r.works === 'Нет') { tr.className = 'has-violation'; viol++; }
+    tr.innerHTML =
+      '<td>' + esc(r.dateCheck || '') + '</td>' +
+      '<td>' + esc(r.method || '') + '</td>' +
+      '<td>' + esc(r.org || '') + '</td>' +
+      '<td>' + esc(r.barrier || '') + '</td>';
+    tr.onclick = (function(rec) {
+      return function() { openDetail(rec, 'orgChecks'); };
+    })(r);
+    tbody.appendChild(tr);
+  });
+  var countEl = document.getElementById('org-checks-count');
+  if (countEl) countEl.innerHTML = pluralProverka(records.length);
+  var violEl = document.getElementById('org-checks-violation-count');
+  if (violEl) violEl.innerHTML = viol + '<br>' + pluralNarushenie(viol);
+  showScreen('screen-org-checks');
+}
+
+function backFromOrgChecks() {
+  showScreen('screen-statistics');
 }
 
 function openSettings() {
@@ -7721,8 +7838,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v480';
-var APP_VERSION = '1.32';
+var APP_BUILD = 'pkb-v481';
+var APP_VERSION = '1.33';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
