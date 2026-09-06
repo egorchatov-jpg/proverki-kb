@@ -1,8 +1,8 @@
 const { saveChecklistForRecord, assertChecklistWritable } = require('../lib/checklists-lib');
-const { updateRecord } = require('../lib/records-store');
+const { updateRecord, findRecord } = require('../lib/records-store');
 const { getDb } = require('../lib/db');
 const { flushDbPersist, isEnabled: isGithubPersistEnabled } = require('../lib/github-persist');
-const { sendRecordsChangedPush } = require('../lib/push-notify');
+const { sendViolationPush, sendRecordsChangedPush } = require('../lib/push-notify');
 const { assertWritesAllowed } = require('../lib/write-gate');
 const { requireSession } = require('../lib/auth-session');
 
@@ -23,6 +23,11 @@ module.exports = async (req, res) => {
     if (!dateEntry || !fields) return res.status(400).json({ error: 'Missing dateEntry or fields' });
 
     const fallback = { dateCheck, method, org, barrier };
+    // Push-состояние до правки: нужно знать, стала ли запись нарушением
+    // только сейчас (переход в works='Нет'), чтобы не слать push при любом
+    // редактировании уже нарушенной проверки (правка корректив/СОКБ и т.п.).
+    let before = null;
+    try { before = findRecord(dateEntry, fallback); } catch (_e) {}
     const checklistProbe = Object.assign({}, fields, {
       dateEntry: dateEntry,
       checkId: fields.checkId,
@@ -88,6 +93,15 @@ module.exports = async (req, res) => {
     sendRecordsChangedPush(senderEndpoint || null).catch(function(e) {
       console.warn('[update] silent sync push failed:', e.message);
     });
+
+    // Новая проверка стала нарушением именно этой правкой (раньше works != 'Нет') —
+    // отправляем push-уведомление как при внесении нарушения из карточки.
+    if (updated && String(updated.works || '').trim() === 'Нет' &&
+        String(before && before.works || '').trim() !== 'Нет') {
+      sendViolationPush(updated, senderEndpoint || null).catch(function(pushErr) {
+        console.warn('[update] violation push failed:', pushErr.message);
+      });
+    }
 
     return res.status(200).json({
       success: true,

@@ -25,6 +25,20 @@ module.exports = async (req, res) => {
     const settings = loadSettings();
     const saveResult = insertRecord(record, settings.barriersConfig);
 
+    // Push for a newly inserted violation fires as soon as the record is in the
+    // DB — before checklist persistence. Otherwise a checklist conflict (409
+    // below) or a persist error would leave a violation inserted but never
+    // notified, and the later client retry would be treated as a duplicate
+    // (insertRecord → duplicate:true) where push is intentionally skipped.
+    let notified = 0;
+    if (!saveResult.duplicate && record.works === 'Нет') {
+      // Push delivery must not block saving. A stale subscription can take
+      // several retry attempts and otherwise makes the client look frozen.
+      sendViolationPush(record, senderEndpoint || null).catch(function(pushErr) {
+        console.warn('[save] push notify failed:', pushErr.message);
+      });
+    }
+
     let checklistResult = null;
     if (!saveResult.duplicate && record.checklistFilled) {
       try {
@@ -41,15 +55,6 @@ module.exports = async (req, res) => {
         reason: checklistResult.reason || 'stale_checklist',
         checklist: checklistResult.checklist || null,
         checkId: saveResult.checkId || record.checkId,
-      });
-    }
-
-    let notified = 0;
-    if (!saveResult.duplicate && record.works === 'Нет') {
-      // Push delivery must not block saving. A stale subscription can take
-      // several retry attempts and otherwise makes the client look frozen.
-      sendViolationPush(record, senderEndpoint || null).catch(function(pushErr) {
-        console.warn('[save] push notify failed:', pushErr.message);
       });
     }
 

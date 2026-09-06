@@ -797,6 +797,9 @@ html, body {
 .overlay-btns {
   display: flex; gap: 10px; margin-top: 18px; justify-content: center;
 }
+/* Одинокая кнопка «Понятно» информационного оверлея — той же ширины, что
+   кнопка «Назад» в подробном окне (.detail-back-btn). */
+#overlay-corr-status-deny .overlay-btn { width: calc((100% - 20px) / 3); }
 .overlay-btn {
   width: calc((100% - 20px) / 3); flex: none;
   border: none; cursor: pointer; border-radius: var(--btn-radius);
@@ -988,19 +991,22 @@ html, body {
 /* Проверки барьера/организации (из статистики): компактная шапка — текст
    названий столбцов прижат к низу строки, без пустой полосы под ним. */
 #screen-osirq-checks .list-filter-head .find-table thead th,
-#screen-org-checks .list-filter-head .find-table thead th {
+#screen-org-checks .list-filter-head .find-table thead th,
+#screen-clq-checks .list-filter-head .find-table thead th {
   height: auto;
   vertical-align: bottom;
 }
 #screen-osirq-checks .th-col-btn,
-#screen-org-checks .th-col-btn {
+#screen-org-checks .th-col-btn,
+#screen-clq-checks .th-col-btn {
   height: auto;
   min-height: 34px;
   justify-content: flex-end;
   padding: 2px 4px 6px;
 }
 #screen-osirq-checks .th-col-btn > span,
-#screen-org-checks .th-col-btn > span {
+#screen-org-checks .th-col-btn > span,
+#screen-clq-checks .th-col-btn > span {
   min-height: 0;
 }
 #screen-corrective-list .th-col-btn.active { color: var(--navy); }
@@ -1922,6 +1928,31 @@ html, body {
 .osir-pill--navy   { background: var(--navy); color: #fff; }
 .osir-pill--orange { background: var(--orange); color: #fff; }
 
+/* Мини-плашка значений столбца «ИТОГО»: светло-синий фон, чуть темнее фона
+   плашки «Общая ОРБ фокусных наборов ПК», со светло-синим контуром.
+   Занимает 6-ю колонку и строки 2-4 сетки (под капсулой «ИТОГО»).
+   Вертикального паддинга нет — высота задаётся через min-height ячеек, чтобы
+   строки сетки росли целиком, а значения оставались строго на уровне
+   значений других колонок в этих же строках. */
+.osir-total-box {
+  grid-column: 6;
+  grid-row: 2 / 5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+  justify-self: stretch;
+  align-self: stretch;
+  justify-content: center;
+  background: #dbe8fb;
+  border: 1px solid #a6c3ef;
+  border-radius: 12px;
+  padding: 0 0.4em;
+  box-sizing: border-box;
+}
+.osir-total-box .osir-cell {
+  min-height: 1.7em;
+}
+
 /* ===== Плашка: Работоспособность барьеров ПК в организациях ===== */
 .statistics-org-card {
   background: #eaf0fb;
@@ -1997,6 +2028,15 @@ html, body {
   flex-shrink: 0;
   background: var(--bg);
   display: flex; justify-content: center;
+}
+/* Расшифровка аббревиатур под нижней плашкой: не жирный серый текст. */
+.statistics-legend {
+  font-size: calc(var(--osir-fs, 13px) * 0.92);
+  font-weight: 400;
+  color: var(--text2);
+  line-height: 1.55;
+  margin-top: 26px;
+  white-space: pre-line;
 }
 /* Кнопка «Назад» — та же ширина, что в окне «Проверки» (find-bottom-btn):
    базовый .screen-back-btn уже использует calc((100% - 20px) / 3). */
@@ -3168,38 +3208,55 @@ html, body {
           <button class="osir-pill osir-pill--navy" data-quarter="q2" onclick="openOsirQuarter('q2')">2 кв</button>
           <button class="osir-pill osir-pill--navy" data-quarter="q3" onclick="openOsirQuarter('q3')">3 кв</button>
           <button class="osir-pill osir-pill--navy" data-quarter="q4" onclick="openOsirQuarter('q4')">4 кв</button>
-          <button class="osir-pill osir-pill--orange" data-quarter="total" onclick="openOsirQuarter('total')">ИТОГО</button>
+          <button class="osir-pill osir-pill--navy" data-quarter="total" onclick="openOsirQuarter('total')">ИТОГО</button>
           <!-- Строка 2 — "Оценено" -->
           <div class="osir-cell osir-lbl">Оценено</div>
           <div class="osir-cell osir-val" data-row="evaluated" data-quarter="q1">-</div>
           <div class="osir-cell osir-val" data-row="evaluated" data-quarter="q2">-</div>
           <div class="osir-cell osir-val" data-row="evaluated" data-quarter="q3">-</div>
           <div class="osir-cell osir-val" data-row="evaluated" data-quarter="q4">-</div>
-          <div class="osir-cell osir-val" data-row="evaluated" data-quarter="total">-</div>
+          <div class="osir-total-box">
+            <div class="osir-cell osir-val" data-row="evaluated" data-quarter="total">-</div>
+            <div class="osir-cell osir-val" data-row="achieved" data-quarter="total">-</div>
+            <div class="osir-cell osir-val" data-row="notAchieved" data-quarter="total">-</div>
+          </div>
           <!-- Строка 3 — "Достигло цели" -->
           <div class="osir-cell osir-lbl">Достигло цели</div>
           <div class="osir-cell osir-val" data-row="achieved" data-quarter="q1">-</div>
           <div class="osir-cell osir-val" data-row="achieved" data-quarter="q2">-</div>
           <div class="osir-cell osir-val" data-row="achieved" data-quarter="q3">-</div>
           <div class="osir-cell osir-val" data-row="achieved" data-quarter="q4">-</div>
-          <div class="osir-cell osir-val" data-row="achieved" data-quarter="total">-</div>
           <!-- Строка 4 — "Достигло н. цели" -->
           <div class="osir-cell osir-lbl">Достигло н. цели</div>
           <div class="osir-cell osir-val" data-row="notAchieved" data-quarter="q1">-</div>
           <div class="osir-cell osir-val" data-row="notAchieved" data-quarter="q2">-</div>
           <div class="osir-cell osir-val" data-row="notAchieved" data-quarter="q3">-</div>
           <div class="osir-cell osir-val" data-row="notAchieved" data-quarter="q4">-</div>
-          <div class="osir-cell osir-val" data-row="notAchieved" data-quarter="total">-</div>
         </div>
       </div>
 
       <!-- Плашка: Работоспособность барьеров ПК в организациях -->
       <div class="statistics-org-card" id="statistics-org-card">
-        <div class="statistics-org-header">ОРБ фокусных наборов ПК в организациях</div>
+        <div class="statistics-org-header">ОРБ фокусных наборов ПК в ПО</div>
         <div class="statistics-org-grid" id="statistics-org-grid">
           <button class="org-scope-pill" id="org-scope-pill" onclick="openOsirBarrierScopeOverlay()">Все барьеры</button>
         </div>
       </div>
+
+      <!-- Плашка: ОРБ вопросов чек-листов барьеров ПК -->
+      <div class="statistics-org-card" id="statistics-clq-card">
+        <div class="statistics-org-header">ОРБ по вопросам чек-листов барьеров ПК</div>
+        <div class="statistics-org-grid" id="statistics-clq-grid">
+          <button class="org-scope-pill" id="clq-scope-pill" onclick="openClqOrgOverlay()">Все ПО</button>
+        </div>
+      </div>
+
+      <div class="statistics-legend">КС - капитальное строительство
+Н. цель - напряженная цель
+ОРБ - оценка работоспособности барьеров
+ОСИР - отдел сертификации и расследований
+ПК - производственный контракт
+ПО - подрядная организация</div>
     </div>
   </div>
 
@@ -3335,6 +3392,39 @@ html, body {
   </div>
 </div>
 
+<!-- ===== SCREEN: ПРОВЕРКИ ПО ВОПРОСУ ЧЕК-ЛИСТА (из плашки вопросов чек-листов) ===== -->
+<div class="screen" id="screen-clq-checks">
+  <div class="org-checks-title" id="clq-checks-title"></div>
+  <div class="list-filter-head">
+    <table class="find-table find-filter-table">
+      <colgroup>
+        <col style="width:22%"><col style="width:28%"><col style="width:28%"><col style="width:22%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th><button class="th-col-btn" type="button"><span>Дата<br>проверки</span></button></th>
+          <th><button class="th-col-btn" type="button"><span>Проверяющий</span></button></th>
+          <th><button class="th-col-btn" type="button"><span>Проверяемый</span></button></th>
+          <th><button class="th-col-btn" type="button"><span>Барьер</span></button></th>
+        </tr>
+      </thead>
+    </table>
+  </div>
+  <div class="find-list-wrap">
+    <table class="find-table find-body-table">
+      <colgroup>
+        <col style="width:22%"><col style="width:28%"><col style="width:28%"><col style="width:22%">
+      </colgroup>
+      <tbody id="clq-checks-tbody"></tbody>
+    </table>
+  </div>
+  <div class="find-bottom">
+    <div class="find-count" id="clq-checks-count">0<br>проверок</div>
+    <button class="find-bottom-btn find-btn-cancel" onclick="backFromClqChecks()">Назад</button>
+    <div class="find-violation-count" id="clq-checks-violation-count">0<br>нарушений</div>
+  </div>
+</div>
+
 <!-- ===== SCREEN: ЗАПАС ПРОЧНОСТИ (по году) ===== -->
 <div class="screen" id="screen-osirq-zapas">
   <div class="osirq-title">Запас прочности барьеров, применимых в КС<br>и включенных в ПК <span id="osirq-zapas-title-year"></span></div>
@@ -3400,6 +3490,16 @@ html, body {
     <div class="overlay-title">Необходимо обновить приложение</div>
     <div class="overlay-btns">
       <button type="button" class="overlay-btn overlay-btn-apply" onclick="applyAppUpdate()">Обновить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== OVERLAY: СТАТУС "ВЫПОЛНЕНО" НЕДОСТУПЕН ПРОВЕРЯЕМОЙ ОРГАНИЗАЦИИ ===== -->
+<div class="overlay" id="overlay-corr-status-deny">
+  <div class="overlay-box">
+    <p class="push-prompt-text">Вы не можете установить статус "ВЫПОЛНЕНО".<br>Пожалуйста, направьте подтверждение о выполнении мероприятия вашему куратору от заказчика и сообщите о необходимости отметить мероприятие выполненным</p>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-btn-cancel" onclick="closeOverlay('overlay-corr-status-deny')">Понятно</button>
     </div>
   </div>
 </div>
@@ -4244,7 +4344,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-export-format', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-card-photo', 'screen-card-camera', 'screen-card-camera-preview', 'screen-barriers-years', 'screen-barriers-list', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios', 'screen-install-android', 'screen-statistics', 'screen-barriers-in-pk', 'screen-osir-quarter', 'screen-osirq-checks', 'screen-org-checks', 'screen-osirq-zapas'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-export-format', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-card-photo', 'screen-card-camera', 'screen-card-camera-preview', 'screen-barriers-years', 'screen-barriers-list', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios', 'screen-install-android', 'screen-statistics', 'screen-barriers-in-pk', 'screen-osir-quarter', 'screen-osirq-checks', 'screen-org-checks', 'screen-clq-checks', 'screen-osirq-zapas'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -4565,6 +4665,7 @@ function closeDetail() {
   else if (detailSource === 'sokb') showScreen('screen-sokb-list');
   else if (detailSource === 'osirqChecks') showScreen('screen-osirq-checks');
   else if (detailSource === 'orgChecks') showScreen('screen-org-checks');
+  else if (detailSource === 'clqChecks') showScreen('screen-clq-checks');
   else showScreen('screen-find');
 }
 
@@ -5159,6 +5260,7 @@ function renderStatisticsData() {
   });
   fitOsirCard();
   renderStatisticsOrgCard();
+  renderStatisticsClqCard();
 }
 
 // Уменьшает шрифт плашек так, чтобы все их колонки/надписи помещались в доступную
@@ -6004,6 +6106,372 @@ function openOrgChecks(orgName) {
 }
 
 function backFromOrgChecks() {
+  showScreen('screen-statistics');
+}
+
+// ===== ОРБ вопросов чек-листов барьеров ПК =====
+var _clqScopeOrg = 'Все ПО';
+
+// Нормализованный номер вопроса: первое «слово» текста вопроса (код вида ГАЗ.01.1.1).
+function clqCodeOfText(text) {
+  var s = String(text || '').trim();
+  if (!s) return '';
+  var tok = (s.split(/\s+/)[0] || '');
+  tok = tok.replace(/^[.\s]+|[.\s]+$/g, '');
+  if (!/^[A-ZА-ЯЁ][A-ZА-ЯЁ0-9]*(?:\.[A-ZА-ЯЁ0-9]+)+(?:[A-Za-zА-Яа-яЁё]?)$/.test(tok)) return '';
+  return tok;
+}
+
+// Номера вопросов, встречающиеся в тексте описания нарушения (legacy-записи).
+function clqCodesFromDesc(desc) {
+  var out = {};
+  String(desc || '').split(/[\n;]/).forEach(function(line) {
+    var s = String(line || '').trim();
+    if (!s) return;
+    var m = s.match(/^[A-ZА-ЯЁ][A-ZА-ЯЁ0-9]*(?:\.[A-ZА-ЯЁ0-9]+)+(?:[A-Za-zА-Яа-яЁё]?)/);
+    if (!m || !m[0]) return;
+    var c = m[0].replace(/[.\s]+$/g, '');
+    if (c && /^[A-ZА-ЯЁ][A-ZА-ЯЁ0-9]*(?:\.[A-ZА-ЯЁ0-9]+)+(?:[A-Za-zА-Яа-яЁё]?)$/.test(c)) out[c] = true;
+  });
+  return Object.keys(out);
+}
+
+// Информация о вопросах чек-листа проверки r: какие вопросы «заданы» (asked),
+// какие из них нарушены (viol). Возвращает null, если данных чек-листа нет.
+function clqRecordInfo(r) {
+  if (!r) return null;
+  var qmap = r.checklistQuestionTexts || {};
+  var vmap = r.checklistViolations || {};
+  var hasStructured = Object.keys(qmap).length > 0 || Object.keys(vmap).length > 0 || !!r.checklistFilled;
+  var keyCode = {}, asked = {}, viol = {};
+  Object.keys(qmap).forEach(function(k) {
+    var c = clqCodeOfText(qmap[k]);
+    if (c) { keyCode[k] = c; asked[c] = true; }
+  });
+  if (hasStructured) {
+    Object.keys(vmap).forEach(function(k) {
+      if (!String(vmap[k] || '').trim()) return;
+      var c = keyCode[k];
+      if (c) viol[c] = true;
+    });
+  } else if (String(r.works || '').trim() === 'Нет') {
+    // legacy: чек-лист не заполнен, номера вопросов — из описания нарушения
+    clqCodesFromDesc(r.desc).forEach(function(c) { asked[c] = true; viol[c] = true; });
+  }
+  if (!Object.keys(asked).length) return null;
+  return { asked: asked, viol: viol };
+}
+
+// Организации (Проверяемый), у которых есть нарушенные вопросы чек-листов ПК в году.
+function clqScopeOrgsList() {
+  var year = _statisticsYear;
+  var method = osirPillValue() || 'ОСИР';
+  var seen = {};
+  (appState.db || []).forEach(function(r) {
+    if (!r) return;
+    var dc = normalizeDateStr(r.dateCheck);
+    if (!dc) return;
+    var parts = dc.split('.');
+    if (parts.length !== 3) return;
+    if (parseInt(parts[2], 10) !== year) return;
+    if (String(r.method || '').trim() !== method) return;
+    var b = String(r.barrier || '').trim();
+    if (!b) return;
+    if (!osirqScopeAllows(year, b)) return; // только барьеры ПК
+    var info = clqRecordInfo(r);
+    if (!info || !Object.keys(info.viol).length) return;
+    var o = String(r.org || '').trim();
+    if (o) seen[o] = true;
+  });
+  return Object.keys(seen).sort(function(a, b) { return a.localeCompare(b, 'ru'); });
+}
+
+// Барьер ПК, которому принадлежит вопрос чек-листа: код вопроса начинается с
+// кода барьера (напр. ГРУЗ.01.3.1 → барьер ГРУЗ.01). Возвращает имя барьера
+// из конфига года или ''.
+function clqBarrierForCode(year, code) {
+  var list = getBarriersForYear(year) || [];
+  var best = '';
+  list.forEach(function(entry) {
+    var n = String(entry && entry.name || '').trim();
+    if (!n) return;
+    var c = String(code || '').trim();
+    if (c === n || c.indexOf(n + '.') === 0) {
+      if (n.length > best.length) best = n;
+    }
+  });
+  return best;
+}
+
+function clqOrgOptionsForScope() {
+  return ['Все ПО'].concat(clqScopeOrgsList());
+}
+
+function openClqOrgOverlay() {
+  var items = clqOrgOptionsForScope();
+  if (items.length <= 1) return;
+  var current = _clqScopeOrg;
+  if (items.indexOf(current) < 0) current = items[0];
+  openDrumOverlay('Выберите организацию', [
+    { id: 'clqOrg', items: items, value: current, fullWidth: true, widthFactor: 0.9, leftAlign: true }
+  ], function(d) {
+    var val = d['clqOrg'].getValue();
+    if (!val) return;
+    _clqScopeOrg = val;
+    renderStatisticsClqCard();
+  });
+}
+
+// Проверки, попадающие в плашку вопросов чек-листов: год + метод (капсула ОСИР) +
+// барьеры ПК + выбранная организация.
+function clqBaseChecks() {
+  var year = _statisticsYear;
+  var method = osirPillValue() || 'ОСИР';
+  var scopeOrg = _clqScopeOrg;
+  var out = [];
+  (appState.db || []).forEach(function(r) {
+    if (!r) return;
+    var dc = normalizeDateStr(r.dateCheck);
+    if (!dc) return;
+    var parts = dc.split('.');
+    if (parts.length !== 3) return;
+    if (parseInt(parts[2], 10) !== year) return;
+    if (String(r.method || '').trim() !== method) return;
+    var b = String(r.barrier || '').trim();
+    if (!b) return;
+    if (!osirqScopeAllows(year, b)) return; // только барьеры ПК
+    if (scopeOrg !== 'Все ПО' && String(r.org || '').trim() !== scopeOrg) return;
+    out.push(r);
+  });
+  return out;
+}
+
+function clqCodeCompare(a, b) {
+  var na = a.split('.'), nb = b.split('.');
+  var len = Math.max(na.length, nb.length);
+  for (var i = 0; i < len; i++) {
+    var pa = na[i] || '', pb = nb[i] || '';
+    var naNum = parseInt(pa, 10), nbNum = parseInt(pb, 10);
+    var aNum = !isNaN(naNum), bNum = !isNaN(nbNum);
+    if (aNum && bNum) {
+      if (naNum !== nbNum) return naNum - nbNum;
+      if (pa !== pb) return pa < pb ? -1 : 1;
+    } else if (pa !== pb) {
+      return pa.localeCompare(pb, 'ru');
+    }
+  }
+  return 0;
+}
+
+function renderStatisticsClqCard() {
+  var grid = document.getElementById('statistics-clq-grid');
+  var pill = document.getElementById('clq-scope-pill');
+  if (!grid) return;
+
+  // Если выбранная организация пропала из выборки (сменился год/метод) — сброс.
+  if (_clqScopeOrg !== 'Все ПО' && clqScopeOrgsList().indexOf(_clqScopeOrg) < 0) {
+    _clqScopeOrg = 'Все ПО';
+  }
+
+  // Капсула «Все ПО» и первая колонка — ровно как в плашке выше: ширина капсулы
+  // «ОСИР» верхней плашки и ширина её первой колонки (одинаковый масштаб шрифта).
+  var scopePillWidth = 0;
+  if (pill) {
+    pill.textContent = _clqScopeOrg;
+    var osirPillBtn = document.querySelector('.osir-pill[data-quarter="osir"]');
+    if (osirPillBtn) {
+      pill.style.width = osirPillBtn.offsetWidth + 'px';
+      scopePillWidth = osirPillBtn.offsetWidth;
+    }
+  }
+  var osirFirstLbl = grid.closest('.statistics-inner') &&
+    grid.closest('.statistics-inner').querySelector('.statistics-osir-grid .osir-lbl');
+  if (osirFirstLbl) {
+    var firstW = osirFirstLbl.offsetWidth;
+    if (firstW > 0) grid.style.setProperty('--osir-label-col', firstW + 'px');
+  }
+
+  // Для каждого нарушенного вопроса знаменатель — ВСЕ OSIR-ПК проверки по
+  // барьеру, которому принадлежит вопрос (вопрос входит в чек-лист каждой такой
+  // проверки), а не только записи с сохранённым чек-листом. Например: вопрос
+  // ГРУЗ.01.3.1 у организации ЮНС был в 4 проверках барьера ГРУЗ.01, нарушен
+  // в одной → «3 из 4» и 75%.
+  var year = _statisticsYear;
+  var clqRecords = clqBaseChecks();
+  var barrierTotal = {}; // барьер -> сколько проверок по нему в выборке
+  var violByCode = {};   // код вопроса -> сколько проверок с нарушением этого вопроса
+  clqRecords.forEach(function(r) {
+    var b = String(r.barrier || '').trim();
+    if (b) barrierTotal[b] = (barrierTotal[b] || 0) + 1;
+    var info = clqRecordInfo(r);
+    if (!info) return;
+    Object.keys(info.viol).forEach(function(code) {
+      violByCode[code] = (violByCode[code] || 0) + 1;
+    });
+  });
+
+  var stats = {}; // code -> { total, viol }
+  Object.keys(violByCode).forEach(function(code) {
+    var barrier = clqBarrierForCode(year, code);
+    if (!barrier) return;
+    stats[code] = { total: barrierTotal[barrier] || 0, viol: violByCode[code] || 0 };
+  });
+
+  var codes = Object.keys(stats);
+  // Сортировка как в плашке выше: от большего % работоспособности к меньшему, при равных % — по коду.
+  codes.sort(function(a, b) {
+    var sa = stats[a], sb = stats[b];
+    var pa = sa.total ? Math.round(((sa.total - sa.viol) * 100) / sa.total) : 0;
+    var pb = sb.total ? Math.round(((sb.total - sb.viol) * 100) / sb.total) : 0;
+    if (pb !== pa) return pb - pa;
+    return clqCodeCompare(a, b);
+  });
+
+  grid.querySelectorAll('.org-row').forEach(function(el) { el.remove(); });
+
+  codes.forEach(function(code) {
+    var st = stats[code];
+    var work = st.total - st.viol;
+    var pct = st.total ? Math.round(work * 100 / st.total) : 0;
+
+    var row = document.createElement('div');
+    row.className = 'org-row';
+
+    var nameEl = document.createElement('button');
+    nameEl.type = 'button';
+    nameEl.className = 'org-name-btn clq-name-btn';
+    nameEl.textContent = code;
+    nameEl.title = code;
+    if (scopePillWidth > 0) nameEl.style.width = scopePillWidth + 'px';
+    nameEl.onclick = (function(c) {
+      return function() { openClqQuestionChecks(c); };
+    })(code);
+
+    var countEl = document.createElement('div');
+    countEl.className = 'org-count';
+    countEl.textContent = work + ' из ' + st.total;
+
+    var barCell = document.createElement('div');
+    barCell.className = 'org-bar-cell';
+    var bar = document.createElement('div');
+    bar.className = 'org-bar';
+    bar.setAttribute('data-pct', String(pct));
+    var val = document.createElement('div');
+    val.className = 'org-bar-val';
+    val.textContent = pct + '%';
+
+    barCell.appendChild(bar);
+    barCell.appendChild(val);
+
+    row.appendChild(nameEl);
+    row.appendChild(countEl);
+    row.appendChild(barCell);
+
+    grid.appendChild(row);
+  });
+
+  // Ширины полосок: база = расстояние от ячейки шкалы до левой границы «ИТОГО».
+  var firstBarCell = grid.querySelector('.org-row .org-bar-cell');
+  var totalPill2 = document.querySelector('.osir-pill[data-quarter="total"]');
+  if (firstBarCell && totalPill2) {
+    var barLeft = firstBarCell.getBoundingClientRect().left;
+    var totalLeft2 = totalPill2.getBoundingClientRect().left;
+    var base = Math.max(0, totalLeft2 - barLeft);
+    grid.querySelectorAll('.org-row .org-bar').forEach(function(b) {
+      var p = parseFloat(b.getAttribute('data-pct')) || 0;
+      b.style.width = (p > 0 && base > 0) ? ((p / 100) * base) + 'px' : (p > 0 ? p + '%' : '0');
+    });
+  }
+}
+
+// Проверки, которые учитываются для вопроса code: все OSIR-ПК проверки по
+// барьеру, которому принадлежит вопрос (знаменатель плашки). Нарушенные по
+// этому вопросу строки помечаются в списке отдельно.
+function clqChecksForQuestion(code) {
+  var year = _statisticsYear;
+  var method = osirPillValue() || 'ОСИР';
+  var scopeOrg = _clqScopeOrg;
+  var barrier = clqBarrierForCode(year, code);
+  var out = [];
+  (appState.db || []).forEach(function(r) {
+    if (!r) return;
+    var dc = normalizeDateStr(r.dateCheck);
+    if (!dc) return;
+    var parts = dc.split('.');
+    if (parts.length !== 3) return;
+    if (parseInt(parts[2], 10) !== year) return;
+    if (String(r.method || '').trim() !== method) return;
+    var b = String(r.barrier || '').trim();
+    if (!b) return;
+    if (barrier) {
+      if (b !== barrier) return; // тот же барьер, что в знаменателе
+    } else {
+      // Не смогли сопоставить вопрос с барьером — показываем только проверки,
+      // где вопрос реально есть в сохранённом чек-листе.
+      var info = clqRecordInfo(r);
+      if (!info || !info.asked[code]) return;
+    }
+    if (!osirqScopeAllows(year, b)) return;
+    if (scopeOrg !== 'Все ПО' && String(r.org || '').trim() !== scopeOrg) return;
+    out.push(r);
+  });
+  return sortByDateCheckAsc(out);
+}
+
+// Текстовая часть вопроса по его коду (первое найденное вхождение в чек-листах).
+function clqQuestionTextPart(code) {
+  var out = '';
+  (appState.db || []).forEach(function(r) {
+    if (out || !r) return;
+    var qmap = r.checklistQuestionTexts;
+    if (!qmap) return;
+    Object.keys(qmap).forEach(function(k) {
+      if (out) return;
+      var t = String(qmap[k] || '').trim();
+      if (!t) return;
+      if (clqCodeOfText(t) !== code) return;
+      var parts = splitQuestionCodeAndText(t);
+      var rest = parts && parts.rest ? String(parts.rest).trim() : '';
+      out = rest || t;
+    });
+  });
+  return out;
+}
+
+function openClqQuestionChecks(code) {
+  var records = clqChecksForQuestion(code);
+  var titleEl = document.getElementById('clq-checks-title');
+  if (titleEl) {
+    var qtext = clqQuestionTextPart(code);
+    titleEl.innerHTML = esc('Вопрос чек-листа: ' + code) + (qtext ? '<br>' + esc(qtext) : '');
+  }
+  var tbody = document.getElementById('clq-checks-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  var viol = 0;
+  records.forEach(function(r) {
+    var info = clqRecordInfo(r);
+    var isViol = !!(info && info.viol[code]);
+    var tr = document.createElement('tr');
+    if (isViol) { tr.className = 'has-violation'; viol++; }
+    tr.innerHTML =
+      '<td>' + esc(r.dateCheck || '') + '</td>' +
+      '<td>' + esc(r.method || '') + '</td>' +
+      '<td>' + esc(r.org || '') + '</td>' +
+      '<td>' + esc(r.barrier || '') + '</td>';
+    tr.onclick = (function(rec) {
+      return function() { openDetail(rec, 'clqChecks'); };
+    })(r);
+    tbody.appendChild(tr);
+  });
+  var countEl = document.getElementById('clq-checks-count');
+  if (countEl) countEl.innerHTML = pluralProverka(records.length);
+  var violEl = document.getElementById('clq-checks-violation-count');
+  if (violEl) violEl.innerHTML = viol + '<br>' + pluralNarushenie(viol);
+  showScreen('screen-clq-checks');
+}
+
+function backFromClqChecks() {
   showScreen('screen-statistics');
 }
 
@@ -11039,14 +11507,39 @@ function openDeadlineDrum(idx) {
   }
 }
 
+// Может ли текущая сессия отмечать мероприятие «ВЫПОЛНЕНО»: администратор,
+// суперпользователь, проверяющий, либо организация, которая выполнила проверку
+// (проверяющая организация = record.method). Проверяемая организация
+// (record.org) по своему паролю выполненным отметить не может.
+function canMarkCorrDone(record) {
+  if (!record) return false;
+  if (_sessionAccess.superuser || _sessionAccess.admin || _sessionAccess.inspector) return true;
+  var orgName = getActiveOrgSessionName();
+  return !!orgName && record.method && orgName === record.method;
+}
+
+function showCorrectiveStatusDeniedOverlay() {
+  var overlay = document.getElementById('overlay-corr-status-deny');
+  if (!overlay) return;
+  overlay.classList.add('active');
+}
+
 function openStatusDrum(idx) {
   var m = correctiveMeasures[idx];
-  var statuses = ['НЕ НАЧАТО', 'ВЫПОЛНЯЕТСЯ', 'ВЫПОЛНЕНО'];
+  var statuses = ['ВНЕСЕНО', 'ВЫПОЛНЕНО'];
+  var curStatus = m.status || '';
+  if (statuses.indexOf(curStatus) < 0) curStatus = statuses[0];
   document.getElementById('overlay-drum').classList.add('navy-theme');
   openDrumOverlay('Статус мероприятия', [
-    { id: 'status', items: statuses, value: m.status || statuses[0], minWidth: 200 }
+    { id: 'status', items: statuses, value: curStatus, minWidth: 200 }
   ], function(d) {
     var st = d['status'].getValue();
+    setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
+    // Проверяемая организация по своему паролю не может установить «ВЫПОЛНЕНО».
+    if (st === 'ВЫПОЛНЕНО' && !canMarkCorrDone(correctiveRecord)) {
+      showCorrectiveStatusDeniedOverlay();
+      return; // статус остаётся без изменений
+    }
     correctiveMeasures[idx].status = st;
     var stCell = document.getElementById('corr-st-' + idx);
     if (stCell) {
@@ -11055,7 +11548,6 @@ function openStatusDrum(idx) {
       stCell.style.color = '';
       stCell.style.fontWeight = '';
     }
-    setTimeout(function() { document.getElementById('overlay-drum').classList.remove('navy-theme'); }, 280);
     checkCorrFilled();
   });
   var cancelBtnSt = document.querySelector('#overlay-drum .overlay-btn-cancel');
