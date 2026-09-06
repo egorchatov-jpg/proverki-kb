@@ -3158,7 +3158,7 @@ html, body {
 
       <!-- Плашка "Оценка ОСИР работоспособности фокусных наборов барьеров" -->
       <div class="statistics-osir-card">
-        <div class="statistics-osir-header">Оценка фокусных наборов барьеров ПК</div>
+        <div class="statistics-osir-header">Общая ОРБ фокусных наборов ПК</div>
 
         <!-- Таблица (без границ): 6 столбцов x 4 строки -->
         <div class="statistics-osir-grid" id="statistics-osir-grid">
@@ -3195,7 +3195,7 @@ html, body {
 
       <!-- Плашка: Работоспособность барьеров ПК в организациях -->
       <div class="statistics-org-card" id="statistics-org-card">
-        <div class="statistics-org-header">Работоспособность барьеров ПК в организациях</div>
+        <div class="statistics-org-header">ОРБ фокусных наборов ПК в организациях</div>
         <div class="statistics-org-grid" id="statistics-org-grid">
           <button class="org-scope-pill" id="org-scope-pill" onclick="openOsirBarrierScopeOverlay()">Все барьеры</button>
         </div>
@@ -3239,7 +3239,7 @@ html, body {
 
 <!-- ===== SCREEN: ОЦЕНКА ФОКУСНЫХ НАБОРОВ БАРЬЕРОВ (по кварталу) ===== -->
 <div class="screen" id="screen-osir-quarter">
-  <div class="osirq-title">Оценка фокусных наборов барьеров<br><span id="osirq-title-line2"></span></div>
+  <div class="osirq-title"><span id="osirq-title-line1">Общая ОРБ фокусных наборов ПК</span><br id="osirq-title-br"><span id="osirq-title-line2"></span></div>
   <div class="osirq-wrap">
     <table class="osirq-table">
       <colgroup>
@@ -5466,6 +5466,9 @@ function backFromStatistics() {
 // ===== ОЦЕНКА ФОКУСНЫХ НАБОРОВ БАРЬЕРОВ (по кварталу) =====
 var _osirQuarter = 'q1';
 var _statisticsOsirOrg = '';
+// Если непусто — окно «оценки фокусных наборов» открыто из плашки организаций и
+// показывает данные конкретной проверяемой организации (иначе — все организации).
+var _osirqOrgContext = '';
 
 // Барьер входит в выборку только если он в производственном контракте (ПК).
 function osirqScopeAllows(year, barrier) {
@@ -5594,8 +5597,11 @@ function renderStatisticsOrgCard() {
     if (firstW > 0) grid.style.setProperty('--osir-label-col', firstW + 'px');
   }
 
-  // Агрегируем по организациям: сколько барьеров ПК оценено/работоспособно.
-  var stats = {}; // key: org
+  // Агрегируем по организациям: работоспособность фокусных наборов (те же строки,
+  // что в окне «ИТОГО» верхней плашки) в разрезе каждой проверяемой организации.
+  // Сначала собираем проверяемые организации с проверками ПК за год, затем для
+  // каждой считаем число фокусных наборов и достигших цели (не «красных»).
+  var orgSet = {};
   (appState.db || []).forEach(function(r) {
     if (!r) return;
     var dc = normalizeDateStr(r.dateCheck);
@@ -5607,12 +5613,17 @@ function renderStatisticsOrgCard() {
     var b = String(r.barrier || '').trim();
     if (!b) return;
     if (!osirqScopeAllows(year, b)) return; // только барьеры ПК
-    if (scope !== 'Все барьеры' && b !== scope) return;
     var o = String(r.org || '').trim();
-    if (!o) return;
-    if (!stats[o]) stats[o] = { total: 0, work: 0 };
-    stats[o].total++;
-    if (r.works === 'Да') stats[o].work++;
+    if (o) orgSet[o] = true;
+  });
+  var stats = {}; // key: org -> { total, work }
+  Object.keys(orgSet).forEach(function(o) {
+    var rows = osirqPeriodRows(year, 'total', org, o).filter(function(rw) {
+      return scope === 'Все барьеры' || rw.barrier === scope;
+    });
+    var total = rows.length;
+    if (!total) return; // по выбранному фильтру у организации нет фокусных наборов
+    stats[o] = { total: total, work: rows.filter(function(rw) { return rw.fill !== 'red'; }).length };
   });
 
   var orgNames = Object.keys(stats).sort(function(a, b) {
@@ -5638,7 +5649,7 @@ function renderStatisticsOrgCard() {
     nameEl.textContent = name;
     if (scopePillWidth > 0) nameEl.style.width = scopePillWidth + 'px';
     nameEl.onclick = (function(orgName) {
-      return function() { openOrgChecks(orgName); };
+      return function() { openOsirOrgFocusSets(orgName); };
     })(name);
 
     var countEl = document.createElement('div');
@@ -5693,7 +5704,17 @@ function osirQuarterLabel(q) {
 }
 
 function openOsirQuarter(quarter) {
+  _osirqOrgContext = '';
   _osirQuarter = quarter || 'q1';
+  renderOsirQuarterScreen();
+  showScreen('screen-osir-quarter');
+}
+
+// Открывает окно «оценки фокусных наборов» по конкретной проверяемой организации
+// (по аналогии с кнопкой «ИТОГО» верхней плашки, но в разрезе организации).
+function openOsirOrgFocusSets(orgName) {
+  _osirqOrgContext = String(orgName || '').trim();
+  _osirQuarter = 'total';
   renderOsirQuarterScreen();
   showScreen('screen-osir-quarter');
 }
@@ -5745,7 +5766,8 @@ function osirqConfigOrderIndex(year, barrier) {
 }
 
 // Строки «оценки фокусных наборов» для периода: те же строки, что выводятся в окне квартала.
-function osirqPeriodRows(year, quarter, org) {
+// checkedOrg — если передана проверяемая организация, учитываются только её проверки.
+function osirqPeriodRows(year, quarter, org, checkedOrg) {
   var months = {};
   osirQuarterMonths(quarter).forEach(function(m) { months[m] = true; });
   var stats = {};
@@ -5758,6 +5780,7 @@ function osirqPeriodRows(year, quarter, org) {
     if (parseInt(parts[2], 10) !== year) return;
     if (!months[parseInt(parts[1], 10)]) return;
     if (String(r.method || '').trim() !== org) return;
+    if (checkedOrg && String(r.org || '').trim() !== String(checkedOrg).trim()) return;
     var barrier = String(r.barrier || '').trim();
     if (!barrier) return;
     if (!stats[barrier]) stats[barrier] = { evaluated: 0, working: 0 };
@@ -5816,9 +5839,20 @@ function renderOsirQuarterScreen() {
   var year = _statisticsYear;
   var quarter = _osirQuarter;
   var org = osirPillValue() || 'ОСИР';
+  var checkedOrg = _osirqOrgContext;
 
-  var titleEl = document.getElementById('osirq-title-line2');
-  if (titleEl) titleEl.textContent = osirQuarterLabel(quarter) + year;
+  var line1El = document.getElementById('osirq-title-line1');
+  var brEl = document.getElementById('osirq-title-br');
+  var line2El = document.getElementById('osirq-title-line2');
+  if (checkedOrg) {
+    if (brEl) brEl.style.display = 'none';
+    if (line1El) line1El.textContent = 'ОРБ фокусных наборов ПК - ' + checkedOrg;
+    if (line2El) line2El.textContent = '';
+  } else {
+    if (brEl) brEl.style.display = '';
+    if (line1El) line1El.textContent = 'Общая ОРБ фокусных наборов ПК';
+    if (line2El) line2El.textContent = osirQuarterLabel(quarter) + year;
+  }
 
   var tbody = document.getElementById('osirq-tbody');
   if (!tbody) return;
@@ -5840,7 +5874,7 @@ function renderOsirQuarterScreen() {
   if (colWork) colWork.style.width = wVal + 'px';
   if (colPct) colPct.style.width = wVal + 'px';
 
-  var rows = osirqPeriodRows(year, quarter, org);
+  var rows = osirqPeriodRows(year, quarter, org, checkedOrg);
   rows.forEach(function(rw, idx) {
     var fillCls = rw.fill === 'red' ? ' osirq-row-red' : (rw.fill === 'orange' ? ' osirq-row-orange' : '');
     var tr = document.createElement('tr');
@@ -5866,6 +5900,7 @@ function osirqChecksRecords(barrier) {
   var year = _statisticsYear;
   var quarter = _osirQuarter;
   var org = osirPillValue() || 'ОСИР';
+  var checkedOrg = _osirqOrgContext;
   var months = {};
   osirQuarterMonths(quarter).forEach(function(m) { months[m] = true; });
   var out = [];
@@ -5878,6 +5913,7 @@ function osirqChecksRecords(barrier) {
     if (parseInt(parts[2], 10) !== year) return;
     if (!months[parseInt(parts[1], 10)]) return;
     if (String(r.method || '').trim() !== org) return;
+    if (checkedOrg && String(r.org || '').trim() !== checkedOrg) return;
     if (String(r.barrier || '').trim() !== String(barrier || '').trim()) return;
     out.push(r);
   });
