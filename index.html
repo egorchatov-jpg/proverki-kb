@@ -2078,10 +2078,24 @@ html, body {
 .org-checks-title {
   font-size: 15px; font-weight: 700; color: #1a2035;
   text-align: center; padding: 18px 16px 10px; flex-shrink: 0; line-height: 1.4;
-}
-.osirq-title {
+}.osirq-title {
   font-size: 16px; font-weight: 700; color: #1a2035; text-align: center;
   padding: 20px 16px 10px; flex-shrink: 0; line-height: 1.4;
+}
+/* Заголовки статистических списков сворачиваются вверх при прокрутке списка
+   (названия столбцов не скрываются — они в отдельном контейнере ниже).
+   Переход плавный: заголовок уезжает вверх и схлопывается по высоте. */
+.stats-title-collapsible {
+  overflow: hidden;
+  max-height: 120px;
+  transition: max-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
+  opacity: 1;
+}
+.stats-title-collapsible.stats-title-hidden {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
 }
 .osirq-title-year {
   color: var(--orange);
@@ -3256,7 +3270,8 @@ html, body {
 ОРБ - оценка работоспособности барьеров
 ОСИР - отдел сертификации и расследований
 ПК - производственный контракт
-ПО - подрядная организация</div>
+ПО - подрядная организация
+Фокусный набор - группа оценок одного барьера</div>
     </div>
   </div>
 
@@ -3267,7 +3282,7 @@ html, body {
 
 <!-- ===== SCREEN: БАРЬЕРЫ В ПК (список из статистики) ===== -->
 <div class="screen" id="screen-barriers-in-pk">
-  <div class="bpk-in-pk-title">Барьеры каркаса безопасности<br>включенные в ПК <span id="bpk-in-pk-title-year"></span></div>
+  <div class="bpk-in-pk-title stats-title-collapsible">Барьеры каркаса безопасности<br>включенные в ПК <span id="bpk-in-pk-title-year"></span></div>
   <div class="bpk-in-pk-list-wrap">
     <table class="bpk-in-pk-table">
       <colgroup>
@@ -3296,7 +3311,7 @@ html, body {
 
 <!-- ===== SCREEN: ОЦЕНКА ФОКУСНЫХ НАБОРОВ БАРЬЕРОВ (по кварталу) ===== -->
 <div class="screen" id="screen-osir-quarter">
-  <div class="osirq-title"><span id="osirq-title-line1">Общая ОРБ фокусных наборов ПК</span><br id="osirq-title-br"><span id="osirq-title-line2"></span></div>
+  <div class="osirq-title stats-title-collapsible"><span id="osirq-title-line1">Общая ОРБ фокусных наборов ПК</span><br id="osirq-title-br"><span id="osirq-title-line2"></span></div>
   <div class="osirq-wrap">
     <table class="osirq-table">
       <colgroup>
@@ -3361,7 +3376,7 @@ html, body {
 
 <!-- ===== SCREEN: ПРОВЕРКИ ОРГАНИЗАЦИИ (из плашки работоспособности) ===== -->
 <div class="screen" id="screen-org-checks">
-  <div class="org-checks-title" id="org-checks-title"></div>
+  <div class="org-checks-title stats-title-collapsible" id="org-checks-title"></div>
   <div class="list-filter-head">
     <table class="find-table find-filter-table">
       <colgroup>
@@ -3394,7 +3409,7 @@ html, body {
 
 <!-- ===== SCREEN: ПРОВЕРКИ ПО ВОПРОСУ ЧЕК-ЛИСТА (из плашки вопросов чек-листов) ===== -->
 <div class="screen" id="screen-clq-checks">
-  <div class="org-checks-title" id="clq-checks-title"></div>
+  <div class="org-checks-title stats-title-collapsible" id="clq-checks-title"></div>
   <div class="list-filter-head">
     <table class="find-table find-filter-table">
       <colgroup>
@@ -3427,7 +3442,7 @@ html, body {
 
 <!-- ===== SCREEN: ЗАПАС ПРОЧНОСТИ (по году) ===== -->
 <div class="screen" id="screen-osirq-zapas">
-  <div class="osirq-title">Запас прочности барьеров, применимых в КС<br>и включенных в ПК <span id="osirq-zapas-title-year"></span></div>
+  <div class="osirq-title stats-title-collapsible">Запас прочности барьеров, применимых в КС<br>и включенных в ПК <span id="osirq-zapas-title-year"></span></div>
   <div class="osirq-wrap">
     <table class="osirq-table">
       <colgroup>
@@ -3964,19 +3979,27 @@ function applyPendingUpdates(records) {
 }
 
 // Generic: save field update locally + queue + sync (corrective, SOKB, etc.)
-function saveRecordFieldUpdate(dateEntry, year, fields) {
+// target (optional): caller-held record reference to apply the same fields to.
+// The record object passed around by screens (detail, card) can become stale when
+// a background loadFromServer() re-merges appState.db with fresh objects — without
+// applying the fields to it too, the detail window kept showing the old value the
+// object still held (e.g. "Описание нарушений" not updating after a checklist fix).
+function saveRecordFieldUpdate(dateEntry, year, fields, target) {
   var rec = appState.db.find(function(r) { return r.dateEntry === dateEntry; });
   fields = fields || {};
   // checklistUpdatedAt on the wire = last known SERVER revision (concurrency base).
   if (fields.checklistFilled && fields.checklistUpdatedAt == null) {
     fields.checklistUpdatedAt = Number(rec && rec.checklistUpdatedAt) || 0;
   }
-  if (rec) {
+  function applyOn(obj) {
+    if (!obj) return;
     Object.keys(fields).forEach(function(k) {
       if (k === 'checklistUpdatedAt') return; // keep server base on record until ACK
-      rec[k] = fields[k];
+      obj[k] = fields[k];
     });
   }
+  applyOn(rec);
+  if (target && target !== rec) applyOn(target);
   saveState();
   var item = {
     dateEntry: dateEntry, year: year, fields: fields, updatedAt: (rec && rec.updatedAt) || 0,
@@ -4702,6 +4725,48 @@ function syncScreenInert() {
   });
 }
 
+// ===== Скрытие заголовка при скролле (окна-списки статистики) =====
+// Заголовки (но НЕ названия столбцов) статистических списков сворачиваются
+// вверх при прокрутке содержимого вниз и возвращаются при прокрутке к верху.
+var STATS_TITLE_COLLAPSE_SCREENS = {
+  'screen-barriers-in-pk': true,
+  'screen-osir-quarter': true,
+  'screen-osirq-zapas': true,
+  'screen-org-checks': true,
+  'screen-clq-checks': true,
+};
+
+function resetStatisticsListTitleShown(screenId) {
+  var scr = document.getElementById(screenId);
+  if (!scr || !STATS_TITLE_COLLAPSE_SCREENS[screenId]) return;
+  var title = scr.querySelector('.stats-title-collapsible');
+  if (title) title.classList.remove('stats-title-hidden');
+}
+
+function initStatisticsListScrollTitle(screenId) {
+  var scr = document.getElementById(screenId);
+  if (!scr || !STATS_TITLE_COLLAPSE_SCREENS[screenId]) return;
+  var title = scr.querySelector('.stats-title-collapsible');
+  var wrap = scr.querySelector('.osirq-wrap, .bpk-in-pk-list-wrap, .find-list-wrap');
+  if (!title || !wrap) return;
+  if (wrap.__statsTitleBound) return;
+  wrap.__statsTitleBound = true;
+  var lastY = wrap.scrollTop || 0;
+  wrap.addEventListener('scroll', function() {
+    var y = wrap.scrollTop;
+    if (y <= 0) {
+      title.classList.remove('stats-title-hidden');
+    } else if (y > lastY) {
+      title.classList.add('stats-title-hidden');
+    }
+    lastY = y;
+  }, { passive: true });
+}
+
+function bindStatisticsListTitleScroll() {
+  Object.keys(STATS_TITLE_COLLAPSE_SCREENS).forEach(initStatisticsListScrollTitle);
+}
+
 function rebuildIOSStandaloneScreen() {
   if (!_isIOSStandalone) return;
   saveListScrollPositions();
@@ -4904,6 +4969,7 @@ window.addEventListener('DOMContentLoaded', function() {
   updateLobbyInstallButton();
   initInstallDeviceIcons();
   initPassportImageViewer();
+  bindStatisticsListTitleScroll();
   
   var urlParams = new URLSearchParams(window.location.search);
   var openedFromNotification = urlParams.has('nc');
@@ -5140,6 +5206,7 @@ function showScreen(id) {
   syncScreenInert();
   if (prev && prev.id === 'screen-pin' && id !== 'screen-pin') setPinInputLocked(false);
   if (id === 'screen-statistics') { renderStatisticsData(); requestAnimationFrame(function() { fitOsirCard(); }); }
+  resetStatisticsListTitleShown(id);
   var scrollEl = el.querySelector('.passport-detail-scroll, .passport-mub-scroll, .passport-appendix-scroll, .passport-checklist-scroll, .settings-screen-body');
   if (scrollEl) scrollEl.scrollTop = 0;
   return true;
@@ -5596,6 +5663,13 @@ function setOsirPillValue(val) {
   if (p) p.textContent = val;
 }
 
+// Соответствие проверки фильтру капсулы «ОСИР» верхней плашки. Значение «Все» —
+// учитывать проверки ВСЕХ проверяющих организаций (без фильтра по method).
+function osirqPillAllowsMethod(pillOrg, recordMethod) {
+  if (String(pillOrg || '').trim() === 'Все') return true;
+  return String(recordMethod || '').trim() === String(pillOrg || '').trim();
+}
+
 // Проверяющие организации, у которых есть проверки в выбранном году.
 function osirOrgOptionsForYear(year) {
   var seen = {};
@@ -5618,10 +5692,11 @@ function openOsirOrgOverlay() {
   var year = _statisticsYear;
   var orgs = osirOrgOptionsForYear(year);
   if (!orgs.length) { alert('В ' + year + ' году нет проверок по организациям'); return; }
+  var items = ['Все'].concat(orgs);
   var current = osirPillValue();
-  if (orgs.indexOf(current) < 0) current = orgs[0];
+  if (items.indexOf(current) < 0) current = items[0];
   openDrumOverlay('Выберите проверяющую организацию', [
-    { id: 'osirOrg', items: orgs, value: current, fullWidth: true, widthFactor: 0.9, leftAlign: true }
+    { id: 'osirOrg', items: items, value: current, fullWidth: true, widthFactor: 0.9, leftAlign: true }
   ], function(d) {
     var val = d['osirOrg'].getValue();
     if (!val) return;
@@ -5645,7 +5720,7 @@ function osirOrgCardBarrierOptions() {
     var parts = dc.split('.');
     if (parts.length !== 3) return;
     if (parseInt(parts[2], 10) !== year) return;
-    if (String(r.method || '').trim() !== org) return;
+    if (!osirqPillAllowsMethod(org, r.method)) return;
     var b = String(r.barrier || '').trim();
     if (!b) return;
     if (!osirqScopeAllows(year, b)) return; // только барьеры ПК
@@ -5711,7 +5786,7 @@ function renderStatisticsOrgCard() {
     var parts = dc.split('.');
     if (parts.length !== 3) return;
     if (parseInt(parts[2], 10) !== year) return;
-    if (String(r.method || '').trim() !== org) return;
+    if (!osirqPillAllowsMethod(org, r.method)) return;
     var b = String(r.barrier || '').trim();
     if (!b) return;
     if (!osirqScopeAllows(year, b)) return; // только барьеры ПК
@@ -5881,7 +5956,7 @@ function osirqPeriodRows(year, quarter, org, checkedOrg) {
     if (parts.length !== 3) return;
     if (parseInt(parts[2], 10) !== year) return;
     if (!months[parseInt(parts[1], 10)]) return;
-    if (String(r.method || '').trim() !== org) return;
+    if (!osirqPillAllowsMethod(org, r.method)) return;
     if (checkedOrg && String(r.org || '').trim() !== String(checkedOrg).trim()) return;
     var barrier = String(r.barrier || '').trim();
     if (!barrier) return;
@@ -6014,7 +6089,7 @@ function osirqChecksRecords(barrier) {
     if (parts.length !== 3) return;
     if (parseInt(parts[2], 10) !== year) return;
     if (!months[parseInt(parts[1], 10)]) return;
-    if (String(r.method || '').trim() !== org) return;
+    if (!osirqPillAllowsMethod(org, r.method)) return;
     if (checkedOrg && String(r.org || '').trim() !== checkedOrg) return;
     if (String(r.barrier || '').trim() !== String(barrier || '').trim()) return;
     out.push(r);
@@ -6066,7 +6141,7 @@ function orgChecksRecords(orgName) {
     var parts = dc.split('.');
     if (parts.length !== 3) return;
     if (parseInt(parts[2], 10) !== year) return;
-    if (String(r.method || '').trim() !== osirOrg) return;
+    if (!osirqPillAllowsMethod(osirOrg, r.method)) return;
     var b = String(r.barrier || '').trim();
     if (!b) return;
     if (!osirqScopeAllows(year, b)) return; // только барьеры ПК
@@ -6174,7 +6249,7 @@ function clqScopeOrgsList() {
     var parts = dc.split('.');
     if (parts.length !== 3) return;
     if (parseInt(parts[2], 10) !== year) return;
-    if (String(r.method || '').trim() !== method) return;
+    if (!osirqPillAllowsMethod(method, r.method)) return;
     var b = String(r.barrier || '').trim();
     if (!b) return;
     if (!osirqScopeAllows(year, b)) return; // только барьеры ПК
@@ -6236,7 +6311,7 @@ function clqBaseChecks() {
     var parts = dc.split('.');
     if (parts.length !== 3) return;
     if (parseInt(parts[2], 10) !== year) return;
-    if (String(r.method || '').trim() !== method) return;
+    if (!osirqPillAllowsMethod(method, r.method)) return;
     var b = String(r.barrier || '').trim();
     if (!b) return;
     if (!osirqScopeAllows(year, b)) return; // только барьеры ПК
@@ -6400,7 +6475,7 @@ function clqChecksForQuestion(code) {
     var parts = dc.split('.');
     if (parts.length !== 3) return;
     if (parseInt(parts[2], 10) !== year) return;
-    if (String(r.method || '').trim() !== method) return;
+    if (!osirqPillAllowsMethod(method, r.method)) return;
     var b = String(r.barrier || '').trim();
     if (!b) return;
     if (barrier) {
@@ -6848,7 +6923,12 @@ function canEditSokb() {
 
 function canEditCorrective(orgName) {
   if (_sessionAccess.superuser || _sessionAccess.admin) return true;
-  return !!(orgName && _sessionAccess.orgs && _sessionAccess.orgs[orgName]);
+  // Соответствующая проверяемая организация (record.org) — как и раньше.
+  if (orgName && _sessionAccess.orgs && _sessionAccess.orgs[orgName]) return true;
+  // Плюс любая организация, отмеченная в настройках "Организации" чекбоксом
+  // "Проверяющий" (org.inspects === true), может вносить корректирующие мероприятия.
+  var activeOrg = getActiveOrgSessionName();
+  return !!activeOrg && orgIsInspecting(activeOrg);
 }
 
 function canChangeAdminPassword() {
@@ -7844,7 +7924,7 @@ function submitCardEdit() {
   if (fields.checklistPassportId) r.checklistPassportId = fields.checklistPassportId;
   if (fields.checklistQuestionTexts) r.checklistQuestionTexts = fields.checklistQuestionTexts;
   if (fields.checklistFilled) r.checklistFilled = true;
-  saveRecordFieldUpdate(r.dateEntry, year, fields);
+  saveRecordFieldUpdate(r.dateEntry, year, fields, r);
   var localPhotos = (cardData._localPhotos || []).slice();
   var pendingPhotoDeletes = _photoEditSession ? (_photoEditSession.pendingDeletes || []).slice() : [];
   showTopSyncIndicator('Сохранение...');
@@ -10419,41 +10499,72 @@ function openSokb() {
 
 function parseContestMeasures(text) {
   if (!text || !text.trim()) return [];
-  if (/Срок рассмотрения:/i.test(text) || /Статус оспаривания:/i.test(text) || /Рассмотрение:/i.test(text) || (/^\d+\.\s/m.test(text) && /^\s*Статус:/im.test(text))) {
-    var attempts = [];
-    var parts = text.split(/(?=^\d+\.\s)/m).filter(function(p) { return p.trim(); });
-    parts.forEach(function(part) {
-      var lines = part.trim().split('\n');
-      if (!lines.length) return;
-      var head = lines[0].match(/^(\d+)\.\s*(.+?)\.?\s*$/);
-      if (!head) return;
-      var desc = head[2].replace(/\.$/, '').trim();
-      var dl = 'нет даты', st = '';
-      lines.forEach(function(line) {
-        var lm = line.match(/(?:Срок рассмотрения|Рассмотрение):\s*(.+?)\.?\s*$/i);
-        if (lm) {
-          dl = lm[1].trim().replace(/\s*\.$/, '');
-          if (!dl) dl = 'нет даты';
-        }
-        var sm = line.match(/(?:Статус оспаривания|Статус):\s*(.+?)\.?\s*$/i);
-        if (sm) st = sm[1].trim().replace(/\.$/, '').toUpperCase();
+  // Старый однострочный формат «N. описание - дата/нет даты - СТАТУС; ...» —
+  // распознаём по инлайн-маркеру «- дата -» и отсутствию полей на своих строках.
+  if (/[\-—]\s*(нет даты|\d{2}\.\d{2}\.\d{4})\s*[\-—]/.test(text) &&
+      !/Срок рассмотрения:|Статус оспаривания:|^\s*Статус:/im.test(text)) {
+    var attemptsOld = [];
+    var re = /(\d+)\.\s*([\s\S]+?)\s*-\s*(нет даты|\d{2}\.\d{2}\.\d{4})\s*-\s*([А-ЯЁа-яё\s]+?)(?:\s*[;\.])/g;
+    var match;
+    while ((match = re.exec(text + '.')) !== null) {
+      attemptsOld.push({
+        desc: match[2].trim(),
+        deadline: match[3].trim(),
+        status: match[4].trim().toUpperCase(),
+        selected: false
       });
-      if (desc || st) attempts.push({ desc: desc, deadline: dl, status: st, selected: false });
-    });
-    if (attempts.length) return attempts;
+    }
+    if (attemptsOld.length) return attemptsOld;
   }
-  var attemptsOld = [];
-  var re = /(\d+)\.\s*([\s\S]+?)\s*-\s*(нет даты|\d{2}\.\d{2}\.\d{4})\s*-\s*([А-ЯЁа-яё\s]+?)(?:\s*[;\.])/g;
-  var match;
-  while ((match = re.exec(text + '.')) !== null) {
-    attemptsOld.push({
-      desc: match[2].trim(),
-      deadline: match[3].trim(),
-      status: match[4].trim().toUpperCase(),
-      selected: false
-    });
+  // Многострочный формат «N. описание\nСрок рассмотрения: дата.\nСтатус
+  // оспаривания: ST.» — построчный разбор без потери строк описания (тот же
+  // принцип, что и parseCorrectiveLines для корректирующих мероприятий).
+  return parseContestLines(text);
+}
+
+// Построчный разбор оспариваний в СОКБ. Нумерованная строка начинает новое
+// оспаривание только если у предыдущего уже встречен «Статус оспаривания:»;
+// иначе она остаётся частью многострочного описания.
+function parseContestLines(text) {
+  var attempts = [];
+  var cur = null;
+  function newAttempt() {
+    var m = { desc: '', deadline: 'нет даты', status: '', selected: false };
+    attempts.push(m);
+    return m;
   }
-  return attemptsOld;
+  function ensure() {
+    if (!cur) cur = newAttempt();
+    return cur;
+  }
+  function appendDesc(part) {
+    var m = ensure();
+    m.desc = m.desc ? m.desc + '\n' + part : part;
+  }
+  String(text).split('\n').forEach(function(raw) {
+    var line = String(raw || '').trim();
+    if (!line) return;
+    var lm = line.match(/(?:Срок рассмотрения|Рассмотрение):\s*(.+?)\.?\s*$/i);
+    var sm = line.match(/(?:Статус оспаривания|Статус):\s*(.+?)\.?\s*$/i);
+    if (lm) { ensure().deadline = lm[1].trim().replace(/\s*\.$/, '') || 'нет даты'; return; }
+    if (sm) { ensure().status = sm[1].trim().replace(/\.$/, '').toUpperCase(); cur._corrDone = true; return; }
+    var hm = line.match(/^(\d+)\.\s+(.+)$/);
+    if (hm) {
+      if (cur && cur._corrDone) {
+        cur = newAttempt();
+        cur.desc = hm[2].replace(/\.$/, '').trim();
+      } else if (cur) {
+        appendDesc(line);
+      } else {
+        cur = newAttempt();
+        cur.desc = hm[2].replace(/\.$/, '').trim();
+      }
+      return;
+    }
+    appendDesc(line);
+  });
+  attempts.forEach(function(m) { delete m._corrDone; });
+  return attempts;
 }
 
 function getSokbStatus(r) {
@@ -11197,38 +11308,79 @@ function formatDate(d) {
 
 function parseCorrective(text) {
   if (!text || !text.trim()) return [];
-  if (/Выполнить до:/i.test(text) || /^\s*Статус:/im.test(text) || /Ответственный:/i.test(text)) {
-    var measuresNew = [];
-    var parts = text.split(/(?=^\d+\.\s)/m).filter(function(p) { return p.trim(); });
-    parts.forEach(function(part) {
-      var lines = part.trim().split('\n');
-      if (!lines.length) return;
-      var head = lines[0].match(/^(\d+)\.\s*(.+?)\.?\s*$/);
-      if (!head) return;
-      var desc = head[2].replace(/\.$/, '').trim();
-      var dl = '', st = '', resp = '';
-      lines.forEach(function(line) {
-        var rm = line.match(/Ответственный:\s*(.+?)\.?\s*$/i);
-        if (rm) resp = rm[1].trim().replace(/\s*\.$/, '');
-        var lm = line.match(/(?:Выполнить до|Срок):\s*(.+?)\.?\s*$/i);
-        if (lm) dl = lm[1].trim().replace(/\s*\.$/, '');
-        var sm = line.match(/Статус:\s*(.+?)\.?\s*$/i);
-        if (sm) st = sm[1].trim().replace(/\.$/, '').toUpperCase();
-      });
-      if (desc || st || dl || resp) measuresNew.push({ desc: desc, responsible: resp, deadline: dl, status: st, selected: false });
-    });
-    if (measuresNew.length) return measuresNew;
+  // Старый однострочный формат (все мероприятия в одной строке через «;»):
+  // «1. описание — Срок: дата — СТАТУС; 2. ...». Распознаём по инлайн-маркеру
+  // «— Срок:» и отсутствию многострочных полей на отдельных строках.
+  if (/[\-—]\s*Срок:\s*\d{2}\.\d{2}\.\d{4}/.test(text) && !/^\s*Статус:|Ответственный:|\bВыполнить до:/im.test(text)) {
+    var legacy = [];
+    var re = /(\d+)\.\s*([\s\S]+?)\s*[\-—]\s*Срок:\s*(\d{2}\.\d{2}\.\d{4})\s*[\-—]\s*([А-ЯЁа-яё\s]+?)(?:\s*[;\.])/g;
+    var match;
+    while ((match = re.exec(text + '.')) !== null) {
+      var legacyDesc = match[2].trim();
+      var legacyResp = '';
+      var legacyRespM = legacyDesc.match(/,?\s*отв\.:\s*(.+)/);
+      if (legacyRespM) { legacyResp = legacyRespM[1].trim(); legacyDesc = legacyDesc.replace(legacyRespM[0], '').trim(); }
+      legacy.push({ desc: legacyDesc, responsible: legacyResp, deadline: match[3], status: match[4].trim().toUpperCase(), selected: false });
+    }
+    if (legacy.length) return legacy;
   }
+  // Многострочный формат: «N. описание\nОтветственный: X.\nВыполнить до: дата.\n
+  // Статус: ST.» — построчный разбор БЕЗ потери данных. Раньше терялись строки
+  // многострочного описания после первой (проверка 133026: «Проверка\nНомер
+  // I-0144787.» → «Проверка») и поля, если описание содержало нумерованные
+  // строки (проверка 133126: пропадали ответственный/срок/статус).
+  return parseCorrectiveLines(text);
+}
+
+// Построчный разбор «N. описание … + поля на отдельных строках». Нумерованная
+// строка начинает новое мероприятие только если у предыдущего уже встречены
+// все поля (Статус). Иначе она считается частью многострочного описания — так
+// многострочные описания и нумерованные подпункты внутри описания сохраняются.
+function parseCorrectiveLines(text) {
   var measures = [];
-  var re = /(\d+)\.\s*([\s\S]+?)\s*[\-—]\s*Срок:\s*(\d{2}\.\d{2}\.\d{4})\s*[\-—]\s*([А-ЯЁа-яё\s]+?)(?:\s*[;\.])/g;
-  var match;
-  while ((match = re.exec(text + '.')) !== null) {
-    var desc = match[2].trim();
-    var resp = '';
-    var mResp = desc.match(new RegExp(',?\\s*отв\\.:\\s*(.+)'));
-    if (mResp) { resp = mResp[1].trim(); desc = desc.replace(mResp[0], '').trim(); }
-    measures.push({ desc: desc, responsible: resp, deadline: match[3], status: match[4].trim().toUpperCase(), selected: false });
+  var cur = null;
+  function newMeasure() {
+    var m = { desc: '', responsible: '', deadline: '', status: '', selected: false };
+    measures.push(m);
+    return m;
   }
+  function ensure() {
+    if (!cur) cur = newMeasure();
+    return cur;
+  }
+  function appendDesc(part) {
+    var m = ensure();
+    m.desc = m.desc ? m.desc + '\n' + part : part;
+  }
+  String(text).split('\n').forEach(function(raw) {
+    var line = String(raw || '').trim();
+    if (!line) return;
+    var sm = line.match(/Статус:\s*(.+?)\.?\s*$/i);
+    var rm = line.match(/Ответственный:\s*(.+?)\.?\s*$/i);
+    var lm = line.match(/(?:Выполнить до|Срок):\s*(.+?)\.?\s*$/i);
+    if (sm) { ensure().status = sm[1].trim().replace(/\.$/, '').toUpperCase(); cur._corrDone = true; return; }
+    if (rm) { ensure().responsible = rm[1].trim().replace(/\s*\.$/, ''); return; }
+    if (lm) { ensure().deadline = lm[1].trim().replace(/\s*\.$/, ''); return; }
+    var hm = line.match(/^(\d+)\.\s+(.+)$/);
+    if (hm) {
+      if (cur && cur._corrDone) {
+        // Предыдущее мероприятие полностью заполнено — начинаем новое.
+        cur = newMeasure();
+        cur.desc = hm[2].replace(/\.$/, '').trim();
+      } else if (cur) {
+        // Нумерованная строка внутри многострочного описания текущего
+        // мероприятия — сохраняем как есть (вместе с номером подпункта).
+        appendDesc(line);
+      } else {
+        // Первая строка мероприятия: снимаем только служебный номер «N. ».
+        cur = newMeasure();
+        cur.desc = hm[2].replace(/\.$/, '').trim();
+      }
+      return;
+    }
+    appendDesc(line);
+  });
+  measures.forEach(function(m) { delete m._corrDone; });
   return measures;
 }
 
