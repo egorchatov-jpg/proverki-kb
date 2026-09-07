@@ -5165,6 +5165,11 @@ function registerSW() {
         goLobby();
         clearApiCacheViaSw();
         loadFromServer(function() { refreshActiveRecordLists(); }, { forceFull: true });
+        // Подтверждаем сервис-воркеру, что обработали переход: иначе он сочтёт
+        // страницу «спящей» и перезагрузит её через /?nc=1 (что сбросит сессию).
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          try { navigator.serviceWorker.controller.postMessage({ type: 'NOTIFICATION_CLICK_ACK' }); } catch (_e) {}
+        }
       }
     });
     navigator.serviceWorker.register('/sw.js').then(function(reg) {

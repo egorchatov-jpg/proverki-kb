@@ -195,6 +195,39 @@ self.addEventListener('pushsubscriptionchange', function(e) {
   );
 });
 
+// Доставка «перейти на лобби» в уже открытое окно. Живая страница отвечает
+// NOTIFICATION_CLICK_ACK — тогда ничего не перезагружаем (сохраняем сессию PIN
+// и текущее состояние). Если страница «спит»/заморожена/убита и не успела
+// подтвердить — переходим по /?nc=1: холодный путь старта сам делает goLobby +
+// принудительную синхронизацию записей, иначе пользователь остаётся на старом
+// экране без свежих красных плашек нарушений.
+function notifyWindowOrNavigate(client) {
+  return new Promise(function(resolve) {
+    var acked = false;
+    function onAck(e) {
+      var d = e.data || {};
+      if (d && d.type === 'NOTIFICATION_CLICK_ACK') { acked = true; cleanup(); }
+    }
+    function cleanup() {
+      try { self.removeEventListener('message', onAck); } catch (_e) {}
+    }
+    self.addEventListener('message', onAck);
+    try { client.postMessage({ type: 'NOTIFICATION_CLICK' }); } catch (_e) {}
+    setTimeout(function() {
+      cleanup();
+      if (acked) { resolve(); return; }
+      if (typeof client.navigate === 'function') {
+        client.navigate('/?nc=1').then(
+          function() { resolve(); },
+          function() { client.focus().then(resolve, resolve); }
+        );
+      } else {
+        client.focus().then(resolve, resolve);
+      }
+    }, 1500);
+  });
+}
+
 self.addEventListener('notificationclick', function(e) {
   e.notification.close();
   e.waitUntil(
@@ -202,8 +235,7 @@ self.addEventListener('notificationclick', function(e) {
       for (var i = 0; i < list.length; i++) {
         var c = list[i];
         if (c.url.indexOf(self.location.origin) === 0) {
-          c.postMessage({ type: 'NOTIFICATION_CLICK' });
-          return c.focus();
+          return notifyWindowOrNavigate(c);
         }
       }
       return clients.openWindow('/?nc=1');
