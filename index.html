@@ -1402,6 +1402,8 @@ html, body {
   box-shadow: var(--btn-shadow); transition: opacity 0.15s;
 }
 .passport-appendix-btn:active { opacity: 0.75; }
+.passport-appendix-btn--disabled,
+.passport-appendix-btn:disabled { opacity: 0.45; cursor: default; }
 .passport-appendix-btn,
 .passport-barrier-btn,
 .passport-mub-btn { box-sizing: border-box; }
@@ -4580,6 +4582,7 @@ function requestPushPermission() {
 var PASSPORT_CATALOG = [
   { id: 'gaz-01', label: 'Паспорт ГАЗ 01.' },
   { id: 'gruz-01', label: 'Паспорт ГРУЗ 01.' },
+  { id: 'zeml-01', label: 'Паспорт ЗЕМЛ 01.' },
   { id: 'dtp-01', label: 'Паспорт ДТП 01.' },
   { id: 'rv-01', label: 'Паспорт РВ 01.' },
   { id: 'elb-01', label: 'Паспорт ЭЛБ 01.' }
@@ -4739,20 +4742,44 @@ function initStatisticsListScrollTitle(screenId) {
   var scr = document.getElementById(screenId);
   if (!scr || !STATS_TITLE_COLLAPSE_SCREENS[screenId]) return;
   var title = scr.querySelector('.stats-title-collapsible');
-  var wrap = scr.querySelector('.osirq-wrap, .bpk-in-pk-list-wrap, .find-list-wrap');
+  var wrap = scr.querySelector('.find-list-wrap, .osirq-wrap, .bpk-in-pk-list-wrap');
   if (!title || !wrap) return;
   if (wrap.__statsTitleBound) return;
   wrap.__statsTitleBound = true;
-  var lastY = wrap.scrollTop || 0;
-  wrap.addEventListener('scroll', function() {
-    var y = wrap.scrollTop;
-    if (y <= 0) {
-      title.classList.remove('stats-title-hidden');
-    } else if (y > lastY) {
+
+  var lastScrollTop = wrap.scrollTop || 0;
+
+  // Скролл списка: вниз — скрыть заголовок, вверх — показать, у верха — всегда показать.
+  function onWrapScroll() {
+    var st = wrap.scrollTop;
+    if (st > lastScrollTop) {
       title.classList.add('stats-title-hidden');
+    } else if (st < lastScrollTop || st === 0) {
+      title.classList.remove('stats-title-hidden');
     }
-    lastY = y;
+    lastScrollTop = st;
+  }
+  wrap.addEventListener('scroll', onWrapScroll, { passive: true });
+
+  // Двигать список колесом/тачпадом, когда курсор над заголовком (заголовок
+  // сам не скроллится — прокручиваем wrap, а его scroll-событие обновит заголовок).
+  function onTitleWheel(e) {
+    wrap.scrollTop += e.deltaY;
+    e.preventDefault();
+  }
+  title.addEventListener('wheel', onTitleWheel, { passive: false });
+
+  // Сенсорное смахивание по заголовку (мобильные): двигаем список, scroll-событие обновит заголовок.
+  var touchY = 0;
+  title.addEventListener('touchstart', function(e) {
+    touchY = e.touches[0].clientY;
   }, { passive: true });
+  title.addEventListener('touchmove', function(e) {
+    var dy = touchY - e.touches[0].clientY;
+    touchY = e.touches[0].clientY;
+    wrap.scrollTop += dy;
+    e.preventDefault();
+  }, { passive: false });
 }
 
 function bindStatisticsListTitleScroll() {
@@ -6454,6 +6481,9 @@ function renderStatisticsClqCard() {
       b.style.width = (p > 0 && base > 0) ? ((p / 100) * base) + 'px' : (p > 0 ? p + '%' : '0');
     });
   }
+
+  // Повторная инициализация сворачивания заголовка для экрана списка вопросов чек-листов
+  initStatisticsListScrollTitle('screen-clq-checks');
 }
 
 // Проверки, которые учитываются для вопроса code: все OSIR-ПК проверки по
@@ -8486,13 +8516,13 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v493';
-var APP_VERSION = '1.40';
+var APP_BUILD = 'pkb-v495';
+var APP_VERSION = '1.41';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
 }
-var PASSPORT_JSON_VERSION = 'v24';
+var PASSPORT_JSON_VERSION = 'v25';
 var _passportCache = {};
 try {
   var _pv = localStorage.getItem('pkb-passport-ver');
@@ -8664,7 +8694,13 @@ function renderPassportDetailScreen() {
     appBtn.type = 'button';
     appBtn.className = 'passport-appendix-btn';
     appBtn.textContent = app.label || ('Приложение ' + (i + 1));
-    bindUiTap(appBtn, function() { openPassportAppendix(app.id, 'screen-passport-detail'); });
+    if (app.disabled) {
+      // «Приложение 1» пока не подключено — серая неактивная кнопка.
+      appBtn.disabled = true;
+      appBtn.classList.add('passport-appendix-btn--disabled');
+    } else {
+      bindUiTap(appBtn, function() { openPassportAppendix(app.id, 'screen-passport-detail'); });
+    }
     bodyEl.appendChild(appBtn);
   });
 }
@@ -8754,6 +8790,7 @@ function getPassportAppendixList(data) {
 function getPassportAppendixIdSet(data) {
   var set = {};
   getPassportAppendixList(data).forEach(function(app) {
+    if (app.disabled) return; // отключённое приложение не должно быть кликабельной ссылкой в текстах
     set[String(app.id)] = true;
   });
   return set;
