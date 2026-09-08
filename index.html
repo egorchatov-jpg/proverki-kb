@@ -3915,6 +3915,14 @@ function purgeSyncedUpdates(records) {
 }
 
 // Seed update queue from local DB when local fields differ from server (migration + safety net)
+// IMPORTANT: a local copy that is OLDER than the server revision is NOT a pending
+// edit — another device changed the record after we last synced. Seeding it as a
+// "pending edit" made other devices re-apply the stale value over the fresh
+// server one on every load (and keep re-pushing it), so edits made on one device
+// (e.g. корректирующие мероприятия checks 133026/133126) never appeared on the
+// others even after an app reload. Only seed when the server has NOT moved past
+// the local revision (server.updatedAt <= local.updatedAt), mirroring the
+// server-side optimistic-concurrency conflict rule.
 function seedUpdateQueueFromLocalDb(serverRecords) {
   var serverByEntry = {};
   var serverByFp = {};
@@ -3929,6 +3937,9 @@ function seedUpdateQueueFromLocalDb(serverRecords) {
       server = serverByFp[[local.dateCheck, local.method, local.org, local.barrier].join('|')];
     }
     if (!server) return;
+    var localAt = Number(local.updatedAt) || 0;
+    var serverAt = Number(server.updatedAt) || 0;
+    if (localAt > 0 && serverAt > localAt) return; // server newer — local is stale, not an edit
     var fields = {};
     UPDATE_FIELD_KEYS.forEach(function(k) {
       if (fieldValueIsEmpty(local[k])) return;
@@ -3938,7 +3949,7 @@ function seedUpdateQueueFromLocalDb(serverRecords) {
     if (!Object.keys(fields).length) return;
     var year = local.year || (local.dateCheck ? local.dateCheck.split('.')[2] : String(new Date().getFullYear()));
     addToUpdateQueue({
-      dateEntry: local.dateEntry, year: year, fields: fields, updatedAt: local.updatedAt || 0,
+      dateEntry: local.dateEntry, year: year, fields: fields, updatedAt: localAt,
       dateCheck: local.dateCheck || '', method: local.method || '',
       org: local.org || '', barrier: local.barrier || ''
     });
@@ -3951,6 +3962,10 @@ function seedUpdateQueueFromLocalDb(serverRecords) {
 // server value used to be treated as "server wins" here, which silently
 // dropped edits (e.g. Проверяющий rename) whenever a background poll landed
 // between the local save and the server durably persisting it (see pkb-v457).
+// If the server record has moved PAST the base revision this queued edit was
+// made against (server.updatedAt > item.updatedAt), another device changed it —
+// drop the stale queued edit and adopt the server value (matches the server's
+// optimistic-concurrency CONFLICT handling) instead of overriding fresh data.
 function applyPendingUpdates(records) {
   var queue = getUpdateQueue();
   if (!queue.length) return records;
@@ -3967,6 +3982,12 @@ function applyPendingUpdates(records) {
       rec = byFp[fp];
     }
     if (!rec) return;
+    var itemBase = Number(item.updatedAt) || 0;
+    var recAt = Number(rec.updatedAt) || 0;
+    if (itemBase > 0 && recAt > itemBase) {
+      removeFromUpdateQueue(item.dateEntry);
+      return;
+    }
     var allSynced = true;
     Object.keys(item.fields).forEach(function(k) {
       if (fieldValuesEqual(rec[k], item.fields[k])) return; // server already has our value
@@ -8494,8 +8515,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v486';
-var APP_VERSION = '1.38';
+var APP_BUILD = 'pkb-v492';
+var APP_VERSION = '1.39';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
