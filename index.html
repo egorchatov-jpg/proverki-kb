@@ -3915,45 +3915,16 @@ function purgeSyncedUpdates(records) {
 }
 
 // Seed update queue from local DB when local fields differ from server (migration + safety net)
-// IMPORTANT: a local copy that is OLDER than the server revision is NOT a pending
-// edit — another device changed the record after we last synced. Seeding it as a
-// "pending edit" made other devices re-apply the stale value over the fresh
-// server one on every load (and keep re-pushing it), so edits made on one device
-// (e.g. корректирующие мероприятия checks 133026/133126) never appeared on the
-// others even after an app reload. Only seed when the server has NOT moved past
-// the local revision (server.updatedAt <= local.updatedAt), mirroring the
-// server-side optimistic-concurrency conflict rule.
-function seedUpdateQueueFromLocalDb(serverRecords) {
-  var serverByEntry = {};
-  var serverByFp = {};
-  serverRecords.forEach(function(r) {
-    if (r.dateEntry) serverByEntry[r.dateEntry] = r;
-    if (r.dateCheck) serverByFp[[r.dateCheck, r.method, r.org, r.barrier].join('|')] = r;
-  });
-  (appState.db || []).forEach(function(local) {
-    if (!local.dateEntry && !local.dateCheck) return;
-    var server = serverByEntry[local.dateEntry];
-    if (!server && local.dateCheck) {
-      server = serverByFp[[local.dateCheck, local.method, local.org, local.barrier].join('|')];
-    }
-    if (!server) return;
-    var localAt = Number(local.updatedAt) || 0;
-    var serverAt = Number(server.updatedAt) || 0;
-    if (localAt > 0 && serverAt > localAt) return; // server newer — local is stale, not an edit
-    var fields = {};
-    UPDATE_FIELD_KEYS.forEach(function(k) {
-      if (fieldValueIsEmpty(local[k])) return;
-      if (fieldValuesEqual(local[k], server[k])) return; // already in sync
-      fields[k] = local[k]; // local has a value the server doesn't have (yet)
-    });
-    if (!Object.keys(fields).length) return;
-    var year = local.year || (local.dateCheck ? local.dateCheck.split('.')[2] : String(new Date().getFullYear()));
-    addToUpdateQueue({
-      dateEntry: local.dateEntry, year: year, fields: fields, updatedAt: localAt,
-      dateCheck: local.dateCheck || '', method: local.method || '',
-      org: local.org || '', barrier: local.barrier || ''
-    });
-  });
+// DISABLED (pkb-v493): this "safety net" resurrected STALE local copies as
+// "pending edits". Server renumberYear() stamps the SAME updated_at for every
+// record of a year on any change, so updatedAt cannot tell a merely outdated
+// local copy from a genuine pending edit — a device with an old local value
+// kept overwriting the fresh server one (and even re-pushing the old value
+// back, reverting other users' edits). Genuine edits are ALWAYS queued at the
+// moment of the user action (saveCorrMeasures/submitCardEdit/... →
+// saveRecordFieldUpdate → addToUpdateQueue), so this re-seeding is not needed.
+function seedUpdateQueueFromLocalDb() {
+  return;
 }
 
 // Apply pending field updates from queue onto server records. An item stays
@@ -8515,8 +8486,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v492';
-var APP_VERSION = '1.39';
+var APP_BUILD = 'pkb-v493';
+var APP_VERSION = '1.40';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
