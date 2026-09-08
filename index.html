@@ -2087,7 +2087,7 @@ html, body {
    Переход плавный: заголовок уезжает вверх и схлопывается по высоте. */
 .stats-title-collapsible {
   overflow: hidden;
-  max-height: 120px;
+  max-height: 1000px;
   transition: max-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
   opacity: 1;
 }
@@ -7479,6 +7479,7 @@ function syncSettingsToServer(callback, retriesLeft) {
     barriersPK:    localBarriersPK,
     barriersConfig: localBarriersConfig,
     barriersCustomPassports: localBarriersCustomPassports,
+    deletedBarriersYears: getBarriersDeletedYears(),
     orgs:          localOrgs,
     barriers:      localBarriers,
     settingsUpdatedAt: updatedAt,
@@ -7532,6 +7533,7 @@ function syncSettingsToServer(callback, retriesLeft) {
     if (d && d.success && gen === _settingsSyncGen) {
       if (d.settings) applyMasterSettingsPayload(d.settings);
       else if (d.settingsUpdatedAt) appState.settingsUpdatedAt = d.settingsUpdatedAt;
+      pruneConfirmedBarrierDeletes(d.settings);
       clearSettingsDirty();
       saveState();
       done(true);
@@ -9403,6 +9405,10 @@ function addBarriersYear() {
     : buildBarriersFromCatalog([]);
   if (!appState.barriersCustomPassports) appState.barriersCustomPassports = {};
   appState.barriersCustomPassports[newYear] = (appState.barriersCustomPassports[prevYear] || []).slice();
+  // Год добавлен заново — снимаем его из списка запланированных удалений.
+  if (getBarriersDeletedYears().indexOf(newYear) >= 0) {
+    saveBarriersDeletedYears(getBarriersDeletedYears().filter(function(y) { return y !== newYear; }));
+  }
   saveState();
   markBarriersDirty();
   renderBarriersYearList();
@@ -9414,11 +9420,46 @@ function removeBarriersYear() {
   if (!years.length) return;
   var maxYear = +years[0];
   if (maxYear <= currentYear) return; // protect current and past years
-  if (appState.barriersConfig) delete appState.barriersConfig[String(maxYear)];
-  if (appState.barriersCustomPassports) delete appState.barriersCustomPassports[String(maxYear)];
+  var key = String(maxYear);
+  if (appState.barriersConfig) delete appState.barriersConfig[key];
+  if (appState.barriersCustomPassports) delete appState.barriersCustomPassports[key];
+  if (appState.barriersPK) delete appState.barriersPK[key];
+  // Удаление года — осознанное действие админа. Запоминаем год в отдельном
+  // списке: при пуш настроек серверу передаётся deletedBarriersYears, иначе
+  // mergeSettingsPreserveAll на сервере вернёт удалённый год обратно (защита
+  // от потери лет при stale-записи) — кнопка года «воскресала» после
+  // перезахода в окно со всеми связанными данными (см. pkb-v491).
+  var del = getBarriersDeletedYears();
+  if (del.indexOf(key) < 0) { del.push(key); saveBarriersDeletedYears(del); }
   saveState();
   markBarriersDirty();
   renderBarriersYearList();
+}
+
+// ===== Запланированные удаления годов барьеров/паспортов =====
+var BARRIER_DELETED_YEARS_KEY = 'pkb-barriers-deleted-years';
+
+function getBarriersDeletedYears() {
+  try {
+    var raw = localStorage.getItem(BARRIER_DELETED_YEARS_KEY);
+    var arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.map(String).filter(Boolean) : [];
+  } catch (_e) { return []; }
+}
+
+function saveBarriersDeletedYears(list) {
+  try { localStorage.setItem(BARRIER_DELETED_YEARS_KEY, JSON.stringify(list)); } catch (_e) {}
+}
+
+// После подтверждения удаления сервером убираем удалённые годы из списка
+// (серверный barriersConfig их больше не содержит). Неудалённые пока годы
+// остаются в списке, чтобы следующая синхронизация дослала удаление.
+function pruneConfirmedBarrierDeletes(serverSettings) {
+  var del = getBarriersDeletedYears();
+  if (!del.length) return;
+  var cfg = (serverSettings && serverSettings.barriersConfig) || appState.barriersConfig || {};
+  var kept = del.filter(function(y) { return cfg[String(y)] !== undefined; });
+  if (kept.length !== del.length) saveBarriersDeletedYears(kept);
 }
 
 function buildBarriersFromCatalog(existing) {
