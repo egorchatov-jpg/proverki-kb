@@ -5912,9 +5912,10 @@ function renderStatisticsOrgCard() {
   });
 
   var orgNames = Object.keys(stats).sort(function(a, b) {
-    var pa = stats[a].total ? Math.round(stats[a].work * 100 / stats[a].total) : 0;
-    var pb = stats[b].total ? Math.round(stats[b].work * 100 / stats[b].total) : 0;
-    if (pb !== pa) return pb - pa;               // сверху вниз: 100% → 0%
+    // Точное значение (без округления вниз) — чтобы 99,9% шло выше 99,8%.
+    var sa = stats[a], sb = stats[b];
+    var cmp = sa.work * sb.total - sb.work * sa.total;
+    if (cmp !== 0) return cmp > 0 ? -1 : 1;      // сверху вниз: больший % → выше
     return a.localeCompare(b, 'ru');             // при равных % — по алфавиту
   });
 
@@ -5923,7 +5924,7 @@ function renderStatisticsOrgCard() {
 
   orgNames.forEach(function(name) {
     var st = stats[name];
-    var pct = st.total ? Math.round(st.work * 100 / st.total) : 0;
+    var pct = st.total ? Math.floor(st.work * 100 / st.total) : 0;
 
     var row = document.createElement('div');
     row.className = 'org-row';
@@ -6503,10 +6504,11 @@ function renderStatisticsClqCard() {
   var codes = Object.keys(stats);
   // Сортировка как в плашке выше: от большего % работоспособности к меньшему, при равных % — по коду.
   codes.sort(function(a, b) {
+    // Точное значение (без округления вниз) — 99,9% идёт выше 99,8%.
     var sa = stats[a], sb = stats[b];
-    var pa = sa.total ? Math.round(((sa.total - sa.viol) * 100) / sa.total) : 0;
-    var pb = sb.total ? Math.round(((sb.total - sb.viol) * 100) / sb.total) : 0;
-    if (pb !== pa) return pb - pa;
+    var wa = sa.total - sa.viol, wb = sb.total - sb.viol;
+    var cmp = wa * sb.total - wb * sa.total;
+    if (cmp !== 0) return cmp > 0 ? -1 : 1;
     return clqCodeCompare(a, b);
   });
 
@@ -6515,7 +6517,7 @@ function renderStatisticsClqCard() {
   codes.forEach(function(code) {
     var st = stats[code];
     var work = st.total - st.viol;
-    var pct = st.total ? Math.round(work * 100 / st.total) : 0;
+    var pct = st.total ? Math.floor(work * 100 / st.total) : 0;
 
     var row = document.createElement('div');
     row.className = 'org-row';
@@ -6771,10 +6773,10 @@ function renderStatisticsBpkCard() {
   var barriers = Object.keys(stats).filter(function(b) { return stats[b].total > 0; });
   // Сортировка: от большего % работоспособности к меньшему, при равных % — по коду.
   barriers.sort(function(a, b) {
+    // Точное значение (без округления вниз) — 99,9% идёт выше 99,8%.
     var sa = stats[a], sb = stats[b];
-    var pa = sa.total ? Math.round(sa.work * 100 / sa.total) : 0;
-    var pb = sb.total ? Math.round(sb.work * 100 / sb.total) : 0;
-    if (pb !== pa) return pb - pa;
+    var cmp = sa.work * sb.total - sb.work * sa.total;
+    if (cmp !== 0) return cmp > 0 ? -1 : 1;
     return a.localeCompare(b, 'ru');
   });
 
@@ -6782,7 +6784,7 @@ function renderStatisticsBpkCard() {
 
   barriers.forEach(function(barrier) {
     var st = stats[barrier];
-    var pct = st.total ? Math.round(st.work * 100 / st.total) : 0;
+    var pct = st.total ? Math.floor(st.work * 100 / st.total) : 0;
 
     var row = document.createElement('div');
     row.className = 'org-row';
@@ -8864,8 +8866,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v498';
-var APP_VERSION = '1.44';
+var APP_BUILD = 'pkb-v499';
+var APP_VERSION = '1.45';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
