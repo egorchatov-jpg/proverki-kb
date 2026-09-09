@@ -326,33 +326,42 @@ if (!isLocalDev() && process.env.ENABLE_BACKUP_CRON !== '0') {
   console.log('[cron] daily backup scheduled at 00:00 MSK');
 }
 
-async function startServer() {
+// Start the HTTP server IMMEDIATELY, then run the (potentially slow) GitHub
+// bootstrap in the background. Timeweb App Platform scans the container for an
+// open HTTP port as soon as it starts ("No HTTP ports discovered" happened
+// because app.listen was previously gated behind bootstrapData() — a fresh
+// deploy pulls the SQLite snapshot from GitHub for ~30-40s first, so the port
+// was not open when the scanner ran, and Timeweb did not attach the web server).
+// Serving the shell/static assets and /health does not need the DB to be ready.
+function startServer() {
   installShutdownFlushHooks();
-  try {
-    await bootstrapData();
-    const db = getDbStatus();
-    if (db.ok) {
-      let recordCount = 0;
-      try { recordCount = countAllRecords(); } catch (_e) { /* ignore */ }
-      console.log('[data] SQLite:', db.path, '(' + recordCount + ' records)');
-      if (db.ephemeral && isGithubPersistEnabled()) {
-        console.log('[data] Local path is ephemeral; database persists via GitHub sync');
-      } else if (db.ephemeral) {
-        console.warn('[data] Ephemeral storage — database resets on Timeweb redeploy');
-      }
-    } else {
-      console.error('[data] SQLite init failed:', db.error);
-      console.error('[data] Static UI is served; API will return errors until DATABASE_PATH is writable and Node >= 22.5');
-    }
-  } catch (e) {
-    console.error('[bootstrap] failed:', e.message);
-    setBootstrapComplete(false, 0);
-  } finally {
-    bootstrapReady = true;
-  }
-
   app.listen(PORT, HOST, function() {
     console.log('proverki-kb listening on http://' + HOST + ':' + PORT + ' (Node ' + process.version + ')');
+    // Boot in the background — do not block the listen on GitHub pulls.
+    bootstrapData()
+      .then(function() {
+        const db = getDbStatus();
+        if (db.ok) {
+          let recordCount = 0;
+          try { recordCount = countAllRecords(); } catch (_e) { /* ignore */ }
+          console.log('[data] SQLite:', db.path, '(' + recordCount + ' records)');
+          if (db.ephemeral && isGithubPersistEnabled()) {
+            console.log('[data] Local path is ephemeral; database persists via GitHub sync');
+          } else if (db.ephemeral) {
+            console.warn('[data] Ephemeral storage — database resets on Timeweb redeploy');
+          }
+        } else {
+          console.error('[data] SQLite init failed:', db.error);
+          console.error('[data] Static UI is served; API will return errors until DATABASE_PATH is writable and Node >= 22.5');
+        }
+      })
+      .catch(function(e) {
+        console.error('[bootstrap] failed:', e.message);
+        setBootstrapComplete(false, 0);
+      })
+      .finally(function() {
+        bootstrapReady = true;
+      });
   });
 }
 
