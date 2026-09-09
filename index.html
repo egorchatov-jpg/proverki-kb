@@ -3259,6 +3259,14 @@ html, body {
         </div>
       </div>
 
+      <!-- Плашка: ОРБ барьеров ПК -->
+      <div class="statistics-org-card" id="statistics-bpk-card">
+        <div class="statistics-org-header">ОРБ барьеров ПК</div>
+        <div class="statistics-org-grid" id="statistics-bpk-grid">
+          <button class="org-scope-pill" id="bpk-scope-pill" onclick="openBpkOrgOverlay()">Все ПО</button>
+        </div>
+      </div>
+
       <!-- Плашка: ОРБ вопросов чек-листов барьеров ПК -->
       <div class="statistics-org-card" id="statistics-clq-card">
         <div class="statistics-org-header">ОРБ по вопросам чек-листов барьеров ПК</div>
@@ -3439,6 +3447,39 @@ html, body {
     <div class="find-count" id="clq-checks-count">0<br>проверок</div>
     <button class="find-bottom-btn find-btn-cancel" onclick="backFromClqChecks()">Назад</button>
     <div class="find-violation-count" id="clq-checks-violation-count">0<br>нарушений</div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: ПРОВЕРКИ ПО БАРЬЕРУ ПК (из плашки «ОРБ барьеров ПК») ===== -->
+<div class="screen" id="screen-bpk-checks">
+  <div class="org-checks-title stats-title-collapsible" id="bpk-checks-title"></div>
+  <div class="list-filter-head">
+    <table class="find-table find-filter-table">
+      <colgroup>
+        <col style="width:22%"><col style="width:28%"><col style="width:28%"><col style="width:22%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th><button class="th-col-btn" type="button"><span>Дата<br>проверки</span></button></th>
+          <th><button class="th-col-btn" type="button"><span>Проверяющий</span></button></th>
+          <th><button class="th-col-btn" type="button"><span>Проверяемый</span></button></th>
+          <th><button class="th-col-btn" type="button"><span>Барьер</span></button></th>
+        </tr>
+      </thead>
+    </table>
+  </div>
+  <div class="find-list-wrap">
+    <table class="find-table find-body-table">
+      <colgroup>
+        <col style="width:22%"><col style="width:28%"><col style="width:28%"><col style="width:22%">
+      </colgroup>
+      <tbody id="bpk-checks-tbody"></tbody>
+    </table>
+  </div>
+  <div class="find-bottom">
+    <div class="find-count" id="bpk-checks-count">0<br>проверок</div>
+    <button class="find-bottom-btn find-btn-cancel" onclick="backFromBpkChecks()">Назад</button>
+    <div class="find-violation-count" id="bpk-checks-violation-count">0<br>нарушений</div>
   </div>
 </div>
 
@@ -4361,7 +4402,7 @@ var pullState = { can: false, startY: 0, delta: 0 };
 var PULL_THRESHOLD = 72;
 
 // Screens where pull is disabled (input forms, PIN, settings)
-var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-export-format', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-card-photo', 'screen-card-camera', 'screen-card-camera-preview', 'screen-barriers-years', 'screen-barriers-list', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios', 'screen-install-android', 'screen-statistics', 'screen-barriers-in-pk', 'screen-osir-quarter', 'screen-osirq-checks', 'screen-org-checks', 'screen-clq-checks', 'screen-osirq-zapas'];
+var PULL_OFF = ['screen-card', 'screen-pin', 'screen-settings', 'screen-export', 'screen-export-format', 'screen-passports-years', 'screen-passports-list', 'screen-passport-detail', 'screen-passport-mub', 'screen-passport-appendix', 'screen-passport-checklist', 'screen-card-checklist', 'screen-card-photo', 'screen-card-camera', 'screen-card-camera-preview', 'screen-barriers-years', 'screen-barriers-list', 'screen-orgs', 'screen-passwords', 'screen-restore-points', 'screen-meropr-menu', 'screen-corrective-edit', 'screen-sokb-edit', 'screen-install-device', 'screen-install-ios', 'screen-install-android', 'screen-statistics', 'screen-barriers-in-pk', 'screen-osir-quarter', 'screen-osirq-checks', 'screen-org-checks', 'screen-clq-checks', 'screen-bpk-checks', 'screen-osirq-zapas'];
 
 function pullIsEnabled() {
   var scr = document.querySelector('.screen.active');
@@ -4684,6 +4725,7 @@ function closeDetail() {
   else if (detailSource === 'osirqChecks') showScreen('screen-osirq-checks');
   else if (detailSource === 'orgChecks') showScreen('screen-org-checks');
   else if (detailSource === 'clqChecks') showScreen('screen-clq-checks');
+  else if (detailSource === 'bpkChecks') showScreen('screen-bpk-checks');
   else showScreen('screen-find');
 }
 
@@ -5392,6 +5434,7 @@ function renderStatisticsData() {
   });
   fitOsirCard();
   renderStatisticsOrgCard();
+  renderStatisticsBpkCard();
   renderStatisticsClqCard();
 }
 
@@ -6615,6 +6658,270 @@ function openClqQuestionChecks(code) {
 }
 
 function backFromClqChecks() {
+  showScreen('screen-statistics');
+}
+
+// ===== ОРБ БАРЬЕРОВ ПК (плашка по самим барьерам, а не по вопросам чек-листов) =====
+var _bpkScopeOrg = 'Все ПО';
+
+function bpkScopeOrgsList() {
+  var year = _statisticsYear;
+  var method = osirPillValue() || 'ОСИР';
+  var seen = {};
+  (appState.db || []).forEach(function(r) {
+    if (!r) return;
+    var dc = normalizeDateStr(r.dateCheck);
+    if (!dc) return;
+    var parts = dc.split('.');
+    if (parts.length !== 3) return;
+    if (parseInt(parts[2], 10) !== year) return;
+    if (!osirqPillAllowsMethod(method, r.method)) return;
+    var b = String(r.barrier || '').trim();
+    if (!b) return;
+    if (!osirqScopeAllows(year, b)) return; // только барьеры ПК
+    var o = String(r.org || '').trim();
+    if (o) seen[o] = true;
+  });
+  return Object.keys(seen).sort(function(a, b) { return a.localeCompare(b, 'ru'); });
+}
+
+function bpkOrgOptionsForScope() {
+  return ['Все ПО'].concat(bpkScopeOrgsList());
+}
+
+function openBpkOrgOverlay() {
+  var items = bpkOrgOptionsForScope();
+  if (items.length <= 1) return;
+  var current = _bpkScopeOrg;
+  if (items.indexOf(current) < 0) current = items[0];
+  openDrumOverlay('Выберите организацию', [
+    { id: 'bpkOrg', items: items, value: current, fullWidth: true, widthFactor: 0.9, leftAlign: true }
+  ], function(d) {
+    var val = d['bpkOrg'].getValue();
+    if (!val) return;
+    _bpkScopeOrg = val;
+    renderStatisticsBpkCard();
+  });
+}
+
+// Проверки, попадающие в плашку «ОРБ барьеров ПК»: год + метод (капсула ОСИР) +
+// барьеры ПК + выбранная организация.
+function bpkBaseChecks() {
+  var year = _statisticsYear;
+  var method = osirPillValue() || 'ОСИР';
+  var scopeOrg = _bpkScopeOrg;
+  var out = [];
+  (appState.db || []).forEach(function(r) {
+    if (!r) return;
+    var dc = normalizeDateStr(r.dateCheck);
+    if (!dc) return;
+    var parts = dc.split('.');
+    if (parts.length !== 3) return;
+    if (parseInt(parts[2], 10) !== year) return;
+    if (!osirqPillAllowsMethod(method, r.method)) return;
+    var b = String(r.barrier || '').trim();
+    if (!b) return;
+    if (!osirqScopeAllows(year, b)) return; // только барьеры ПК
+    if (scopeOrg !== 'Все ПО' && String(r.org || '').trim() !== scopeOrg) return;
+    out.push(r);
+  });
+  return out;
+}
+
+function renderStatisticsBpkCard() {
+  var grid = document.getElementById('statistics-bpk-grid');
+  var pill = document.getElementById('bpk-scope-pill');
+  if (!grid) return;
+
+  // Если выбранная организация пропала из выборки (сменился год/метод) — сброс.
+  if (_bpkScopeOrg !== 'Все ПО' && bpkScopeOrgsList().indexOf(_bpkScopeOrg) < 0) {
+    _bpkScopeOrg = 'Все ПО';
+  }
+
+  // Капсула «Все ПО» и первая колонка — как у других нижних плашек.
+  var scopePillWidth = 0;
+  if (pill) {
+    pill.textContent = _bpkScopeOrg;
+    var osirPillBtn = document.querySelector('.osir-pill[data-quarter="osir"]');
+    if (osirPillBtn) {
+      pill.style.width = osirPillBtn.offsetWidth + 'px';
+      scopePillWidth = osirPillBtn.offsetWidth;
+    }
+  }
+  var osirFirstLbl = grid.closest('.statistics-inner') &&
+    grid.closest('.statistics-inner').querySelector('.statistics-osir-grid .osir-lbl');
+  if (osirFirstLbl) {
+    var firstW = osirFirstLbl.offsetWidth;
+    if (firstW > 0) grid.style.setProperty('--osir-label-col', firstW + 'px');
+  }
+
+  // Статистика по самим барьерам: total = все проверки барьера в выборке,
+  // work = проверки, где барьер работоспособен (works = 'Да').
+  var year = _statisticsYear;
+  var bpkRecords = bpkBaseChecks();
+  var stats = {}; // барьер -> { total, work }
+  bpkRecords.forEach(function(r) {
+    var b = String(r.barrier || '').trim();
+    if (!b) return;
+    if (!stats[b]) stats[b] = { total: 0, work: 0 };
+    stats[b].total++;
+    if (String(r.works || '').trim() === 'Да') stats[b].work++;
+  });
+
+  var barriers = Object.keys(stats).filter(function(b) { return stats[b].total > 0; });
+  // Сортировка: от большего % работоспособности к меньшему, при равных % — по коду.
+  barriers.sort(function(a, b) {
+    var sa = stats[a], sb = stats[b];
+    var pa = sa.total ? Math.round(sa.work * 100 / sa.total) : 0;
+    var pb = sb.total ? Math.round(sb.work * 100 / sb.total) : 0;
+    if (pb !== pa) return pb - pa;
+    return a.localeCompare(b, 'ru');
+  });
+
+  grid.querySelectorAll('.org-row').forEach(function(el) { el.remove(); });
+
+  barriers.forEach(function(barrier) {
+    var st = stats[barrier];
+    var pct = st.total ? Math.round(st.work * 100 / st.total) : 0;
+
+    var row = document.createElement('div');
+    row.className = 'org-row';
+
+    var nameEl = document.createElement('button');
+    nameEl.type = 'button';
+    nameEl.className = 'org-name-btn';
+    nameEl.textContent = barrier;
+    nameEl.title = barrier;
+    if (scopePillWidth > 0) nameEl.style.width = scopePillWidth + 'px';
+    nameEl.onclick = (function(bname) {
+      return function() { openBpkBarrierChecks(bname); };
+    })(barrier);
+
+    var countEl = document.createElement('div');
+    countEl.className = 'org-count';
+    countEl.textContent = st.work + ' из ' + st.total;
+
+    var barCell = document.createElement('div');
+    barCell.className = 'org-bar-cell';
+    var bar = document.createElement('div');
+    bar.className = 'org-bar';
+    bar.setAttribute('data-pct', String(pct));
+    var val = document.createElement('div');
+    val.className = 'org-bar-val';
+    val.textContent = pct + '%';
+
+    barCell.appendChild(bar);
+    barCell.appendChild(val);
+
+    row.appendChild(nameEl);
+    row.appendChild(countEl);
+    row.appendChild(barCell);
+
+    grid.appendChild(row);
+  });
+
+  // Ширины полосок — как у остальных плашек.
+  var firstBarCell = grid.querySelector('.org-row .org-bar-cell');
+  var totalPill2 = document.querySelector('.osir-pill[data-quarter="total"]');
+  if (firstBarCell && totalPill2) {
+    var barLeft = firstBarCell.getBoundingClientRect().left;
+    var totalLeft2 = totalPill2.getBoundingClientRect().left;
+    var base = Math.max(0, totalLeft2 - barLeft);
+    grid.querySelectorAll('.org-row .org-bar').forEach(function(b) {
+      var p = parseFloat(b.getAttribute('data-pct')) || 0;
+      b.style.width = (p > 0 && base > 0) ? ((p / 100) * base) + 'px' : (p > 0 ? p + '%' : '0');
+    });
+  }
+}
+
+// Полный текст названия барьера из паспорта: { code, text }.
+function bpkSplitBarrierLabel(barrierName) {
+  var cn = String(barrierName || '').trim();
+  if (!cn) return { code: '', text: '' };
+  return { code: cn, text: cn }; // резерв — без паспорта показываем как есть
+}
+
+function findBpkBarrierFullText(barrierName) {
+  return findPassportBarrierForName(barrierName).then(function(match) {
+    if (!match || !match.barrier || !match.barrier.label) return '';
+    var label = String(match.barrier.label || '').trim();
+    var codeKey = normalizeBarrierKey(String(barrierName || '').trim());
+    var labelKey = normalizeBarrierKey(label);
+    // убираем ведущий код из label, остальное — текст названия
+    if (labelKey === codeKey) return label;
+    var cn = String(barrierName || '').trim();
+    var low = label.toLowerCase();
+    var idx = low.indexOf(cn.toLowerCase());
+    if (idx === 0) {
+      var rest = label.slice(cn.length).replace(/^[.\s]+/, '').trim();
+      if (rest) return rest;
+    }
+    var m = label.match(/^[A-ZА-ЯЁ][A-ZА-ЯЁ0-9]*(?:\.[0-9A-ZА-Яа-яЁё-]+)+\.?\s*(.*)$/);
+    if (m && m[1]) return m[1].trim();
+    return label;
+  }).catch(function() { return ''; });
+}
+
+// Проверки, учитываемые для барьера: все проверки этого барьера ПК в выборке.
+function bpkChecksForBarrier(barrier) {
+  var year = _statisticsYear;
+  var method = osirPillValue() || 'ОСИР';
+  var scopeOrg = _bpkScopeOrg;
+  var out = [];
+  (appState.db || []).forEach(function(r) {
+    if (!r) return;
+    var dc = normalizeDateStr(r.dateCheck);
+    if (!dc) return;
+    var parts = dc.split('.');
+    if (parts.length !== 3) return;
+    if (parseInt(parts[2], 10) !== year) return;
+    if (!osirqPillAllowsMethod(method, r.method)) return;
+    var b = String(r.barrier || '').trim();
+    if (!b) return;
+    if (!osirqScopeAllows(year, b)) return;
+    if (String(b).trim() !== String(barrier || '').trim()) return;
+    if (scopeOrg !== 'Все ПО' && String(r.org || '').trim() !== scopeOrg) return;
+    out.push(r);
+  });
+  return sortByDateCheckAsc(out);
+}
+
+function openBpkBarrierChecks(barrier) {
+  var records = bpkChecksForBarrier(barrier);
+  var titleEl = document.getElementById('bpk-checks-title');
+  // Заголовок: «Барьер: ГАЗ.01\nНепрерывный контроль …»
+  if (titleEl) titleEl.innerHTML = esc('Барьер: ' + (barrier || ''));
+  findBpkBarrierFullText(barrier).then(function(text) {
+    if (text && titleEl) {
+      titleEl.innerHTML = esc('Барьер: ' + (barrier || '')) + (text ? '<br>' + esc(text) : '');
+    }
+  }).catch(function() {});
+  var tbody = document.getElementById('bpk-checks-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  var viol = 0;
+  records.forEach(function(r) {
+    var tr = document.createElement('tr');
+    if (String(r.works || '').trim() === 'Нет') { tr.className = 'has-violation'; viol++; }
+    tr.innerHTML =
+      '<td>' + esc(r.dateCheck || '') + '</td>' +
+      '<td>' + esc(r.method || '') + '</td>' +
+      '<td>' + esc(r.org || '') + '</td>' +
+      '<td>' + esc(r.barrier || '') + '</td>';
+    tr.onclick = (function(rec) {
+      return function() { openDetail(rec, 'bpkChecks'); };
+    })(r);
+    tbody.appendChild(tr);
+  });
+  var countEl = document.getElementById('bpk-checks-count');
+  if (countEl) countEl.innerHTML = pluralProverka(records.length);
+  var violEl = document.getElementById('bpk-checks-violation-count');
+  if (violEl) violEl.innerHTML = viol + '<br>' + pluralNarushenie(viol);
+  initStatisticsListScrollTitle('screen-bpk-checks');
+  showScreen('screen-bpk-checks');
+}
+
+function backFromBpkChecks() {
   showScreen('screen-statistics');
 }
 
@@ -8557,8 +8864,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v497';
-var APP_VERSION = '1.43';
+var APP_BUILD = 'pkb-v498';
+var APP_VERSION = '1.44';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
