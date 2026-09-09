@@ -949,7 +949,7 @@ html, body {
   background: var(--bg);
   border-bottom: var(--cell-border-width) solid var(--border);
 }
-.find-list-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; }
+.find-list-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; overflow-anchor: none; }
 .find-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .list-filter-head .find-table thead th {
   padding: 0;
@@ -2530,7 +2530,7 @@ html, body {
           <th><button class="th-col-btn" id="cfl-btn-method" onclick="openCorrFilter('method')"><span>Проверяющий</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-method"></span></div></button></th>
           <th><button class="th-col-btn" id="cfl-btn-org" onclick="openCorrFilter('org')"><span>Проверяемый</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-org"></span></div></button></th>
           <th><button class="th-col-btn" id="cfl-btn-barrier" onclick="openCorrFilter('barrier')"><span>Барьер</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-barrier"></span></div></button></th>
-          <th><button class="th-col-btn" id="cfl-btn-status" onclick="openCorrFilter('status')"><span>Меро-<br>приятия</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-status"></span></div></button></th>
+          <th><button class="th-col-btn" id="cfl-btn-status" onclick="openCorrFilter('status')"><span>Статус</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="cfl-count-status"></span></div></button></th>
         </tr>
       </thead>
     </table>
@@ -2561,7 +2561,7 @@ html, body {
           <th><button class="th-col-btn" id="sfl-btn-dateCheck" onclick="openSokbFilter('dateCheck')"><span>Дата<br>проверки</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="sfl-count-dateCheck"></span></div></button></th>
           <th><button class="th-col-btn" id="sfl-btn-org" onclick="openSokbFilter('org')"><span>Проверяемый</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="sfl-count-org"></span></div></button></th>
           <th><button class="th-col-btn" id="sfl-btn-barrier" onclick="openSokbFilter('barrier')"><span>Барьер</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="sfl-count-barrier"></span></div></button></th>
-          <th><button class="th-col-btn" id="sfl-btn-status" onclick="openSokbFilter('status')"><span>Оспа-<br>ривание</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="sfl-count-status"></span></div></button></th>
+          <th><button class="th-col-btn" id="sfl-btn-status" onclick="openSokbFilter('status')"><span>Статус</span><div class="th-col-meta"><svg class="th-fi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg><span class="th-filter-count" id="sfl-count-status"></span></div></button></th>
         </tr>
       </thead>
     </table>
@@ -4747,39 +4747,80 @@ function initStatisticsListScrollTitle(screenId) {
   if (wrap.__statsTitleBound) return;
   wrap.__statsTitleBound = true;
 
-  var lastScrollTop = wrap.scrollTop || 0;
+  var hidden = false;
 
-  // Скролл списка: вниз — скрыть заголовок, вверх — показать, у верха — всегда показать.
-  function onWrapScroll() {
-    var st = wrap.scrollTop;
-    if (st > lastScrollTop) {
+  function hideHeader() {
+    if (!hidden) {
+      hidden = true;
       title.classList.add('stats-title-hidden');
-    } else if (st < lastScrollTop || st === 0) {
+    }
+  }
+  function showHeader() {
+    if (hidden) {
+      hidden = false;
       title.classList.remove('stats-title-hidden');
     }
-    lastScrollTop = st;
   }
-  wrap.addEventListener('scroll', onWrapScroll, { passive: true });
 
-  // Двигать список колесом/тачпадом, когда курсор над заголовком (заголовок
-  // сам не скроллится — прокручиваем wrap, а его scroll-событие обновит заголовок).
-  function onTitleWheel(e) {
-    wrap.scrollTop += e.deltaY;
-    e.preventDefault();
-  }
-  title.addEventListener('wheel', onTitleWheel, { passive: false });
+  // ── Смахивание по САМОМУ ЗАГОЛОВКУ (тачпад/колесо/тач) ──
+  // Вверх по заголовку → сворачиваем (список не трогаем, только layout «подтягивается»).
+  // Вниз по заголовку → возвращаем.
+  var lastWheelAt = 0;
+  title.addEventListener('wheel', function(e) {
+    var now = Date.now();
+    var fresh = (now - lastWheelAt) > 150;
+    lastWheelAt = now;
+    if (!fresh) return; // внутри одного жеста реагируем один раз
+    if (e.deltaY > 0) {
+      hideHeader(); // жест вверх по заголовку
+    } else if (e.deltaY < 0) {
+      showHeader(); // жест вниз по заголовку
+    }
+  }, { passive: true });
 
-  // Сенсорное смахивание по заголовку (мобильные): двигаем список, scroll-событие обновит заголовок.
   var touchY = 0;
   title.addEventListener('touchstart', function(e) {
     touchY = e.touches[0].clientY;
   }, { passive: true });
   title.addEventListener('touchmove', function(e) {
-    var dy = touchY - e.touches[0].clientY;
-    touchY = e.touches[0].clientY;
-    wrap.scrollTop += dy;
-    e.preventDefault();
-  }, { passive: false });
+    var dy = e.touches[0].clientY - touchY;
+    if (dy < -20) {
+      hideHeader();
+    } else if (dy > 20) {
+      showHeader();
+    }
+  }, { passive: true });
+
+  // ── Список: нативный скролл мы НЕ трогаем (никаких переключений высоты во
+  // время инерции — это и было причиной «дерганья»). Заголовок возвращаем
+  // только жестом «потянуть вниз», когда список уже находится в самом верху:
+  //  - если жест начался, когда список ещё не наверху, он просто докручивает до
+  //    верха и там останавливается (заголовок НЕ появляется);
+  //  - следующий, уже новый жест вниз при scrollTop === 0 показывает заголовок.
+  var lastListWheelAt = 0;
+  wrap.addEventListener('wheel', function(e) {
+    var now = Date.now();
+    var fresh = (now - lastListWheelAt) > 150;
+    lastListWheelAt = now;
+    if (!fresh) return;
+    if (e.deltaY < 0 && wrap.scrollTop <= 0) {
+      showHeader(); // новый жест «вниз» при достигнутом верхе
+    }
+  }, { passive: true });
+
+  var listTouchY = 0;
+  var listTouchStartTop = false;
+  wrap.addEventListener('touchstart', function(e) {
+    listTouchY = e.touches[0].clientY;
+    listTouchStartTop = (wrap.scrollTop <= 0);
+  }, { passive: true });
+  wrap.addEventListener('touchmove', function(e) {
+    var dy = e.touches[0].clientY - listTouchY;
+    // Палец пошёл вниз, а касание началось уже на самом верху списка
+    if (dy > 20 && listTouchStartTop) {
+      showHeader();
+    }
+  }, { passive: true });
 }
 
 function bindStatisticsListTitleScroll() {
@@ -8516,8 +8557,8 @@ function loadPassportManifest() {
     })
     .catch(function() {});
 }
-var APP_BUILD = 'pkb-v496';
-var APP_VERSION = '1.42';
+var APP_BUILD = 'pkb-v497';
+var APP_VERSION = '1.43';
 function renderAppVersionLabel() {
   var el = document.getElementById('settings-app-version');
   if (el) el.textContent = 'Версия приложения ' + APP_VERSION;
